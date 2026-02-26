@@ -1,0 +1,7 @@
+.projects { padding: 2rem 1rem; }
+.grid { display: grid; gap: 1rem; grid-template-columns: 1fr; max-width: 1100px; margin: 0 auto; }
+.projectInner { display: flex; gap: 1rem; align-items: center; }
+.thumb { width: 140px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); }
+.thumbFake { width: 140px; height: 100px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.06) }
+
+@media (min-width: 800px) { .grid { grid-template-columns: repeat(3, 1fr); } }

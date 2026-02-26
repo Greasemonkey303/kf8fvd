@@ -1,18 +1,38 @@
-import React from 'react';
+"use client"
+
+import React, { useState } from 'react';
 import Link from 'next/link';
 import styles from './navbar.module.css';
 
-const navbar = () => {
+const Navbar: React.FC = () => {
+  const [open, setOpen] = useState(false);
+
   return (
-    <header>
-      <nav className={styles.navbar}>
-        <Link href="/">Home</Link>
-        <Link href="/aboutme">About Me</Link>
-        <Link href="/projects">Projects</Link>
-        <Link href="/contactme">Contact</Link>
-      </nav>
+    <header className={styles.header}>
+      <div className={styles.container}>
+        <div className={styles.brand}>
+          <Link href="/">KF8FVD</Link>
+        </div>
+
+        <button
+          className={styles.toggle}
+          aria-expanded={open}
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          onClick={() => setOpen((s) => !s)}
+        >
+          <span className={styles.hamburger} />
+        </button>
+
+        <nav className={`${styles.nav} ${open ? styles.open : ''}`} aria-hidden={!open && undefined}>
+          <Link href="/">Home</Link>
+          <Link href="/aboutme">About Me</Link>
+          <Link href="/projects">Projects</Link>
+          <Link href="/contactme">Contact</Link>
+          <Link href="/credentials">Credentials</Link>
+        </nav>
+      </div>
     </header>
   );
 };
 
-export default navbar;
+export default Navbar;

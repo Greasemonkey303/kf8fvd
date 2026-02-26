@@ -1,12 +1,13 @@
 :root {
   /* color palette */
-  --color-primary: #002a5c; /* navy blue */
-  --color-secondary: #6a00a1; /* deep purple */
-  --color-gradient: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  --color-primary: #0f172a; /* deep navy */
+  --color-secondary: #60a5fa; /* bright blue */
+  --color-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #60a5fa 100%);
 
   /* background / text */
-  --color-bg: #fdfdfd;
-  --color-text: #111;
+  --color-bg: #0f172a;
+  --color-text: #ffffff;
+  --color-link: #7dd3fc;
 
   /* fonts */
   --font-sans: 'Helvetica Neue', Arial, sans-serif;

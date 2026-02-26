@@ -1,10 +1,6 @@
 import React from 'react'
-import styles from './contactme.module.css'
+import Contact from '@/containers/contact/contact'
 
-const page = () => {
-  return (
-    <div>page</div>
-  )
+export default function Page() {
+  return <Contact />
 }
-
-export default page

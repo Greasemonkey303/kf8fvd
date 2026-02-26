@@ -2,23 +2,101 @@
   padding: 2rem 1rem;
 }
 
-.bands h2 {
-  color: var(--color-secondary);
-  margin-bottom: 1rem;
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: start;
+  max-width: 1100px;
+  margin: 0 auto;
+  justify-items: center;
 }
 
-.bands ul {
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+  padding: 1.25rem;
+  border-radius: 10px;
+  color: var(--color-text);
+  backdrop-filter: blur(4px);
+  text-align: center;
+}
+
+.card h2 {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-link);
+}
+
+.lead {
+  margin: 0 0 1rem 0;
+  color: rgba(255,255,255,0.85);
+}
+
+.list {
   list-style: none;
   padding: 0;
+  margin: 0;
   display: flex;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  gap: 1rem;
   justify-content: center;
 }
 
-.bands li {
-  background: var(--color-primary);
+.item {
+  background: rgba(0,0,0,0.35);
   color: #fff;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.item:hover { transform: translateY(-4px); box-shadow: 0 6px 18px rgba(2,6,23,0.6); }
+
+.modes {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.mode {
+  flex: 1 1 140px;
+  min-width: 140px;
+  padding: 0.75rem;
+  border-radius: 8px;
+  color: #07203a;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9));
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.25);
+  transform-origin: center;
+  transition: transform .25s cubic-bezier(.2,.9,.3,1), box-shadow .2s ease;
+}
+
+.mode:hover { transform: translateY(-6px) rotate(-0.5deg); box-shadow: 0 18px 40px rgba(2,6,23,0.35); }
+
+.modeName {
+  font-weight: 800;
+  letter-spacing: .6px;
+}
+
+.modeDesc {
+  font-size: 0.9rem;
+  color: rgba(2,6,23,0.65);
+}
+
+.fm { border-left: 4px solid #60a5fa; }
+.dstar { border-left: 4px solid #a78bfa; }
+.dmp { border-left: 4px solid #34d399; }
+
+/* subtle floating animation for modes */
+@keyframes floaty { 0% { transform: translateY(0); } 50% { transform: translateY(-6px); } 100% { transform: translateY(0); } }
+.mode { animation: floaty 6s ease-in-out infinite; }
+
+@media (min-width: 800px) {
+  .grid { grid-template-columns: 1fr 1fr; }
 }

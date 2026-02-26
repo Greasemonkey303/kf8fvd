@@ -1,0 +1,10 @@
+.about { padding: 2rem 1rem; }
+.wrapper { max-width: 900px; margin: 0 auto; }
+.content { display: flex; gap: 1rem; align-items: center; }
+.avatar { width: 160px; height: 160px; object-fit: cover; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
+.copy { color: rgba(255,255,255,0.92); }
+
+@media (max-width: 720px) {
+  .content { flex-direction: column; text-align: center; }
+  .avatar { width: 140px; height: 140px; }
+}

@@ -1,10 +1,6 @@
 import React from 'react'
-import styles from './projects.module.css'
+import Projects from '@/containers/projects/projects'
 
-const page = () => {
-  return (
-    <div>page</div>
-  )
+export default function Page() {
+  return <Projects />
 }
-
-export default page

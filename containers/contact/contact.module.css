@@ -1,0 +1,11 @@
+.contact { padding: 2rem 1rem; }
+.wrapper { max-width: 900px; margin: 0 auto; }
+.inner { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+.form label { display: block; margin-bottom: .75rem; color: rgba(255,255,255,0.92); }
+.form input, .form textarea { width: 100%; padding: .5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: var(--color-text); }
+.form textarea { min-height: 120px; resize: vertical }
+.actions { display:flex; gap:.75rem; align-items:center }
+.actions button { background: var(--color-link); color: #041025; padding:.5rem 1rem; border-radius:8px; border:0 }
+.contactInfo { color: rgba(255,255,255,0.9) }
+
+@media (min-width: 800px) { .inner { grid-template-columns: 1fr 320px } }
