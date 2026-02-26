@@ -1,0 +1,43 @@
+:root {
+  /* color palette */
+  --color-primary: #002a5c; /* navy blue */
+  --color-secondary: #6a00a1; /* deep purple */
+  --color-gradient: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+
+  /* background / text */
+  --color-bg: #fdfdfd;
+  --color-text: #111;
+
+  /* fonts */
+  --font-sans: 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Merriweather', serif;
+  --font-mono: 'Courier New', monospace;
+}
+
+/* global reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}

@@ -1,0 +1,24 @@
+.bands {
+  padding: 2rem 1rem;
+}
+
+.bands h2 {
+  color: var(--color-secondary);
+  margin-bottom: 1rem;
+}
+
+.bands ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.bands li {
+  background: var(--color-primary);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
