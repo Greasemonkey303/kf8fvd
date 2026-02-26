@@ -24,9 +24,9 @@ const Navbar: React.FC = () => {
         </button>
 
         <nav className={`${styles.nav} ${open ? styles.open : ''}`} aria-hidden={!open && undefined}>
-          <Link href="/">Home</Link>
           <Link href="/aboutme">About Me</Link>
           <Link href="/projects">Projects</Link>
+          <Link href="/dx">DX</Link>
           <Link href="/contactme">Contact</Link>
           <Link href="/credentials">Credentials</Link>
         </nav>
