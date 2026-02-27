@@ -1,3 +1,4 @@
+import Dashboard from '@/containers/dashboard/dashboard';
 import Image from "next/image";
 import styles from "./home.module.css";
 import { Navbar } from "@/components";
@@ -8,6 +9,7 @@ export default function Home() {
     <div className={styles.page}>
       <main className={styles.main}>
         <Hero />
+           <Dashboard />
         <Bands />
       </main>
     </div>

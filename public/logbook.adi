@@ -1,0 +1,2776 @@
+QRZLogbook download for kf8fvd
+    Date: Fri Feb 27 04:51:12 2026
+    Bookid: 460734
+    Records: 59
+    <ADIF_VER:5>3.1.1
+    <PROGRAMID:10>QRZLogbook
+    <PROGRAMVERSION:3>2.0
+    <eoh>
+<band:2>2m
+<my_name:14>Zachary  Freed
+<time_off:4>1234
+<cnty:9>OH,Summit
+<app_wrl_id:36>fad82b2d-18e5-4d38-b3f0-530b3d562159
+<my_lon:11>W085 32.124
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W081 26.355
+<qso_date:8>20260226
+<qsl_rcvd:1>N
+<time_on:4>1234
+<my_lat:11>N042 52.888
+<app_qrzlog_logid:10>1413246890
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<lat:11>N041 14.792
+<qrzcom_qso_upload_status:1>Y
+<freq:6>147.16
+<qso_date_off:8>20260226
+<rst_sent:2>59
+<call:6>KF8FXK
+<qsl_sent:1>N
+<freq_rx:6>147.16
+<country:13>United States
+<distance:3>388
+<gridsquare:6>EN91gf
+<my_gridsquare:6>EN72ev
+<mode:2>FM
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<name:14>WILLIAM BENOIT
+<band_rx:2>2m
+<state:2>OH
+<my_state:2>MI
+<qth:6>HUDSON
+<my_country:13>United States
+<eor>
+
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246891
+<qrzcom_qso_download_status:1>Y
+<qsl_via:17>EQSL & DIRECT QSL
+<qso_date:8>20260226
+<qsl_rcvd:1>N
+<time_on:4>0551
+<my_lat:11>N042 52.888
+<email:17>N7EAM@COMCAST.NET
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W122 11.398
+<qrzcom_qso_upload_date:8>20260227
+<cnty:7>WA,King
+<my_lon:11>W085 32.124
+<app_wrl_id:36>bb351779-ec7a-4532-97d7-51acaf3af0ec
+<time_off:4>0551
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<cqz:1>3
+<my_country:13>United States
+<my_state:2>MI
+<qth:6>RENTON
+<ituz:1>6
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<state:2>WA
+<band_rx:4>70cm
+<name:10>VANNDY EAM
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<freq_rx:7>439.438
+<country:13>United States
+<qsl_sent:1>N
+<distance:4>2892
+<gridsquare:6>CN87uo
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N047 26.592
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<rst_sent:2>59
+<call:5>N7EAM
+<qso_date_off:8>20260226
+<eor>
+
+<ituz:1>3
+<qth:12>DUNEDIN 9011
+<my_state:2>MI
+<my_country:13>United States
+<cqz:2>32
+<my_itu_zone:1>8
+<dxcc:3>170
+<cont:2>OC
+<band_rx:4>70cm
+<name:11>ALAN WILDEN
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<gridsquare:6>RE54fc
+<distance:5>14199
+<qsl_sent:1>N
+<country:11>New Zealand
+<freq_rx:7>439.438
+<qso_date_off:8>20260225
+<call:5>ZL4FM
+<rst_sent:2>59
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<freq:7>439.438
+<lat:11>S041 20.630
+<qrzcom_qso_upload_status:1>Y
+<qsl_via:16>DAVE ADAMS ZL4OZ
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246892
+<email:17>alan@navcom.co.nz
+<my_lat:11>N042 52.888
+<time_on:4>0836
+<qso_date:8>20260225
+<qsl_rcvd:1>N
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>E174 51.504
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<time_off:4>0836
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>add25ef5-ab6e-4aea-b68d-b09d29c68d17
+<eor>
+
+<dxcc:3>266
+<my_itu_zone:1>8
+<cont:2>EU
+<name:18>GEIR Knutsvik Geir
+<band_rx:4>70cm
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<ituz:2>18
+<qth:14>4311 HOMMERSÅK
+<my_state:2>MI
+<my_country:13>United States
+<cqz:2>14
+<qso_date_off:8>20260225
+<call:6>LA5UBA
+<rst_sent:2>59
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<freq:7>439.438
+<lat:11>N058 33.750
+<qrzcom_qso_upload_status:1>Y
+<gridsquare:6>JP41ma
+<distance:4>6170
+<qsl_sent:1>N
+<country:6>Norway
+<freq_rx:7>439.438
+<email:22>geir.knutsvik@lyse.net
+<my_lat:11>N042 52.888
+<time_on:4>0748
+<qso_date:8>20260225
+<qsl_rcvd:1>N
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246894
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<band:4>70cm
+<my_name:14>Zachary  Freed
+<time_off:4>0748
+<app_wrl_id:36>20600986-b10e-4c33-82d3-9e6cd1673f27
+<my_lon:11>W085 32.124
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>E005 52.500
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<eor>
+
+<qsl_sent:1>N
+<freq_rx:7>439.437
+<country:7>England
+<distance:4>6215
+<gridsquare:6>JO01nt
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N051 48.217
+<freq:7>439.437
+<qso_date_off:8>20260224
+<rst_sent:2>59
+<call:5>G0MBA
+<my_state:2>MI
+<qth:14>CLACTON ON SEA
+<my_country:13>United States
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<cont:2>EU
+<dxcc:3>223
+<my_itu_zone:1>8
+<name:12>TONY HORSMAN
+<band_rx:4>70cm
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>E001 08.405
+<time_off:4>1314
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>98be3901-d3e4-4d54-806d-8a2f30dd86cf
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<app_qrzlog_logid:10>1413246895
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<qso_date:8>20260224
+<qsl_rcvd:1>N
+<email:19>g0mba@hvgroup.co.uk
+<time_on:4>1314
+<my_lat:11>N042 52.888
+<eor>
+
+<cnty:10>VA,Hanover
+<my_lon:11>W085 32.124
+<app_wrl_id:36>d7d63545-823e-4b95-aa4d-b88281df5435
+<my_name:14>Zachary  Freed
+<time_off:4>1313
+<band:4>70cm
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W077 12.480
+<qrzcom_qso_upload_date:8>20260227
+<qsl_rcvd:1>N
+<qso_date:8>20260224
+<time_on:4>1313
+<my_lat:11>N042 52.888
+<app_qrzlog_logid:10>1413246897
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<lat:11>N037 36.252
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.437
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<rst_sent:2>59
+<call:6>KR4JHC
+<qso_date_off:8>20260224
+<freq_rx:7>439.437
+<country:13>United States
+<qsl_sent:1>N
+<distance:3>908
+<gridsquare:6>FM17hp
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<state:2>VA
+<name:16>Robert L DeAtley
+<band_rx:4>70cm
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<cqz:1>5
+<my_country:13>United States
+<my_state:2>MI
+<qth:14>Mechanicsville
+<ituz:1>8
+<eor>
+
+<lon:11>W002 09.199
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<qrzcom_qso_upload_date:8>20260227
+<app_wrl_id:36>f80a93a8-5627-46bc-81b5-d38adfaafe0c
+<my_lon:11>W085 32.124
+<band:4>70cm
+<my_name:14>Zachary  Freed
+<time_off:4>0956
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246898
+<qrzcom_qso_download_status:1>Y
+<qsl_rcvd:1>N
+<qso_date:8>20260224
+<my_lat:11>N042 52.888
+<time_on:4>0956
+<email:19>g6mmsjeff@gmail.com
+<country:7>England
+<freq_rx:7>439.438
+<qsl_sent:1>N
+<gridsquare:6>IO83wm
+<distance:4>5932
+<freq:7>439.438
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N053 31.635
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<call:5>G6MMS
+<rst_sent:2>59
+<qso_date_off:8>20260224
+<my_country:13>United States
+<qth:6>oldham
+<my_state:2>MI
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<band_rx:4>70cm
+<name:13>Jeffrey young
+<state:2>UK
+<dxcc:3>223
+<my_itu_zone:1>8
+<cont:2>EU
+<eor>
+
+<qso_date_off:8>20260223
+<rst_sent:2>59
+<call:6>KE8OHV
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<lat:11>N043 03.668
+<qrzcom_qso_upload_status:1>Y
+<freq:6>147.16
+<distance:3>162
+<gridsquare:6>EN83eb
+<qsl_sent:1>N
+<freq_rx:6>147.16
+<country:13>United States
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<band_rx:2>2m
+<name:16>Edward J Vernier
+<state:2>MI
+<my_gridsquare:6>EN72ev
+<mode:2>FM
+<ituz:1>2
+<my_state:2>MI
+<qth:5>Flint
+<cqz:1>2
+<my_country:13>United States
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<band:2>2m
+<my_name:14>Zachary  Freed
+<time_off:4>1040
+<cnty:10>MI,Genesee
+<app_wrl_id:36>d70051b7-9a90-4e34-a65d-5e4e944f2227
+<my_lon:11>W085 32.124
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W083 35.236
+<email:14>ke8ohv@usa.com
+<time_on:4>1040
+<my_lat:11>N042 52.888
+<qsl_rcvd:1>N
+<qso_date:8>20260223
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246899
+<eor>
+
+<qso_date:8>20260223
+<qsl_rcvd:1>N
+<time_on:4>1036
+<my_lat:11>N042 52.888
+<email:18>ke8ikt@outlook.com
+<app_qrzlog_logid:10>1413246900
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<cnty:11>MI,Muskegon
+<my_lon:11>W085 32.124
+<app_wrl_id:36>a3cd8c2b-7402-4c58-b08a-21e99313bc76
+<my_name:14>Zachary  Freed
+<time_off:4>1036
+<band:2>2m
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W086 07.171
+<qrzcom_qso_upload_date:8>20260227
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<state:2>MI
+<name:9>Rick Fyan
+<band_rx:2>2m
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<cqz:1>4
+<my_country:13>United States
+<my_state:2>MI
+<qth:8>Muskegon
+<ituz:1>8
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N043 14.081
+<freq:6>147.16
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<rst_sent:2>59
+<call:6>KE8IKT
+<qso_date_off:8>20260223
+<freq_rx:6>147.16
+<country:13>United States
+<qsl_sent:1>N
+<distance:2>62
+<gridsquare:6>EN63vf
+<eor>
+
+<qso_date_off:8>20260223
+<rst_sent:2>59
+<call:6>KE8ZAB
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<lat:11>N042 41.250
+<qrzcom_qso_upload_status:1>Y
+<freq:6>147.16
+<distance:3>205
+<gridsquare:6>EN82kq
+<qsl_sent:1>N
+<freq_rx:6>147.16
+<country:13>United States
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<band_rx:2>2m
+<name:14>Dominic A Hann
+<my_gridsquare:6>EN72ev
+<mode:2>FM
+<my_state:2>MI
+<my_country:13>United States
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_name:14>Zachary  Freed
+<time_off:4>1025
+<band:2>2m
+<my_lon:11>W085 32.124
+<app_wrl_id:36>b2e45cb4-594e-46af-af9a-5a0bf17ae888
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W083 07.500
+<time_on:4>1025
+<my_lat:11>N042 52.888
+<qso_date:8>20260223
+<qsl_rcvd:1>N
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246901
+<my_cnty:7>MI,Kent
+<eor>
+
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W083 49.184
+<time_off:4>0741
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<cnty:10>MI,Genesee
+<my_lon:11>W085 32.124
+<app_wrl_id:36>e3ad1510-5c88-4534-99a5-ff05fe3887a6
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246902
+<qrzcom_qso_download_status:1>Y
+<qsl_rcvd:1>N
+<qso_date:8>20260223
+<email:19>bcamp1322@gmail.com
+<time_on:4>0741
+<my_lat:11>N042 52.888
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<distance:3>147
+<gridsquare:6>EN82cw
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<lat:11>N042 57.017
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<qso_date_off:8>20260223
+<rst_sent:2>59
+<call:6>KC8LKV
+<my_state:2>MI
+<qth:12>SWARTZ CREEK
+<cqz:1>4
+<my_country:13>United States
+<ituz:1>8
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<state:2>MI
+<band_rx:4>70cm
+<name:17>Robert F Campbell
+<eor>
+
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<distance:3>412
+<gridsquare:6>EN76tl
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<lat:11>N046 28.750
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<qso_date_off:8>20260223
+<rst_sent:2>59
+<call:6>KC8LKD
+<my_state:2>MI
+<my_country:13>United States
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<band_rx:4>70cm
+<name:12>JERRY J TIMM
+<state:2>MI
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W084 22.500
+<band:4>70cm
+<time_off:4>0738
+<my_name:14>Zachary  Freed
+<app_wrl_id:36>4ab6f3c3-eac2-474f-9415-466e577259d6
+<my_lon:11>W085 32.124
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246903
+<qrzcom_qso_download_status:1>Y
+<qso_date:8>20260223
+<qsl_rcvd:1>N
+<time_on:4>0738
+<my_lat:11>N042 52.888
+<eor>
+
+<qso_date:8>20260223
+<qsl_rcvd:1>N
+<time_on:4>0306
+<my_lat:11>N042 52.888
+<email:16>Perma@xtra.co.nz
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246904
+<qrzcom_qso_download_status:1>Y
+<my_lon:11>W085 32.124
+<app_wrl_id:36>8ab63b06-f174-4d5b-ab2e-c495ea1500ff
+<time_off:4>0306
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>E174 52.500
+<qrzcom_qso_upload_date:8>20260227
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<name:16>Laurence Mathews
+<band_rx:4>70cm
+<cont:2>OC
+<dxcc:3>170
+<my_itu_zone:1>8
+<my_country:13>United States
+<my_state:2>MI
+<qth:15>Auckland, 1546,
+<qrzcom_qso_upload_status:1>Y
+<lat:11>S041 21.250
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<rst_sent:2>59
+<call:6>ZL1ICU
+<qso_date_off:8>20260223
+<freq_rx:7>439.438
+<country:11>New Zealand
+<qsl_sent:1>N
+<distance:5>13647
+<gridsquare:6>RE78kp
+<comment:2>ic
+<eor>
+
+<qso_date_off:8>20260223
+<rst_sent:2>59
+<call:6>KN1KSR
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N032 56.904
+<freq:7>439.438
+<comment:2>1C
+<distance:4>1208
+<gridsquare:6>EM92xw
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<state:2>SC
+<name:15>Nolasco Stevens
+<band_rx:4>70cm
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<ituz:1>8
+<my_state:2>MI
+<qth:16>NORTH CHARLESTON
+<cqz:1>5
+<my_country:13>United States
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_name:14>Zachary  Freed
+<time_off:4>0235
+<band:4>70cm
+<cnty:13>SC,Charleston
+<my_lon:11>W085 32.124
+<app_wrl_id:36>a79c43d9-15be-4245-99a7-3a021158b890
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W080 04.078
+<email:24>nick.stevenssr@gmail.com
+<time_on:4>0235
+<my_lat:11>N042 52.888
+<qso_date:8>20260223
+<qsl_rcvd:1>N
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246906
+<eor>
+
+<lat:11>N038 34.345
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<rst_sent:2>59
+<call:6>KM6NFO
+<qso_date_off:8>20260223
+<freq_rx:7>439.438
+<country:13>United States
+<qsl_sent:1>N
+<distance:4>2990
+<gridsquare:6>CM98pe
+<mode:12>DIGITALVOICE
+<my_gridsquare:6>EN72ev
+<band_rx:4>70cm
+<name:15>Shawn Eifertsen
+<state:2>CA
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<cqz:1>3
+<my_country:13>United States
+<my_state:2>MI
+<qth:10>Sacramento
+<ituz:1>6
+<cnty:13>CA,Sacramento
+<app_wrl_id:36>29945d21-4539-4f6f-8df0-a49b16a03cae
+<my_lon:11>W085 32.124
+<band:4>70cm
+<time_off:4>0224
+<my_name:14>Zachary  Freed
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W121 29.141
+<qrzcom_qso_upload_date:8>20260227
+<qsl_rcvd:1>N
+<qso_date:8>20260223
+<time_on:4>0224
+<my_lat:11>N042 52.888
+<email:15>km6nfo@arrl.net
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246907
+<qrzcom_qso_download_status:1>Y
+<eor>
+
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<state:2>NV
+<name:16>Jerry R Caselman
+<band_rx:4>70cm
+<my_gridsquare:6>EN72ev
+<mode:12>DIGITALVOICE
+<my_state:2>MI
+<qth:15>NORTH LAS VEGAS
+<my_country:13>United States
+<qso_date_off:8>20260223
+<rst_sent:2>59
+<call:5>N7DWG
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<lat:11>N036 15.760
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<distance:4>2620
+<gridsquare:6>DM26kg
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<email:15>N7DWG@proton.me
+<time_on:4>0211
+<my_lat:11>N042 52.888
+<qsl_rcvd:1>N
+<qso_date:8>20260223
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246908
+<my_cnty:7>MI,Kent
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_name:14>Zachary  Freed
+<time_off:4>0211
+<band:4>70cm
+<cnty:8>NV,Clark
+<my_lon:11>W085 32.124
+<app_wrl_id:36>8eb3d25d-6eb4-495d-bb6b-35c408ff4193
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W115 05.542
+<eor>
+
+<lat:11>N033 45.525
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<rst_sent:2>59
+<call:5>KM6PS
+<qso_date_off:8>20260223
+<freq_rx:7>439.438
+<country:13>United States
+<qsl_sent:1>N
+<distance:4>3003
+<gridsquare:6>DM05hl
+<mode:12>DIGITALVOICE
+<my_gridsquare:6>EN72ev
+<state:2>CA
+<name:13>DANIEL G MEZA
+<band_rx:4>70cm
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<cqz:1>6
+<my_country:13>United States
+<my_state:2>MI
+<qth:11>Palm Desert
+<ituz:1>3
+<cnty:9>CA,Orange
+<my_lon:11>W085 32.124
+<app_wrl_id:36>4694f68b-d14a-470e-a89c-14e0d582807f
+<time_off:4>0039
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W116 17.334
+<qrzcom_qso_upload_date:8>20260227
+<qsl_rcvd:1>N
+<qso_date:8>20260223
+<time_on:4>0039
+<my_lat:11>N042 52.888
+<email:15>km6ps@yahoo.com
+<app_qrzlog_logid:10>1413246909
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<eor>
+
+<ituz:1>8
+<my_country:13>United States
+<cqz:1>4
+<qth:6>Quincy
+<my_state:2>MI
+<name:16>Chelsie L Haltom
+<band_rx:4>70cm
+<state:2>IN
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<gridsquare:6>EM69pl
+<distance:3>390
+<country:13>United States
+<freq_rx:7>439.438
+<qsl_sent:1>N
+<call:6>KE9DHV
+<rst_sent:2>59
+<qso_date_off:8>20260223
+<freq:7>439.438
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N039 28.175
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246910
+<my_lat:11>N042 52.888
+<time_on:4>0033
+<qsl_rcvd:1>N
+<qso_date:8>20260223
+<lon:11>W086 44.795
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<qrzcom_qso_upload_date:8>20260227
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<app_wrl_id:36>4c91affe-79ec-42be-afb8-5709075e5f01
+<my_lon:11>W085 32.124
+<cnty:7>IN,Owen
+<band:4>70cm
+<time_off:4>0033
+<my_name:14>Zachary  Freed
+<eor>
+
+<my_lat:11>N042 52.888
+<time_on:4>0032
+<email:19>aslerjack@gmail.com
+<qso_date:8>20260223
+<qsl_rcvd:1>N
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246911
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>6e50db35-dfe3-4900-8fcb-a9092b5b671b
+<cnty:7>IL,Will
+<my_name:14>Zachary  Freed
+<time_off:4>0032
+<band:4>70cm
+<lon:11>W088 12.480
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<qrzcom_qso_upload_date:8>20260227
+<state:2>IL
+<name:13>John P Murphy
+<band_rx:4>70cm
+<my_itu_zone:1>8
+<dxcc:3>291
+<cont:2>NA
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<ituz:1>8
+<my_country:13>United States
+<cqz:1>4
+<qth:10>Plainfield
+<my_state:2>MI
+<call:6>KE9EDC
+<rst_sent:2>59
+<qso_date_off:8>20260223
+<freq:7>439.438
+<lat:11>N041 36.252
+<qrzcom_qso_upload_status:1>Y
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<gridsquare:6>EN51vo
+<distance:3>258
+<country:13>United States
+<freq_rx:7>439.438
+<qsl_sent:1>N
+<eor>
+
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246913
+<qrzcom_qso_download_status:1>Y
+<qsl_via:14>QRZ LOG - LOTW
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<email:13>mac@w8lmg.com
+<time_on:4>2253
+<my_lat:11>N042 52.888
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W080 10.617
+<band:4>70cm
+<my_name:14>Zachary  Freed
+<time_off:4>2253
+<cnty:13>WV,Pocahontas
+<app_wrl_id:36>ea157e72-65d4-478a-ab61-f3a188c916ee
+<my_lon:11>W085 32.124
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<my_state:2>MI
+<qth:7>Seebert
+<cqz:1>5
+<my_country:13>United States
+<ituz:1>8
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<name:11>LIONEL GRAY
+<band_rx:4>70cm
+<state:2>WV
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<distance:3>697
+<gridsquare:6>EM98vd
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<lat:11>N038 07.687
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<qso_date_off:8>20260222
+<rst_sent:2>59
+<call:5>W8LMG
+<eor>
+
+<ituz:1>8
+<cqz:1>5
+<my_country:13>United States
+<my_state:2>MI
+<qth:14>Mechanicsville
+<band_rx:4>70cm
+<name:16>Robert L DeAtley
+<state:2>VA
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<distance:3>908
+<gridsquare:6>FM17hp
+<freq_rx:7>439.438
+<country:13>United States
+<qsl_sent:1>N
+<rst_sent:2>59
+<call:6>KR4JHC
+<qso_date_off:8>20260222
+<lat:11>N037 36.252
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246914
+<my_cnty:7>MI,Kent
+<time_on:4>1318
+<my_lat:11>N042 52.888
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W077 12.480
+<qrzcom_qso_upload_date:8>20260227
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<cnty:10>VA,Hanover
+<app_wrl_id:36>90bd7c29-69e8-46c6-bcc6-34e4b219ea00
+<my_lon:11>W085 32.124
+<band:4>70cm
+<time_off:4>1318
+<my_name:14>Zachary  Freed
+<eor>
+
+<qsl_sent:1>N
+<country:13>United States
+<freq_rx:7>439.438
+<gridsquare:6>EN53hj
+<distance:3>311
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<freq:7>439.438
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N043 23.612
+<qso_date_off:8>20260222
+<call:6>KE9EMV
+<rst_sent:2>59
+<qth:8>Poynette
+<my_state:2>MI
+<my_country:13>United States
+<cqz:1>4
+<ituz:1>8
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<band_rx:4>70cm
+<name:18>Jason R Knickmeier
+<state:2>WI
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>W089 24.795
+<app_qrzlog_status:1>C
+<rst_rcvd:2>59
+<band:4>70cm
+<time_off:4>1312
+<my_name:14>Zachary  Freed
+<app_wrl_id:36>971c03a2-4220-400f-8be6-4fbee06dfd5c
+<app_qrzlog_qsldate:8>20260227
+<my_lon:11>W085 32.124
+<cnty:11>WI,Columbia
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<app_qrzlog_logid:10>1413246915
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<email:18>crash267@yahoo.com
+<my_lat:11>N042 52.888
+<time_on:4>1312
+<eor>
+
+<cont:2>EU
+<dxcc:3>223
+<my_itu_zone:1>8
+<name:20>Shane "Shane" Duncan
+<band_rx:4>70cm
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<ituz:2>27
+<my_state:2>MI
+<qth:18>Kingston upon Hull
+<cqz:2>14
+<my_country:13>United States
+<qso_date_off:8>20260222
+<rst_sent:2>59
+<call:5>M0MDN
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<lat:11>N053 46.525
+<qrzcom_qso_upload_status:1>Y
+<freq:7>434.438
+<distance:4>6033
+<gridsquare:6>IO93us
+<qsl_sent:1>N
+<freq_rx:7>434.438
+<country:7>England
+<email:18>m0mdn.uk@gmail.com
+<time_on:4>1306
+<my_lat:11>N042 52.888
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246916
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<band:4>70cm
+<my_name:14>Zachary  Freed
+<time_off:4>1306
+<app_wrl_id:36>967108a6-f787-49f6-bbd9-4d4adca1b1d6
+<my_lon:11>W085 32.124
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W000 15.428
+<eor>
+
+<app_qrzlog_status:1>C
+<rst_rcvd:2>59
+<lon:11>E139 24.200
+<qrzcom_qso_upload_date:8>20260227
+<app_wrl_id:36>7ac02915-1047-40a1-9ec9-4a70f877fabf
+<app_qrzlog_qsldate:8>20260227
+<my_lon:11>W085 32.124
+<band:4>70cm
+<time_off:4>1033
+<my_name:14>Zachary  Freed
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246917
+<qrzcom_qso_download_status:1>Y
+<qsl_via:24>via Bureau, LoTW or eQSL
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<time_on:4>1033
+<my_lat:11>N042 52.888
+<email:22>catmanjk1hcc@gmail.com
+<freq_rx:7>439.438
+<country:5>Japan
+<qsl_sent:1>N
+<distance:5>10144
+<gridsquare:6>PM95uq
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N036 01.112
+<freq:7>439.438
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<rst_sent:2>59
+<call:6>JK1HCC
+<qso_date_off:8>20260222
+<cqz:2>25
+<my_country:13>United States
+<my_state:2>MI
+<qth:31>Higashimatsuyama-city, Saitama,
+<ituz:2>45
+<iota:6>AS-007
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<band_rx:4>70cm
+<name:14>Takashi Suzuki
+<cont:2>AS
+<my_itu_zone:1>8
+<dxcc:3>339
+<eor>
+
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>88c029fc-df6a-4e78-acba-8d49466a359d
+<time_off:4>0914
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>E129 19.813
+<qrzcom_qso_upload_date:8>20260227
+<time_on:4>0914
+<my_lat:11>N042 52.888
+<email:18>hl5bbd@hanmail.net
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246918
+<my_cnty:7>MI,Kent
+<rst_sent:2>59
+<call:6>HL5BBD
+<qso_date_off:8>20260222
+<lat:11>N035 33.982
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<distance:5>10601
+<gridsquare:6>PM45pn
+<freq_rx:7>439.438
+<country:11>South Korea
+<qsl_sent:1>N
+<state:3>Uls
+<band_rx:4>70cm
+<name:9>INWOO LEE
+<cont:2>AS
+<dxcc:3>137
+<my_itu_zone:1>8
+<mode:12>DIGITALVOICE
+<my_gridsquare:6>EN72ev
+<ituz:2>44
+<cqz:2>25
+<my_country:13>United States
+<my_state:2>MI
+<qth:5>Ulsan
+<eor>
+
+<distance:4>1064
+<gridsquare:6>EM63qi
+<comment:7>Net 30C
+<freq_rx:7>439.438
+<country:13>United States
+<qsl_sent:1>N
+<rst_sent:2>59
+<call:5>K9PTF
+<qso_date_off:8>20260222
+<lat:11>N033 20.525
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<ituz:1>8
+<cqz:1>4
+<my_country:13>United States
+<my_state:2>MI
+<qth:7>Chelsea
+<state:2>AL
+<band_rx:4>70cm
+<name:11>Paul T Frey
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<iota:6>NA-213
+<mode:12>DIGITALVOICE
+<my_gridsquare:6>EN72ev
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W086 36.458
+<qrzcom_qso_upload_date:8>20260227
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<cnty:9>AL,Shelby
+<my_lon:11>W085 32.124
+<app_wrl_id:36>7211d31f-7294-4fed-aebc-bcf9881fe58e
+<my_name:14>Zachary  Freed
+<time_off:4>0341
+<band:4>70cm
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246919
+<time_on:4>0341
+<my_lat:11>N042 52.888
+<email:14>K9PTF@arrl.net
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<eor>
+
+<qsl_sent:1>N
+<country:13>United States
+<freq_rx:7>439.438
+<comment:7>Net 30C
+<gridsquare:6>EM62wj
+<distance:4>1167
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<freq:7>439.438
+<lat:11>N032 22.522
+<qrzcom_qso_upload_status:1>Y
+<qso_date_off:8>20260222
+<call:5>W9EGL
+<rst_sent:2>59
+<qth:10>Montgomery
+<my_state:2>MI
+<my_country:13>United States
+<my_gridsquare:6>EN72ev
+<mode:12>DIGITALVOICE
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<state:2>AL
+<name:15>Robert W Munday
+<band_rx:4>70cm
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>W086 08.705
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<time_off:4>0341
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>5d565f56-f0ec-4baf-996a-70af78a33d0d
+<cnty:13>AL,Montgomery
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246920
+<qrzcom_qso_download_status:1>Y
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<email:21>W9EGL.Extra@gmail.com
+<my_lat:11>N042 52.888
+<time_on:4>0341
+<eor>
+
+<my_country:13>United States
+<my_state:2>MI
+<band_rx:4>70cm
+<my_itu_zone:1>8
+<dxcc:3>291
+<cont:2>NA
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<gridsquare:6>DN11qh
+<distance:4>2551
+<comment:7>Net 30C
+<country:13>United States
+<freq_rx:7>439.438
+<qsl_sent:1>N
+<call:6>WA7BFM
+<rst_sent:2>59
+<qso_date_off:8>20260222
+<freq:7>439.438
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N041 18.750
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246921
+<my_lat:11>N042 52.888
+<time_on:4>0333
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<lon:11>W116 37.500
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<qrzcom_qso_upload_date:8>20260227
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>fdfcf3ff-47c6-4cfd-977d-9ea4a2a4c9ad
+<my_name:14>Zachary  Freed
+<time_off:4>0333
+<band:4>70cm
+<eor>
+
+<qso_date_off:8>20260222
+<rst_sent:2>59
+<call:6>KC5SAM
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N044 30.664
+<freq:7>439.438
+<comment:7>Net 30C
+<distance:3>574
+<gridsquare:6>EN34tm
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<name:17>VIRGINIA I OLIVER
+<band_rx:4>70cm
+<state:2>MN
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<ituz:1>7
+<my_state:2>MI
+<qth:9>FRONTENAC
+<cqz:1>4
+<my_country:13>United States
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<band:4>70cm
+<time_off:4>0332
+<my_name:14>Zachary  Freed
+<cnty:10>MN,Goodhue
+<app_wrl_id:36>69333ce4-db24-498f-9322-39c8e74eb476
+<my_lon:11>W085 32.124
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W092 21.370
+<email:19>kc5sam.vo@gmail.com
+<time_on:4>0332
+<my_lat:11>N042 52.888
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<qrzcom_qso_download_status:1>Y
+<qsl_via:6>direct
+<app_qrzlog_logid:10>1413246922
+<my_cnty:7>MI,Kent
+<eor>
+
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246923
+<qrzcom_qso_download_status:1>Y
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<time_on:4>0332
+<my_lat:11>N042 52.888
+<email:19>rlnumber3@gmail.com
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W117 27.869
+<qrzcom_qso_upload_date:8>20260227
+<cnty:10>WA,Spokane
+<my_lon:11>W085 32.124
+<app_wrl_id:36>ff321575-9b57-4988-bb66-9d3898a4408f
+<my_name:14>Zachary  Freed
+<time_off:4>0332
+<band:4>70cm
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_country:13>United States
+<my_state:2>MI
+<qth:7>Spokane
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<state:2>WA
+<band_rx:4>70cm
+<name:12>Robert Lynch
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<freq_rx:7>439.438
+<country:13>United States
+<qsl_sent:1>N
+<distance:4>2530
+<gridsquare:6>DN17gp
+<comment:7>Net 30C
+<lat:11>N047 44.538
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<rst_sent:2>59
+<call:6>KK7GWJ
+<qso_date_off:8>20260222
+<eor>
+
+<lon:11>W114 02.629
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<qrzcom_qso_upload_date:8>20260227
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>b1d64a42-0d3d-463c-89b1-d3cd6bba2ed8
+<cnty:11>MT,Missoula
+<time_off:4>0332
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246925
+<my_lat:11>N042 52.888
+<time_on:4>0332
+<email:14>K7MTD@ARRL.NET
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<gridsquare:6>DN26xu
+<distance:4>2271
+<comment:7>Net 30C
+<country:13>United States
+<freq_rx:7>439.438
+<qsl_sent:1>N
+<call:5>K7MTD
+<rst_sent:2>59
+<qso_date_off:8>20260222
+<freq:7>439.438
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N046 51.960
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<ituz:1>6
+<my_country:13>United States
+<cqz:1>4
+<qth:8>Missoula
+<my_state:2>MI
+<state:2>MT
+<name:16>David D Herzberg
+<band_rx:4>70cm
+<my_itu_zone:1>8
+<dxcc:3>291
+<cont:2>NA
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<eor>
+
+<qso_date_off:8>20260222
+<rst_sent:2>59
+<call:5>W4LKS
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N047 33.878
+<freq:7>439.438
+<comment:7>Net 30C
+<distance:4>2539
+<gridsquare:6>DN17fl
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<name:19>Randall C Wilkinson
+<band_rx:4>70cm
+<state:2>WA
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<my_state:2>MI
+<qth:6>Cheney
+<my_country:13>United States
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<band:4>70cm
+<my_name:14>Zachary  Freed
+<time_off:4>0331
+<cnty:10>WA,Spokane
+<app_wrl_id:36>a30999b7-9248-4bbd-af4d-aaaaabb25b2c
+<my_lon:11>W085 32.124
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W117 35.441
+<email:18>w4lks@hvacware.net
+<time_on:4>0331
+<my_lat:11>N042 52.888
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246926
+<eor>
+
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W117 23.367
+<band:4>70cm
+<time_off:4>0318
+<my_name:14>Zachary  Freed
+<cnty:10>WA,Spokane
+<app_wrl_id:36>d9d1fe0c-10b3-4254-9a43-ade8db01dd59
+<my_lon:11>W085 32.124
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246938
+<qrzcom_qso_download_status:1>Y
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<email:14>WA7BFN@msn.com
+<time_on:4>0318
+<my_lat:11>N042 52.888
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<comment:7>Net 30C
+<distance:4>2530
+<gridsquare:6>DN17gp
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N047 37.788
+<freq:7>439.438
+<qso_date_off:8>20260222
+<rst_sent:2>59
+<call:6>WA7BFN
+<my_state:2>MI
+<qth:7>SPOKANE
+<cqz:1>7
+<my_country:13>United States
+<ituz:1>7
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<name:14>ROLLIN JOHNSON
+<band_rx:4>70cm
+<state:2>WA
+<eor>
+
+<my_state:2>MI
+<my_country:13>United States
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<band_rx:4>70cm
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<comment:7>Net 30C
+<distance:4>1546
+<gridsquare:6>EM11uu
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<lat:11>N031 51.250
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<qso_date_off:8>20260222
+<rst_sent:2>59
+<call:5>K50VM
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246940
+<qrzcom_qso_download_status:1>Y
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<time_on:4>0318
+<my_lat:11>N042 52.888
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W096 17.500
+<my_name:14>Zachary  Freed
+<time_off:4>0318
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>774cf033-8a6d-4ae3-b433-57e814f7f2c2
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<eor>
+
+<rst_sent:2>59
+<call:4>W7BO
+<qso_date_off:8>20260222
+<lat:11>N045 54.526
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<distance:4>2941
+<gridsquare:6>CN85pv
+<comment:7>Net 30C
+<freq_rx:7>439.438
+<country:13>United States
+<qsl_sent:1>N
+<state:2>WA
+<name:12>JOHN J BURKE
+<band_rx:4>70cm
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<ituz:1>5
+<cqz:1>3
+<my_country:13>United States
+<my_state:2>MI
+<qth:8>WOODLAND
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<cnty:10>WA,Cowlitz
+<my_lon:11>W085 32.124
+<app_wrl_id:36>d7412a52-b395-48e9-bcd8-715656fed14c
+<my_name:14>Zachary  Freed
+<time_off:4>0318
+<band:4>70cm
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W122 44.852
+<qrzcom_qso_upload_date:8>20260227
+<time_on:4>0318
+<my_lat:11>N042 52.888
+<email:13>jjscpr@me.com
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246941
+<eor>
+
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<lat:11>N047 18.326
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<qso_date_off:8>20260222
+<rst_sent:2>59
+<call:6>KJ7QBH
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<comment:7>Net 30C
+<distance:4>2892
+<gridsquare:6>CN87uo
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<name:12>Frank Cessna
+<band_rx:4>70cm
+<state:2>WA
+<my_state:2>MI
+<qth:11>Federal Way
+<my_country:13>United States
+<band:4>70cm
+<time_off:4>0318
+<my_name:14>Zachary  Freed
+<cnty:7>WA,King
+<app_wrl_id:36>d8e28408-c55f-4f8f-aec1-f06b3d04fdc3
+<my_lon:11>W085 32.124
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W122 21.383
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<time_on:4>0318
+<my_lat:11>N042 52.888
+<app_qrzlog_logid:10>1413246942
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<eor>
+
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<state:2>WA
+<band_rx:4>70cm
+<name:15>JAMES WRAALSTAD
+<my_itu_zone:1>8
+<dxcc:3>291
+<cont:2>NA
+<my_country:13>United States
+<qth:8>Kirkland
+<my_state:2>MI
+<freq:7>439.438
+<lat:11>N047 43.949
+<qrzcom_qso_upload_status:1>Y
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<call:4>WQ7H
+<rst_sent:2>59
+<qso_date_off:8>20260222
+<country:13>United States
+<freq_rx:7>439.438
+<qsl_sent:1>N
+<gridsquare:6>CN87uo
+<distance:4>2892
+<comment:7>Net 30C
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<my_lat:11>N042 52.888
+<time_on:4>0318
+<email:19>Leutafisk@gmail.com
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246943
+<qrzcom_qso_download_status:1>Y
+<my_lon:11>W085 32.124
+<app_wrl_id:36>437014f6-9fbb-4250-a604-d32ff6fa9cec
+<cnty:7>WA,King
+<time_off:4>0318
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<lon:11>W122 11.878
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<qrzcom_qso_upload_date:8>20260227
+<eor>
+
+<lon:11>W114 33.802
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<qrzcom_qso_upload_date:8>20260227
+<app_wrl_id:36>e4400e16-3807-4780-b517-f9b42806f037
+<my_lon:11>W085 32.124
+<cnty:10>WA,Whatcom
+<band:4>70cm
+<time_off:4>0317
+<my_name:14>Zachary  Freed
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246944
+<qrzcom_qso_download_status:1>Y
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<my_lat:11>N042 52.888
+<time_on:4>0317
+<email:15>k7mhm@yahoo.com
+<country:13>United States
+<freq_rx:7>439.438
+<qsl_sent:1>N
+<gridsquare:6>CN88sr
+<distance:4>2900
+<comment:7>Net 30C
+<freq:7>439.438
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N032 37.082
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<call:5>K7MHM
+<rst_sent:2>59
+<qso_date_off:8>20260222
+<my_country:13>United States
+<cqz:1>3
+<qth:10>Bellingham
+<my_state:2>MI
+<ituz:1>6
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<name:18>Michael H McMullen
+<band_rx:4>70cm
+<state:2>WA
+<my_itu_zone:1>8
+<dxcc:3>291
+<cont:2>NA
+<eor>
+
+<my_lat:11>N042 52.888
+<time_on:4>0317
+<email:17>kd7aat@kd7aat.net
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<qsl_via:50>PLEASE QSL TO MY ADDRESS ON RECORD. I WILL RETURN.
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246946
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>1cf84d86-1f10-4c9f-851b-ee5414f865ad
+<cnty:18>CA,San Luis Obispo
+<time_off:4>0317
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<lon:11>W120 28.944
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<qrzcom_qso_upload_date:8>20260227
+<state:2>CA
+<name:10>JOHN MYERS
+<band_rx:4>70cm
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<ituz:1>6
+<my_country:13>United States
+<cqz:1>3
+<qth:6>NIPOMO
+<my_state:2>MI
+<call:6>KD7AAT
+<rst_sent:2>59
+<qso_date_off:8>20260222
+<freq:7>439.438
+<lat:11>N035 02.832
+<qrzcom_qso_upload_status:1>Y
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<gridsquare:6>CM94rx
+<distance:4>3122
+<comment:7>Net 30C
+<country:13>United States
+<freq_rx:7>439.438
+<qsl_sent:1>N
+<eor>
+
+<lat:11>N059 46.501
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<rst_sent:2>59
+<call:5>KL3JH
+<qso_date_off:8>20260222
+<freq_rx:7>439.438
+<country:6>Alaska
+<qsl_sent:1>N
+<distance:4>4587
+<gridsquare:6>BP51gj
+<comment:7>Net 30C
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<state:2>AK
+<name:15>Pat Gionson, Jr
+<band_rx:4>70cm
+<cont:2>NA
+<dxcc:1>6
+<my_itu_zone:1>8
+<cqz:1>2
+<my_country:13>United States
+<my_state:2>MI
+<qth:11>Eagle River
+<ituz:1>2
+<my_lon:11>W085 32.124
+<app_wrl_id:36>416d0c46-11ef-4b7c-ad7a-3383377df155
+<time_off:4>0317
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W151 49.983
+<qrzcom_qso_upload_date:8>20260227
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<time_on:4>0317
+<my_lat:11>N042 52.888
+<email:15>KL3JH@yahoo.com
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246947
+<qrzcom_qso_download_status:1>Y
+<eor>
+
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<state:2>AL
+<band_rx:4>70cm
+<name:15>Elquardo D Erby
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<my_country:13>United States
+<my_state:2>MI
+<qth:10>Montgomery
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N032 23.796
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<rst_sent:2>59
+<call:5>K4DJL
+<qso_date_off:8>20260222
+<freq_rx:7>439.438
+<country:13>United States
+<qsl_sent:1>N
+<distance:4>1168
+<gridsquare:6>EM62vj
+<comment:7>Net 30C
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<time_on:4>0316
+<my_lat:11>N042 52.888
+<email:19>K4DJL@djatlarge.com
+<app_qrzlog_logid:10>1413246948
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<cnty:13>AL,Montgomery
+<my_lon:11>W085 32.124
+<app_wrl_id:36>c8e16c5f-2944-454d-a5fa-ecf5d491a65f
+<my_name:14>Zachary  Freed
+<time_off:4>0316
+<band:4>70cm
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W086 11.450
+<qrzcom_qso_upload_date:8>20260227
+<eor>
+
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<state:2>OH
+<band_rx:4>70cm
+<name:14>Steve A Spisak
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<ituz:1>4
+<my_state:2>MI
+<qth:12>Garfield Hts
+<cqz:1>9
+<my_country:13>United States
+<qso_date_off:8>20260222
+<rst_sent:2>59
+<call:5>K8SAS
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<lat:11>N041 25.363
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.438
+<comment:7>Net 30C
+<distance:3>365
+<gridsquare:6>EN91ek
+<qsl_sent:1>N
+<freq_rx:7>439.438
+<country:13>United States
+<email:17>K8SAS73@Gmail.com
+<time_on:4>0316
+<my_lat:11>N042 52.888
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246949
+<my_cnty:7>MI,Kent
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_name:14>Zachary  Freed
+<time_off:4>0316
+<band:4>70cm
+<cnty:11>OH,Cuyahoga
+<my_lon:11>W085 32.124
+<app_wrl_id:36>69b4c8e9-e147-4c02-bbac-7e7e3a6e13d7
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W081 37.662
+<eor>
+
+<qsl_sent:1>N
+<country:13>United States
+<freq_rx:7>439.438
+<comment:3>30C
+<gridsquare:6>DM26kg
+<distance:4>2620
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<freq:7>439.438
+<lat:11>N036 15.760
+<qrzcom_qso_upload_status:1>Y
+<qso_date_off:8>20260222
+<call:5>N7DWG
+<rst_sent:2>59
+<qth:15>NORTH LAS VEGAS
+<my_state:2>MI
+<my_country:13>United States
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<state:2>NV
+<name:16>Jerry R Caselman
+<band_rx:4>70cm
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>W115 05.542
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<my_name:14>Zachary  Freed
+<time_off:4>0316
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>3f3dad7f-ceed-427a-85a1-55054e6c1ad3
+<cnty:8>NV,Clark
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246950
+<qrzcom_qso_download_status:1>Y
+<qso_date:8>20260222
+<qsl_rcvd:1>N
+<email:15>N7DWG@proton.me
+<my_lat:11>N042 52.888
+<time_on:4>0316
+<eor>
+
+<ituz:1>2
+<cqz:1>3
+<my_country:13>United States
+<my_state:2>MI
+<qth:9>Vancouver
+<state:2>BC
+<name:10>Wayne Vale
+<band_rx:4>70cm
+<cont:2>NA
+<dxcc:1>1
+<my_itu_zone:1>8
+<mode:5>DSTAR
+<my_gridsquare:6>EN72ev
+<distance:4>2087
+<gridsquare:6>DO66td
+<freq_rx:7>439.438
+<country:6>Canada
+<qsl_sent:1>N
+<rst_sent:2>59
+<call:6>VE7WVX
+<qso_date_off:8>20260222
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N049 16.068
+<freq:7>439.438
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246951
+<my_cnty:7>MI,Kent
+<time_on:4>0221
+<my_lat:11>N042 52.888
+<email:18>ve7wvx@outlook.com
+<qsl_rcvd:1>N
+<qso_date:8>20260222
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W123 06.768
+<qrzcom_qso_upload_date:8>20260227
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>953961de-d7e0-4340-b869-6842ff0a2432
+<my_name:14>Zachary  Freed
+<time_off:4>0221
+<band:4>70cm
+<eor>
+
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246952
+<time_on:4>1336
+<my_lat:11>N042 52.888
+<qso_date:8>20260221
+<qsl_rcvd:1>N
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W083 12.500
+<qrzcom_qso_upload_date:8>20260227
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>4e89db72-36e3-4396-ba04-e5e07e5264e1
+<time_off:4>1336
+<my_name:14>Zachary  Freed
+<band:2>2m
+<my_country:13>United States
+<my_state:2>MI
+<band_rx:2>2m
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<distance:3>261
+<gridsquare:6>EN81ji
+<freq_rx:6>147.16
+<country:13>United States
+<qsl_sent:1>N
+<rst_sent:2>59
+<call:6>KE8ZO0
+<qso_date_off:8>20260221
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N041 21.250
+<freq:6>147.16
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<eor>
+
+<qso_date:8>20260221
+<qsl_rcvd:1>N
+<email:18>ke8ikt@outlook.com
+<time_on:4>1313
+<my_lat:11>N042 52.888
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246953
+<qrzcom_qso_download_status:1>Y
+<my_name:14>Zachary  Freed
+<time_off:4>1313
+<band:2>2m
+<cnty:11>MI,Muskegon
+<my_lon:11>W085 32.124
+<app_wrl_id:36>5d75487c-811c-42fc-a38a-d7c1fc44d299
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>W086 07.171
+<my_gridsquare:6>EN72ev
+<mode:2>FM
+<cont:2>NA
+<my_itu_zone:1>8
+<dxcc:3>291
+<state:2>MI
+<name:11>James Eplin
+<band_rx:2>2m
+<my_state:2>MI
+<qth:8>Muskegon
+<cqz:1>4
+<my_country:13>United States
+<ituz:1>8
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<lat:11>N043 14.081
+<qrzcom_qso_upload_status:1>Y
+<freq:6>147.16
+<qso_date_off:8>20260221
+<rst_sent:2>59
+<call:6>KE8IKT
+<qsl_sent:1>N
+<freq_rx:6>147.16
+<country:13>United States
+<distance:3>625
+<gridsquare:6>EM98gf
+<eor>
+
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246955
+<qrzcom_qso_download_status:1>Y
+<qsl_rcvd:1>N
+<qso_date:8>20260221
+<my_lat:11>N042 52.888
+<time_on:4>1259
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>W083 22.391
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<time_off:4>1259
+<my_name:14>Zachary  Freed
+<band:2>2m
+<my_lon:11>W085 32.124
+<app_wrl_id:36>6757ff07-9321-491e-b002-3d5cdc9c81cb
+<cnty:8>MI,Wayne
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<qth:7>Livonia
+<my_state:2>MI
+<my_country:13>United States
+<cqz:1>4
+<ituz:1>8
+<my_gridsquare:6>EN72ev
+<mode:2>FM
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<state:2>MI
+<band_rx:2>2m
+<name:14>Jason D Blouin
+<qsl_sent:1>N
+<country:13>United States
+<freq_rx:6>147.16
+<gridsquare:6>EN82hi
+<distance:3>191
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<freq:6>147.16
+<lat:11>N042 21.764
+<qrzcom_qso_upload_status:1>Y
+<qso_date_off:8>20260221
+<call:5>K8RWA
+<rst_sent:2>59
+<eor>
+
+<gridsquare:6>OJ13cw
+<distance:5>14749
+<qsl_sent:1>N
+<country:13>West Malaysia
+<freq_rx:7>439.437
+<qso_date_off:8>20260221
+<call:6>9M2SEB
+<rst_sent:2>59
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<freq:7>439.437
+<lat:11>N005 30.000
+<qrzcom_qso_upload_status:1>Y
+<ituz:2>54
+<qth:6>Penang
+<my_state:2>MI
+<my_country:13>United States
+<cqz:2>28
+<dxcc:3>299
+<my_itu_zone:1>8
+<cont:2>AS
+<name:15>Dr. Sebastian G
+<band_rx:4>70cm
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<iota:6>AS-015
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>E101 00.000
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<time_off:4>1051
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>4830f101-76e4-4ac2-878c-ec9ade54cc8b
+<qsl_via:9>eQSL only
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246956
+<my_cnty:7>MI,Kent
+<my_lat:11>N042 52.888
+<time_on:4>1051
+<qso_date:8>20260221
+<qsl_rcvd:1>N
+<eor>
+
+<qrzcom_qso_upload_date:8>20260227
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>E138 42.400
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_name:14>Zachary  Freed
+<time_off:4>0939
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>f279cf8f-4323-48ac-99d0-1669f450213d
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246957
+<my_cnty:7>MI,Kent
+<email:17>dglynn@tpg.com.au
+<time_on:4>0939
+<my_lat:11>N042 52.888
+<qsl_rcvd:1>N
+<qso_date:8>20260221
+<distance:5>16122
+<gridsquare:6>PF95ie
+<qsl_sent:1>N
+<freq_rx:7>439.437
+<country:9>Australia
+<qso_date_off:8>20260221
+<rst_sent:2>59
+<call:5>VK5DP
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<lat:11>S034 48.800
+<qrzcom_qso_upload_status:1>Y
+<freq:7>439.437
+<ituz:2>59
+<my_state:2>MI
+<qth:9>WYNN VALE
+<cqz:2>30
+<my_country:13>United States
+<cont:2>OC
+<dxcc:3>150
+<my_itu_zone:1>8
+<name:16>Darren Glynn-Roe
+<band_rx:4>70cm
+<my_gridsquare:6>EN72ev
+<iota:6>OC-001
+<mode:5>DSTAR
+<eor>
+
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<freq:7>439.437
+<lat:11>N042 57.017
+<qrzcom_qso_upload_status:1>Y
+<qso_date_off:8>20260221
+<call:6>KC8LKV
+<rst_sent:2>59
+<qsl_sent:1>N
+<country:13>United States
+<freq_rx:7>439.437
+<gridsquare:6>EN82cw
+<distance:3>147
+<my_gridsquare:6>EN72ev
+<mode:5>DSTAR
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<state:2>MI
+<band_rx:4>70cm
+<name:17>Robert F Campbell
+<qth:12>SWARTZ CREEK
+<my_state:2>MI
+<my_country:13>United States
+<cqz:1>4
+<ituz:1>8
+<time_off:4>0245
+<my_name:14>Zachary  Freed
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>52bff201-827a-4d75-a8d7-3e10c2b79800
+<cnty:10>MI,Genesee
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>W083 49.184
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<qso_date:8>20260221
+<qsl_rcvd:1>N
+<email:19>bcamp1322@gmail.com
+<my_lat:11>N042 52.888
+<time_on:4>0245
+<app_qrzlog_logid:10>1413246958
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<eor>
+
+<gridsquare:6>EN82ot
+<distance:3>229
+<qsl_sent:1>N
+<country:13>United States
+<freq_rx:7>439.438
+<qso_date_off:8>20260220
+<call:5>N8WRO
+<rst_sent:2>59
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<freq:7>439.438
+<lat:11>N042 48.723
+<qrzcom_qso_upload_status:1>Y
+<qth:8>Richmond
+<my_state:2>MI
+<my_country:13>United States
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<state:2>MI
+<band_rx:4>70cm
+<name:9>TIM MOORE
+<my_gridsquare:6>EN72ev
+<mode:3>DMR
+<qrzcom_qso_upload_date:8>20260227
+<lon:11>W082 45.923
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_name:14>Zachary  Freed
+<time_off:4>0759
+<band:4>70cm
+<my_lon:11>W085 32.124
+<app_wrl_id:36>85281c84-6ce0-462a-8d64-b5b706306e27
+<cnty:9>MI,Macomb
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246959
+<my_lat:11>N042 52.888
+<time_on:4>0759
+<qso_date:8>20260220
+<qsl_rcvd:1>N
+<eor>
+
+<time_on:4>0912
+<my_lat:11>N042 52.888
+<email:18>mm0vik@hotmail.com
+<qsl_rcvd:1>N
+<qso_date:8>20260215
+<qrzcom_qso_download_status:1>Y
+<qsl_via:48>Sorry, No QSL's at the moment please. Thank you.
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246960
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<app_wrl_id:36>11bf7294-6de3-40bc-9332-e9bf321640cc
+<my_lon:11>W085 32.124
+<band:2>2m
+<my_name:14>Zachary  Freed
+<time_off:4>0912
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W001 19.617
+<qrzcom_qso_upload_date:8>20260227
+<name:11>Euan MM0VIK
+<band_rx:2>2m
+<cont:2>EU
+<dxcc:3>279
+<my_itu_zone:1>8
+<iota:6>EU-012
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<ituz:2>27
+<cqz:2>14
+<my_country:13>United States
+<my_state:2>MI
+<qth:16>Shetland islands
+<rst_sent:2>59
+<call:6>MM0VIK
+<qso_date_off:8>20260215
+<lat:11>N060 03.767
+<qrzcom_qso_upload_status:1>Y
+<freq:6>147.16
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<distance:4>5698
+<gridsquare:6>IP90ib
+<comment:7>Allstar
+<freq_rx:6>147.16
+<country:8>Scotland
+<qsl_sent:1>N
+<eor>
+
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<lon:11>E002 02.500
+<qrzcom_qso_upload_date:8>20260227
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>7714138f-f75d-4cb6-8efa-190d0c557ba4
+<my_name:14>Zachary  Freed
+<time_off:4>0838
+<band:2>2m
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246961
+<time_on:4>0838
+<my_lat:11>N042 52.888
+<qso_date:8>20260215
+<qsl_rcvd:1>N
+<distance:4>6593
+<gridsquare:6>JN16aa
+<comment:8>Michigan
+<freq_rx:6>147.16
+<country:6>France
+<qsl_sent:1>N
+<rst_sent:2>59
+<call:6>FE8KCZ
+<qso_date_off:8>20260215
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N046 01.250
+<freq:6>147.16
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<ituz:2>27
+<cqz:2>14
+<my_country:13>United States
+<my_state:2>MI
+<band_rx:2>2m
+<cont:2>EU
+<dxcc:3>227
+<my_itu_zone:1>8
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<eor>
+
+<qso_date:8>20260215
+<qsl_rcvd:1>N
+<time_on:4>0836
+<my_lat:11>N042 52.888
+<app_qrzlog_logid:10>1413246963
+<my_cnty:7>MI,Kent
+<qrzcom_qso_download_status:1>Y
+<app_wrl_id:36>a97d638b-cb29-48b8-9bf4-9c4be4109648
+<my_lon:11>W085 32.124
+<band:2>2m
+<time_off:4>0836
+<my_name:14>Zachary  Freed
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>E002 02.500
+<qrzcom_qso_upload_date:8>20260227
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<band_rx:2>2m
+<name:4>Rick
+<cont:2>EU
+<dxcc:3>227
+<my_itu_zone:1>8
+<cqz:2>14
+<my_country:13>United States
+<my_state:2>MI
+<ituz:2>27
+<lat:11>N046 01.250
+<qrzcom_qso_upload_status:1>Y
+<freq:6>147.16
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<rst_sent:2>59
+<call:6>FE8IKT
+<qso_date_off:8>20260215
+<freq_rx:6>147.16
+<country:6>France
+<qsl_sent:1>N
+<distance:4>6593
+<gridsquare:6>JN16aa
+<comment:8>Michigan
+<eor>
+
+<band_rx:2>2m
+<name:15>Benjamin Bishop
+<state:2>MI
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<ituz:1>8
+<my_country:13>United States
+<cqz:1>4
+<qth:11>Middleville
+<my_state:2>MI
+<call:6>KF8AHE
+<rst_sent:2>59
+<qso_date_off:8>20260215
+<freq:6>147.16
+<lat:11>N042 42.583
+<qrzcom_qso_upload_status:1>Y
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<gridsquare:6>EN72ip
+<distance:2>37
+<country:13>United States
+<freq_rx:6>147.16
+<qsl_sent:1>N
+<my_lat:11>N042 52.888
+<time_on:4>0829
+<email:16>kf8ahe@gmail.com
+<qso_date:8>20260215
+<qsl_rcvd:1>N
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246965
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<app_wrl_id:36>a6be4166-a563-48a3-b2e7-5c6ba6059dc5
+<my_lon:11>W085 32.124
+<cnty:8>MI,Barry
+<band:2>2m
+<my_name:14>Zachary  Freed
+<time_off:4>0829
+<lon:11>W085 28.949
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<qrzcom_qso_upload_date:8>20260227
+<eor>
+
+<qso_date:8>20260213
+<qsl_rcvd:1>N
+<my_lat:11>N042 52.888
+<time_on:4>1341
+<email:20>wb8wiv.tom@gmail.com
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246966
+<qrzcom_qso_download_status:1>Y
+<my_lon:11>W085 32.124
+<app_wrl_id:36>12db169f-57a6-4f5e-9c00-d7356aa03b79
+<cnty:10>MI,Wexford
+<time_off:4>1341
+<my_name:14>Zachary  Freed
+<band:2>2m
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<lon:11>W085 26.713
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<qrzcom_qso_upload_date:8>20260227
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<state:2>MI
+<band_rx:2>2m
+<name:14>THOMAS WARNOCK
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<my_country:13>United States
+<cqz:1>4
+<qth:8>CADILLAC
+<my_state:2>MI
+<ituz:1>8
+<freq:6>147.16
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N044 15.400
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<call:6>WB8WIV
+<rst_sent:2>59
+<qso_date_off:8>20260213
+<country:13>United States
+<freq_rx:6>147.16
+<qsl_sent:1>N
+<gridsquare:6>EN74hf
+<distance:3>151
+<eor>
+
+<email:15>n8nbu@yahoo.com
+<time_on:4>1322
+<my_lat:11>N042 52.888
+<qso_date:8>20260213
+<qsl_rcvd:1>N
+<qrzcom_qso_download_status:1>Y
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246967
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<band:2>2m
+<time_off:4>1322
+<my_name:14>Zachary  Freed
+<cnty:10>MI,Allegan
+<app_wrl_id:36>07961a6e-0634-4680-b708-90aabe3e3d41
+<my_lon:11>W085 32.124
+<qrzcom_qso_upload_date:8>20260227
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<lon:11>W085 40.538
+<cont:2>NA
+<dxcc:3>291
+<my_itu_zone:1>8
+<band_rx:2>2m
+<name:15>DAVID DE WINTER
+<state:2>MI
+<my_gridsquare:6>EN72ev
+<mode:2>FM
+<my_state:2>MI
+<qth:7>Wayland
+<my_country:13>United States
+<qso_date_off:8>20260213
+<rst_sent:2>59
+<call:5>N8NBU
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<lat:11>N042 40.445
+<qrzcom_qso_upload_status:1>Y
+<freq:6>147.16
+<distance:2>21
+<gridsquare:6>EN72gr
+<qsl_sent:1>N
+<freq_rx:6>147.16
+<country:13>United States
+<eor>
+
+<lon:11>W084 31.153
+<rst_rcvd:2>59
+<app_qrzlog_status:1>N
+<qrzcom_qso_upload_date:8>20260227
+<my_lon:11>W085 32.124
+<app_wrl_id:36>bc587dd4-b503-4157-925a-4d25f829ce69
+<cnty:10>MI,Jackson
+<time_off:4>1241
+<my_name:14>Zachary  Freed
+<band:2>2m
+<my_cq_zone:1>4
+<qrzcom_qso_download_date:8>20260227
+<my_cnty:7>MI,Kent
+<app_qrzlog_logid:10>1413246968
+<qrzcom_qso_download_status:1>Y
+<qso_date:8>20260213
+<qsl_rcvd:1>N
+<my_lat:11>N042 52.888
+<time_on:4>1241
+<country:13>United States
+<freq_rx:6>147.16
+<qsl_sent:1>N
+<gridsquare:6>EN72re
+<distance:3>116
+<comment:5>W8IRA
+<freq:6>147.16
+<lat:11>N042 10.750
+<qrzcom_qso_upload_status:1>Y
+<my_city:8>Kentwood
+<station_callsign:6>KF8FVD
+<call:6>KF8FKX
+<rst_sent:2>59
+<qso_date_off:8>20260213
+<my_country:13>United States
+<qth:7>Jackson
+<my_state:2>MI
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<state:2>MI
+<band_rx:2>2m
+<name:19>Christopher Merrill
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<eor>
+
+<qrzcom_qso_download_status:1>Y
+<app_qrzlog_logid:10>1413246970
+<my_cnty:7>MI,Kent
+<my_lat:11>N042 52.888
+<time_on:4>1139
+<qsl_rcvd:1>N
+<qso_date:8>20260213
+<lon:11>W083 37.320
+<app_qrzlog_status:1>N
+<rst_rcvd:2>59
+<qrzcom_qso_upload_date:8>20260227
+<qrzcom_qso_download_date:8>20260227
+<my_cq_zone:1>4
+<app_wrl_id:36>db846f90-8f23-4f34-a974-d8cdde8631d7
+<my_lon:11>W085 32.124
+<cnty:10>MI,Genesee
+<band:2>2m
+<my_name:14>Zachary  Freed
+<time_off:4>1139
+<tx_pwr:2>10
+<my_country:13>United States
+<qth:11>Grand Blanc
+<my_state:2>MI
+<name:13>PHILIP A FABI
+<band_rx:2>2m
+<state:2>MI
+<dxcc:3>291
+<my_itu_zone:1>8
+<cont:2>NA
+<mode:2>FM
+<my_gridsquare:6>EN72ev
+<gridsquare:6>EN82ew
+<distance:3>160
+<comment:5>W8IRA
+<country:13>United States
+<freq_rx:6>147.16
+<qsl_sent:1>N
+<call:6>KC8JKB
+<rst_sent:2>59
+<qso_date_off:8>20260213
+<freq:6>147.16
+<qrzcom_qso_upload_status:1>Y
+<lat:11>N042 54.249
+<station_callsign:6>KF8FVD
+<my_city:8>Kentwood
+<eor>
+

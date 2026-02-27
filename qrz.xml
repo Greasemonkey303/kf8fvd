@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<QRZDatabase version="1.36" xmlns="http://xmldata.qrz.com">
+<Session>
+<Error>Invalid session key</Error>
+<GMTime>Fri Feb 27 04:32:26 2026</GMTime>
+<Remark>cpu: 0.027s</Remark>
+</Session>
+</QRZDatabase>
