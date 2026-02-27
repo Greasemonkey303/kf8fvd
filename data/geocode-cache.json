@@ -162,5 +162,101 @@
   "WYNN": {
     "lat": 22.1883055,
     "lon": 113.5460141
+  },
+  "DUNEDIN 9011": {
+    "lat": -45.8865425,
+    "lon": 170.4759541
+  },
+  "4311 HOMMERS�K": {
+    "lat": 49.3452855,
+    "lon": 6.9391977
+  },
+  "CLACTON ON SEA": {
+    "lat": 51.7883997,
+    "lon": 1.1527865
+  },
+  ", United States": {
+    "lat": 39.7837304,
+    "lon": -100.445882
+  },
+  "SWARTZ CREEK": {
+    "lat": 42.9572508,
+    "lon": -83.8305144
+  },
+  "MI, United States": {
+    "lat": 43.6211955,
+    "lon": -84.6824346
+  },
+  "Auckland, 1546,": {
+    "lat": -36.6404916,
+    "lon": 174.6483234
+  },
+  "NORTH CHARLESTON": {
+    "lat": 32.8546197,
+    "lon": -79.9748103
+  },
+  "NORTH LAS VEGAS": {
+    "lat": 36.2005191,
+    "lon": -115.1214745
+  },
+  "Palm Desert": {
+    "lat": 33.7288179,
+    "lon": -116.382571
+  },
+  "Kingston upon Hull": {
+    "lat": 53.7623863,
+    "lon": -0.3301214
+  },
+  "Higashimatsuyama-city, Saitama,": {
+    "lat": 36.0424784,
+    "lon": 139.4004675
+  },
+  "Federal Way": {
+    "lat": 47.313494,
+    "lon": -122.33931
+  },
+  "Eagle River": {
+    "lat": 45.9153992,
+    "lon": -89.2507968
+  },
+  "Garfield Hts": {
+    "lat": 41.4169974,
+    "lon": -81.6059581
+  },
+  "WYNN VALE": {
+    "lat": -34.7994176,
+    "lon": 138.6871415
+  },
+  "Richmond": {
+    "lat": 37.5385087,
+    "lon": -77.43428
+  },
+  "Shetland islands": {
+    "lat": 60.333333,
+    "lon": -1.333333
+  },
+  ", France": {
+    "lat": 46.603354,
+    "lon": 1.8883335
+  },
+  "Middleville": {
+    "lat": 43.138823,
+    "lon": -74.9683
+  },
+  "CADILLAC": {
+    "lat": 44.6360817,
+    "lon": -0.3173533
+  },
+  "Wayland": {
+    "lat": 42.3632063,
+    "lon": -71.3606721
+  },
+  "Jackson": {
+    "lat": 32.2998686,
+    "lon": -90.1830408
+  },
+  "Grand Blanc": {
+    "lat": 42.9275277,
+    "lon": -83.6299518
   }
 }
