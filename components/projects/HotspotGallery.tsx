@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import styles from './HotspotGallery.module.css'
 
@@ -43,6 +44,14 @@ export default function HotspotGallery({ images }: Props){
     setStored(merged)
   }
 
+  useEffect(()=>{
+    if (open) {
+      const prev = document.documentElement.style.overflow
+      document.documentElement.style.overflow = 'hidden'
+      return () => { document.documentElement.style.overflow = prev }
+    }
+  },[open])
+
   return (
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:8 }}>
@@ -58,13 +67,14 @@ export default function HotspotGallery({ images }: Props){
         
       </div>
 
-      {open && (
+      {open && typeof document !== 'undefined' && createPortal(
         <div className={styles.modalOverlay} role="dialog" aria-modal="true" onClick={()=> setOpen(null)}>
           <div className={styles.modal} onClick={(e)=> e.stopPropagation()}>
             <button aria-label="Close image" className={styles.modalClose} onClick={()=> setOpen(null)}>✕</button>
-            <Image src={open!} alt="Hotspot large" width={880} height={600} unoptimized={String(open).startsWith('data:')} />
+            <img src={open!} alt="Hotspot large" />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

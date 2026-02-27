@@ -1,17 +1,21 @@
-import React from 'react'
-import Image from 'next/image'
+"use client"
+
+import React, { useState } from 'react'
 import styles from './projects.module.css'
 import { Card } from '@/components'
+import ImageModal from '@/components/modal/ImageModal'
 
 export default function Projects() {
+  const [open, setOpen] = useState<string | null>(null)
+
   return (
     <main className={styles.projects}>
       <div className={styles.grid}>
         <Card title="Hotspot Project" subtitle="Raspberry Pi 4 + MMDVM Hotspot" className={styles.featured}>
           <div className={styles.projectInner}>
-            <Image src="/hotspot-placeholder.png" alt="Hotspot" className={styles.thumb} width={220} height={140} />
+            <img src="/hotspot/hotspot-2.jpg" alt="Hotspot" className={styles.thumb} onClick={() => setOpen('/hotspot/hotspot-2.jpg')} />
             <div>
-              <p>This project documents building a compact local amateur radio hotspot using a Raspberry Pi 4 and an MMDVM HAT. Click through for a short story, hardware & software notes, links, and a place to add your photo.</p>
+              <p>This project documents building a compact local amateur radio hotspot using a Raspberry Pi 4 and an MMDVM HAT. Click the image to view it full-size (modal preserves aspect ratio).</p>
               <p><a href="/projects/hotspot">Read the Hotspot Story</a></p>
             </div>
           </div>
@@ -26,6 +30,8 @@ export default function Projects() {
           </div>
         </Card>
       </div>
+
+      <ImageModal src={open} alt="Hotspot full" onClose={() => setOpen(null)} />
     </main>
   )
 }

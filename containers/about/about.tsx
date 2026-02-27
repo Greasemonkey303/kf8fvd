@@ -10,7 +10,7 @@ export default function About() {
         <h1 id="about-title" className={styles.visuallyHidden}>About Me</h1>
         <Card title="About Me" subtitle="KF8FVD" className={styles.aboutCard}>
           <div className={styles.content}>
-            <Image src="/avatar-placeholder.png" alt="Zachary (KF8FVD)" width={180} height={180} className={styles.avatar} priority />
+              <Image src="/headshot.jpg" alt="Zachary (KF8FVD)" width={180} height={180} className={styles.avatar} priority />
             <div className={styles.copy}>
               <p className={styles.lead}>
                 73 from KF8FVD! Thanks for stopping by my QRZ page! My name is Zachary, and I am
