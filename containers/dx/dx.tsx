@@ -1,6 +1,7 @@
 import React from 'react'
 import styles from './dx.module.css'
 import { Card } from '@/components'
+import ContactMap from '@/components/map/ContactMap'
 
 export default function DX() {
   return (
@@ -8,14 +9,8 @@ export default function DX() {
       <div className={styles.wrapper}>
         <Card title="DX Map" subtitle="Propagation / Spots">
           <div className={styles.mapWrap}>
-            <iframe
-              title="DX Map - Grand Rapids"
-              src="https://www.openstreetmap.org/export/embed.html?bbox=-85.72%2C42.90%2C-85.60%2C43.02&layer=mapnik"
-              style={{ border: 0 }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
-            <p className={styles.hint}>Map is a placeholder (OpenStreetMap embed). Replace with interactive map later.</p>
+            <ContactMap />
+            <p className={styles.hint}>Map shows pins for contact locations derived from your local logbook (geocoded via OpenStreetMap). Results are cached locally.</p>
           </div>
         </Card>
       </div>
