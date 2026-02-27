@@ -91,6 +91,36 @@ export default function Dashboard() {
 
   useEffect(() => {
     let mounted = true;
+    const readCache = (k: string) => {
+      try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e) { return null }
+    };
+    const writeCache = (k: string, v: any) => {
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) { /* ignore quota errors */ }
+    };
+
+    // hydrate from cache first for faster UI
+    try {
+      const cachedSpace = readCache('kf8fvd-spaceweather-v1');
+      if (cachedSpace && mounted) {
+        setSpace(cachedSpace.data || cachedSpace);
+        setBandLastUpdated(cachedSpace.ts || Date.now());
+        setPropLastUpdated(cachedSpace.ts || Date.now());
+      }
+      const cachedLog = readCache('kf8fvd-logbook-v1');
+      if (cachedLog && mounted) {
+        const j = cachedLog.data || cachedLog;
+        if (j.source === 'qrz' && j.raw) {
+          const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
+          const matches = rawMatches.slice(0,5).map((m) => m[1]);
+          setQsos(matches.length ? matches : []);
+        } else if (j.entries && Array.isArray(j.entries)) {
+          setQsos(j.entries.slice(0,6));
+        } else {
+          setQsos([]);
+        }
+      }
+    } catch(e) { /* ignore cache errors */ }
+
     fetch('/api/spaceweather')
       .then((r) => r.json())
       .then((j) => {
@@ -99,6 +129,7 @@ export default function Dashboard() {
           const now = Date.now();
           setBandLastUpdated(now);
           setPropLastUpdated(now);
+          try { writeCache('kf8fvd-spaceweather-v1', { data: j, ts: now }); } catch(e) {}
           // derive band activity grid from space weather
           try {
             const bands = ['2m','70cm','20m','40m'];
@@ -127,9 +158,10 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((j) => {
         if (!mounted) return;
+        try { writeCache('kf8fvd-logbook-v1', { data: j, ts: Date.now() }); } catch(e) {}
         if (j.source === 'qrz' && j.raw) {
           // naive extract of some call signs from XML for display
-          const rawMatches = Array.from(j.raw.matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
+          const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
           const matches = rawMatches.slice(0,5).map((m) => m[1]);
           setQsos(matches.length ? matches : []);
         } else if (j.entries && Array.isArray(j.entries)) {
