@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
+import Image from 'next/image'
 import styles from './HotspotGallery.module.css'
 
 type Props = { images?: string[] }
@@ -48,7 +49,9 @@ export default function HotspotGallery({ images }: Props){
         <div style={{ flex:1 }}>
           <div className={styles.gallery} aria-label="Hotspot images">
             {imgs.map((src,i)=> (
-              <img key={i} src={src} alt={`Hotspot ${i+1}`} className={styles.thumb} onClick={()=> setOpen(src)} onKeyDown={(e)=> { if (e.key==='Enter') setOpen(src) }} tabIndex={0} />
+              <div key={i} className={styles.thumb} role="button" onClick={()=> setOpen(src)} onKeyDown={(e)=> { if (e.key==='Enter') setOpen(src) }} tabIndex={0}>
+                <Image src={src} alt={`Hotspot ${i+1}`} fill unoptimized={String(src).startsWith('data:')} style={{objectFit:'cover'}} />
+              </div>
             ))}
           </div>
         </div>
@@ -59,7 +62,7 @@ export default function HotspotGallery({ images }: Props){
         <div className={styles.modalOverlay} role="dialog" aria-modal="true" onClick={()=> setOpen(null)}>
           <div className={styles.modal} onClick={(e)=> e.stopPropagation()}>
             <button aria-label="Close image" className={styles.modalClose} onClick={()=> setOpen(null)}>✕</button>
-            <img src={open} alt="Hotspot large" />
+            <Image src={open!} alt="Hotspot large" width={880} height={600} unoptimized={String(open).startsWith('data:')} />
           </div>
         </div>
       )}

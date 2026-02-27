@@ -1,4 +1,5 @@
 import React from 'react'
+import Image from 'next/image'
 import styles from './about.module.css'
 import { Card } from '@/components'
 
@@ -6,9 +7,10 @@ export default function About() {
   return (
     <main className={styles.about}>
       <div className={styles.wrapper}>
-        <Card title="About Me" subtitle="KF8FVD">
+        <h1 id="about-title" className={styles.visuallyHidden}>About Me</h1>
+        <Card title="About Me" subtitle="KF8FVD" className={styles.aboutCard}>
           <div className={styles.content}>
-            <img src="/avatar-placeholder.png" alt="Your picture" className={styles.avatar} />
+            <Image src="/avatar-placeholder.png" alt="Zachary (KF8FVD)" width={180} height={180} className={styles.avatar} priority />
             <div className={styles.copy}>
               <p className={styles.lead}>
                 73 from KF8FVD! Thanks for stopping by my QRZ page! My name is Zachary, and I am
@@ -49,8 +51,8 @@ export default function About() {
               </ul>
 
               <h3>QSL Information</h3>
-              <p>QRZ Logbook: Updated regularly</p>
-              <p>eQSL: Also available</p>
+              <p>QRZ Logbook — updated regularly.</p>
+              <p>eQSL — available.</p>
 
               <p>
                 If we’ve just had a QSO via a reflector or local repeater, thanks for the contact! I

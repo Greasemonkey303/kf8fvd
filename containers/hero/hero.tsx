@@ -1,10 +1,11 @@
 import React from 'react';
+import Image from 'next/image'
 import styles from './hero.module.css';
 
 const Hero = () => {
   return (
     <section className={styles.hero}>
-      <img className={styles.bg} src="/grand_rapids.jpg" alt="Downtown Grand Rapids" />
+      <Image src="/grand_rapids.jpg" alt="Downtown Grand Rapids" fill className={styles.bg} priority />
       <div className={styles.inner}>
         <h1>KF8FVD - Amateur Radio</h1>
         <p>Welcome to my ham radio site. Explore HF bands, equipment, and more.</p>
