@@ -100,3 +100,75 @@
 @media (min-width: 800px) {
   .grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* modal styles */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2,6,23,0.7);
+  backdrop-filter: blur(4px) saturate(120%);
+  z-index: 80;
+  padding: 2rem;
+}
+.modal {
+  background: linear-gradient(180deg, rgba(8,18,40,0.98), rgba(6,12,30,0.95));
+  border: 1px solid rgba(96,165,250,0.18);
+  padding: 1.5rem 1.75rem;
+  border-radius: 14px;
+  color: #ffffff;
+  max-width: 760px;
+  width: 100%;
+  box-shadow: 0 30px 90px rgba(2,6,23,0.78), 0 0 40px rgba(96,165,250,0.06) inset;
+  position: relative;
+  text-align: center;
+  transform-origin: center;
+  animation: modalPop .26s cubic-bezier(.2,.9,.25,1) both;
+}
+.modal::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6px;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa, #34d399);
+  opacity: 0.95;
+}
+.modal h3 { margin: 0 0 .6rem 0; color: var(--color-link); font-size:1.45rem; letter-spacing:0.2px; }
+.modal h4 { margin: .85rem 0 .45rem 0; color: #f8fafc; font-size:1.12rem; }
+.modal p { color: rgba(255,255,255,0.96); margin: 0.35rem 0; font-size: 1rem; }
+.modal ul { margin: 0.5rem auto 0; padding: 0; display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; list-style:none; }
+.modal ul li { background: rgba(255,255,255,0.04); padding: 0.45rem 0.9rem; border-radius:8px; color: #fff; font-weight:700; box-shadow: 0 6px 18px rgba(2,6,23,0.45); font-size: 0.98rem; }
+
+.sectionTitle { font-size: 1.12rem; margin: 0; font-weight: 800; }
+.sectionText { font-size: 1rem; margin: 0; color: rgba(255,255,255,0.95); }
+.sectionRepeater { color: #60a5fa; }
+.sectionNetwork { color: #34d399; }
+.sectionDstar { color: #a78bfa; }
+.modalClose {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.9);
+  font-size: 20px;
+  line-height: 1;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.mode {
+  cursor: pointer;
+}
+
+@keyframes modalPop {
+  0% { opacity: 0; transform: translateY(8px) scale(.985); }
+  60% { opacity: 1; transform: translateY(-6px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
