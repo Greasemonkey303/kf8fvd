@@ -52,13 +52,15 @@
   position: absolute;
   right: 12px;
   top: 10px;
-  background: transparent;
+  background: #ffffff;
   border: none;
-  color: rgba(255,255,255,0.95);
+  color: #000000; /* black X for higher contrast */
   font-size: 20px;
   line-height: 1;
   padding: 6px 8px;
+  border-radius: 999px;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2,6,23,0.16);
 }
 
 @keyframes modalPop {
