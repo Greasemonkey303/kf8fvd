@@ -1,7 +1,14 @@
 .projects { padding: 2rem 1rem; }
+
 .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; max-width: 1100px; margin: 0 auto; }
 .projectInner { display: flex; gap: 1rem; align-items: center; }
-.thumb { width: 140px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); }
+.thumb { width: 220px; height: 140px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 20px rgba(2,6,23,0.25); }
 .thumbFake { width: 140px; height: 100px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.06) }
 
-@media (min-width: 800px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+.featured { grid-column: 1 / -1; padding: 1.5rem; transform: none; box-shadow: 0 20px 48px rgba(2,6,23,0.36); }
+.featured .title { font-size:1.25rem }
+
+
+@media (min-width: 800px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+
+@media (min-width: 1100px) { .grid { grid-template-columns: 2fr 1fr; } }

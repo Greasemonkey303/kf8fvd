@@ -1,0 +1,9 @@
+[MMDVM]
+# Example minimal settings - edit before use
+Callsign=MYCALL
+Id=123456
+Address=/dev/ttyAMA0
+Port=62031
+
+[General]
+Timeout=10
