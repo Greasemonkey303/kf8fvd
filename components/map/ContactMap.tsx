@@ -105,11 +105,20 @@ export default function ContactMap(){
       if (keys.length === 0) { setStatus('No locations'); setLoading(false); return; }
       setStatus(`Geocoding ${keys.length} locations`);
 
-      let results: Record<string,Geo|null> = {};
-      try {
-        const resp = await fetch('/api/geocode', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ locations: keys }) });
-        const j = await resp.json(); results = j.results || {};
-      } catch(e) { results = {}; }
+      // Use browser localStorage cache for geocode results to avoid re-querying server
+      const storageKey = 'kf8fvd-geocode-cache-v1';
+      let cached: Record<string,Geo|null> = {};
+      try { cached = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) { cached = {}; }
+      const toLookup = keys.filter(k => !cached || !Object.prototype.hasOwnProperty.call(cached, k));
+      let results: Record<string,Geo|null> = { ...(cached || {}) };
+      if (toLookup.length > 0) {
+        try {
+          const resp = await fetch('/api/geocode', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ locations: toLookup }) });
+          const j = await resp.json(); const newRes = j.results || {};
+          results = { ...results, ...newRes };
+          try { localStorage.setItem(storageKey, JSON.stringify(results)); } catch(e) { /* ignore quota errors */ }
+        } catch(e) { /* network error: keep cached results only */ }
+      }
       resultsRef.current = results;
 
       // preload markercluster and heat plugins (optional)
