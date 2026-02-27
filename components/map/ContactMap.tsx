@@ -37,6 +37,23 @@ export default function ContactMap() {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<{done:number; total:number}>({done:0,total:0});
   const [finished, setFinished] = useState(false);
+  const [entriesAll, setEntriesAll] = useState<any[]>([]);
+  const [locationsMap, setLocationsMap] = useState<Record<string, any[]>>({});
+  const [geocodeResults, setGeocodeResults] = useState<Record<string, { lat:number; lon:number } | null>>({});
+  const markersLayerRef = useRef<any | null>(null);
+  const heatLayerRef = useRef<any | null>(null);
+  const [daysBack, setDaysBack] = useState<number>(365);
+  const [modeFilters, setModeFilters] = useState<Record<string, boolean>>({});
+  const [showControls, setShowControls] = useState<boolean>(false);
+  const [showLegend, setShowLegend] = useState<boolean>(false);
+
+  const LEGEND_COLORS: Record<string,string> = {
+    FM: '#16a34a',
+    DSTAR: '#60a5fa',
+    DIGITALVOICE: '#a78bfa',
+    DMR: '#f97316',
+    OTHER: '#94a3b8'
+  };
 
   useEffect(() => {
     loadCss('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
@@ -62,69 +79,28 @@ export default function ContactMap() {
           locations[key].push(e);
         });
 
-        const cacheRaw = localStorage.getItem('kf8fvd_geo_cache') || '{}';
-        const cache: Record<string, Geo> = JSON.parse(cacheRaw);
-
-        // prepare mode-color mapping
-        const modeColors: Record<string,string> = {
-          'FM': '#16a34a',
-          'DSTAR': '#60a5fa',
-          'DIGITALVOICE': '#a78bfa',
-          'DMR': '#f97316',
-          'default': '#94a3b8'
-        };
-
-        const chooseColor = (modes: string[]) => {
-          if (!modes || modes.length === 0) return modeColors['default'];
-          const up = modes.map(s=>String(s).toUpperCase());
-          for (const k of Object.keys(modeColors)) {
-            if (k === 'default') continue;
-            if (up.includes(k)) return modeColors[k];
-          }
-          return modeColors['default'];
-        };
-
-        // add legend control
-        try {
-          const legend = (window as any).L.control({ position: 'bottomright' });
-          legend.onAdd = function() {
-            const div = (window as any).L.DomUtil.create('div', 'kf8fvd-legend');
-            div.style.background = 'rgba(0,0,0,0.45)';
-            div.style.padding = '8px';
-            div.style.borderRadius = '8px';
-            div.style.color = 'white';
-            div.style.fontSize = '12px';
-            div.innerHTML = `<div style="font-weight:800;margin-bottom:6px">Modes</div>` +
-              Object.entries(modeColors).filter(e=>e[0]!=='default').map(([m,c])=> `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style=\"width:12px;height:12px;border-radius:6px;display:inline-block;background:${c}\"></span><span>${m}</span></div>`).join('');
-            return div;
-          };
-          legend.addTo(mapRef.current);
-        } catch (e) {
-          // ignore legend failures
-        }
-
         const keys = Object.keys(locations);
         setProgress({done:0,total:keys.length});
-        for (let i = 0; i < keys.length; i++) {
-          const k = keys[i];
-          let g: Geo | null = cache[k] || null;
-          if (!g) {
-            // respect Nominatim rate-limits
-            if (i > 0) await new Promise(r => setTimeout(r, 800));
-            g = await geocodeOnce(k);
-            if (g) { cache[k] = g; localStorage.setItem('kf8fvd_geo_cache', JSON.stringify(cache)); }
-          }
-          if (g) {
-            // determine predominant modes for this location
-            const modes = Array.from(new Set(locations[k].map((x:any)=> (x.mode||'').toString()))).filter(Boolean);
-            const color = chooseColor(modes as string[]);
-            const circle = (window as any).L.circleMarker([g.lat, g.lon], { radius: 8, color: '#fff', weight: 1, fillColor: color, fillOpacity: 0.95 }).addTo(mapRef.current);
-            const popup = `<div><strong>${k}</strong><br/>${locations[k].slice(0,6).map((x:any)=>x.call || '').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
-            circle.bindPopup(popup);
-          }
-          setProgress(prev => ({...prev, done: prev.done + 1}));
-        }
-        setFinished(true);
+
+        // request server-side geocoding for all unique keys
+        const geocodeResp = await fetch('/api/geocode', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locations: keys })
+        }).then(r => r.json()).catch(() => ({ ok: false, results: {} }));
+
+        const results: Record<string, { lat:number; lon:number } | null> = geocodeResp.results || {};
+        // store for reactive rendering
+        setEntriesAll(entries);
+        setLocationsMap(locations);
+        setGeocodeResults(results);
+
+        // initialize mode filters from entries
+        try {
+          const modes = Array.from(new Set(entries.map((x:any)=> (x.mode||'').toString().toUpperCase()).filter(Boolean)));
+          const mf: Record<string, boolean> = {};
+          modes.forEach(m=> mf[m]=true);
+          setModeFilters(mf);
+        } catch(e) {}
       } catch (e) {
         // ignore
       }
@@ -133,9 +109,157 @@ export default function ContactMap() {
     }).catch(() => setLoading(false));
   }, []);
 
+  // reactive rendering: markers and heat when geocode or filters change
+  useEffect(() => {
+    if (!mapRef.current) return;
+    // clear previous layers
+    try {
+      if (markersLayerRef.current) { mapRef.current.removeLayer(markersLayerRef.current); markersLayerRef.current = null; }
+      if (heatLayerRef.current) { mapRef.current.removeLayer(heatLayerRef.current); heatLayerRef.current = null; }
+    } catch(e) {}
+
+    const keys = Object.keys(locationsMap || {});
+    if (keys.length === 0) return;
+
+    const now = Date.now();
+    const cutoff = now - (daysBack * 24 * 60 * 60 * 1000);
+
+    // build filteredKeys
+    const filteredKeys = keys.filter(k => {
+      const items = locationsMap[k] || [];
+      return items.some((it:any) => {
+        // parse date heuristics
+        let dt = Date.now();
+        try {
+          if (it.date) dt = new Date(it.date).getTime();
+          else if (it.qso_date && /^\d{8}$/.test(it.qso_date)) {
+            const y = it.qso_date.substr(0,4), m = it.qso_date.substr(4,2), d = it.qso_date.substr(6,2);
+            const t = (it.time || it.time_on || '0000').toString().padEnd(4,'0');
+            const hh = t.substr(0,2), mm = t.substr(2,2);
+            dt = new Date(`${y}-${m}-${d}T${hh}:${mm}:00Z`).getTime();
+          }
+        } catch(e) {}
+        if (dt < cutoff) return false;
+        const mode = (it.mode||'').toString().toUpperCase();
+        if (Object.keys(modeFilters).length > 0 && mode && modeFilters[mode] === false) return false;
+        return true;
+      });
+    });
+
+    // progress reset
+    setProgress({ done: 0, total: filteredKeys.length });
+
+    // heat points
+    const heatPoints: Array<[number, number, number]> = [];
+    filteredKeys.forEach(k => {
+      const g = geocodeResults[k]; if (!g) return;
+      const weight = Math.min(10, (locationsMap[k]||[]).filter((it:any)=> {
+        try {
+          if (it.date) return new Date(it.date).getTime() >= cutoff;
+          if (it.qso_date && /^\d{8}$/.test(it.qso_date)) {
+            const y = it.qso_date.substr(0,4), m = it.qso_date.substr(4,2), d = it.qso_date.substr(6,2);
+            const t = (it.time || it.time_on || '0000').toString().padEnd(4,'0');
+            const hh = t.substr(0,2), mm = t.substr(2,2);
+            return new Date(`${y}-${m}-${d}T${hh}:${mm}:00Z`).getTime() >= cutoff;
+          }
+        } catch(e) { return true; }
+        return true;
+      }).length || 1);
+      heatPoints.push([g.lat, g.lon, weight]);
+    });
+
+    if (heatPoints.length > 0) {
+      loadScript('https://unpkg.com/leaflet.heat/dist/leaflet-heat.js').then(()=>{
+        try {
+          const heat = (window as any).L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 9, max: 10 });
+          heat.addTo(mapRef.current); heatLayerRef.current = heat;
+        } catch(e) {}
+      }).catch(()=>{});
+    }
+
+    // markers
+    (async () => {
+      try {
+        await loadScript('https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js');
+        loadCss('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css');
+        loadCss('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css');
+      } catch(e) {}
+      const markers = (window as any).L.markerClusterGroup ? (window as any).L.markerClusterGroup() : null;
+      if (markers) markersLayerRef.current = markers;
+      for (let i = 0; i < filteredKeys.length; i++) {
+        const k = filteredKeys[i];
+        const g = geocodeResults[k];
+        if (!g) { setProgress(prev=>({...prev, done: prev.done+1})); continue; }
+        const modes = Array.from(new Set((locationsMap[k]||[]).map((x:any)=> (x.mode||'').toString()))).filter(Boolean);
+        const color = (modes.map(m=>m.toUpperCase()).includes('FM')) ? '#16a34a' : ((modes.map(m=>m.toUpperCase()).includes('DSTAR')) ? '#60a5fa' : ((modes.map(m=>m.toUpperCase()).includes('DMR')) ? '#f97316' : '#94a3b8'));
+        const m = (window as any).L.circleMarker([g.lat, g.lon], { radius: 8, color: '#fff', weight: 1, fillColor: color, fillOpacity: 0.95 });
+        const popup = `<div><strong>${k}</strong><br/>${(locationsMap[k]||[]).slice(0,6).map((x:any)=>x.call || '').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
+        m.bindPopup(popup);
+        if (markers) markers.addLayer(m); else m.addTo(mapRef.current);
+        setProgress(prev=>({...prev, done: prev.done+1}));
+      }
+      if (markers) mapRef.current.addLayer(markers);
+      setFinished(true);
+    })();
+
+  }, [geocodeResults, locationsMap, daysBack, modeFilters]);
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div ref={ref} style={{ width: '100%', height: '100%' }} />
+      {/* Controls: collapsible panel with mode filters and time slider */}
+      {showControls ? (
+        <div style={{ position:'absolute', right:12, top:12, padding:'8px 12px', background:'rgba(0,0,0,0.85)', borderRadius:8, color:'#fff', fontSize:12, maxWidth:260, zIndex: 1000 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+            <div style={{ fontWeight:800 }}>Filters</div>
+            <button aria-label="Close filters" onClick={() => setShowControls(false)} style={{ background:'transparent', border:'none', color:'#fff', fontSize:18, lineHeight:1, cursor:'pointer' }}>×</button>
+          </div>
+          <div style={{ marginBottom:6 }}>
+            <label style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <span style={{ width:68 }}>Days back</span>
+              <input type="range" min={1} max={365} value={daysBack} onChange={e=>setDaysBack(Number((e.target as HTMLInputElement).value))} />
+            </label>
+            <div style={{ marginTop:6 }}>{daysBack} days</div>
+          </div>
+          <div style={{ marginTop:6 }}>
+            <div style={{ fontWeight:700, marginBottom:4 }}>Modes</div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+              {Object.keys(modeFilters).length === 0 && <div style={{ opacity:0.7 }}>No modes</div>}
+              {Object.keys(modeFilters).map(m => (
+                <label key={m} style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.04)', padding:'4px 6px', borderRadius:6 }}>
+                  <input type="checkbox" checked={!!modeFilters[m]} onChange={()=> setModeFilters(prev=>({...prev, [m]: !prev[m]}))} />
+                  <span>{m}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button onClick={()=>setShowControls(true)} aria-label="Open filters" style={{ position:'absolute', right:12, top:12, padding:'8px 10px', background:'rgba(0,0,0,0.6)', borderRadius:8, color:'#fff', border:'none', cursor:'pointer', zIndex:1000 }}>
+          Filters
+        </button>
+      )}
+      {/* Legend: collapsible key */}
+      {showLegend ? (
+        <div style={{ position:'absolute', right:12, bottom:12, padding:'8px 12px', background:'rgba(0,0,0,0.85)', borderRadius:8, color:'#fff', fontSize:12, maxWidth:200, zIndex:1000 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+            <div style={{ fontWeight:800 }}>Key</div>
+            <button aria-label="Close key" onClick={()=>setShowLegend(false)} style={{ background:'transparent', border:'none', color:'#fff', fontSize:18, cursor:'pointer' }}>×</button>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {Object.entries(LEGEND_COLORS).map(([k,c])=> (
+              <div key={k} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ width:14, height:14, borderRadius:7, background:c, display:'inline-block', border:'1px solid rgba(255,255,255,0.1)' }} />
+                <div>{k === 'OTHER' ? 'Other' : k}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <button onClick={()=>setShowLegend(true)} aria-label="Open key" style={{ position:'absolute', right:12, bottom:12, padding:'6px 8px', background:'rgba(0,0,0,0.6)', borderRadius:8, color:'#fff', border:'none', cursor:'pointer', zIndex:1000 }}>
+          Key
+        </button>
+      )}
       {(loading || (!finished && progress.total > 0)) && (
         <div style={{ position:'absolute', left:12, top:12, padding:'8px 12px', background:'rgba(0,0,0,0.7)', borderRadius:8, color:'#fff', fontWeight:700 }}>
           {finished ? 'All pins loaded' : `Geocoding ${progress.done}/${progress.total}…`}
