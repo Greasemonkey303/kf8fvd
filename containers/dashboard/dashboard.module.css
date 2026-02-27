@@ -19,16 +19,20 @@
 .off { background: linear-gradient(90deg,#64748b,#94a3b8); color: #071023; }
 
 .prop { display:flex; flex-direction:column; gap:0.5rem; align-items:flex-start }
-.propItem { display:flex; gap:0.6rem; align-items:center }
-.propLabel { font-size:.9rem; color: rgba(255,255,255,0.8); }
-.propValue { font-size:1.1rem; font-weight:800 }
-.propNote { font-size:0.8rem; color: rgba(255,255,255,0.6) }
+.propValues { display:flex; gap:1rem; align-items:center }
+.propItem { display:flex; flex-direction:column; gap:4px; align-items:center }
+.propLabel { font-size:.85rem; color: rgba(255,255,255,0.8); text-transform:uppercase }
+.propValue { font-size:1.2rem; font-weight:900 }
+.propRecommend { font-size:0.92rem; color: rgba(255,255,255,0.92); padding-top:4px }
+.propNote { font-size:0.82rem; color: rgba(255,255,255,0.66); margin-top:6px }
 
 .qsoList { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; color: rgba(255,255,255,0.92)}
 
 .qsoItem { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:10px; background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02)); box-shadow: 0 4px 14px rgba(2,6,23,0.25); transition: transform .12s ease, box-shadow .12s ease; }
 .qsoItem:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(2,6,23,0.35); }
 .qsoText { font-weight:700; color: #fff; font-size:0.95rem; }
+
+.qsoLocation { font-size:0.8rem; color: rgba(255,255,255,0.7); margin-left:12px }
 
 /* make the qso list scroll when long */
 .qsoList { max-height: 340px; overflow: auto; padding-right:6px; }
@@ -54,6 +58,29 @@
   .heatHeader div, .bandLabel, .heatCell { width:48px }
 }
 
-/* polish card titles */
+/* polish card titles and dashboard-specific header styles */
 .dashboard :global(.card) { padding: 12px; }
+.dashboard :global(.card) .title { text-align:center; margin: 0 0 .25rem 0; font-size:1.15rem; letter-spacing:0.3px }
+.dashboard :global(.card) .subtitle { text-align:center; margin: 0 0 .9rem 0; color: rgba(255,255,255,0.78); font-size:0.95rem }
+
+/* make list scroll a bit nicer */
+.qsoList::-webkit-scrollbar { width: 8px }
+.qsoList::-webkit-scrollbar-thumb { background: linear-gradient(180deg,#a78bfa,#60a5fa); border-radius:8px }
+
+@media (max-width: 920px) {
+  .row { grid-template-columns: 1fr; }
+  .heatHeader div, .bandLabel, .heatCell { width:48px }
+  .qsoItem { padding:10px; }
+  .dashboard { padding: 0 .75rem; }
+}
+
+/* Band Activity source label */
+.cardSource { text-align: right; font-size: 0.82rem; color: rgba(255,255,255,0.66); margin-top:8px; font-style:italic }
+.cardSource { display:block }
+
+/* heatmap legend */
+.heatLegend { display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-top:8px }
+.legendItem { display:flex; gap:8px; align-items:center; }
+.legendSwatch { width:28px; height:14px; border-radius:6px; background: linear-gradient(90deg,#60a5fa,#a78bfa); border: 1px solid rgba(255,255,255,0.06) }
+.legendLabel { font-size:0.85rem; color: rgba(255,255,255,0.78) }
 

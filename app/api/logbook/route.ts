@@ -45,18 +45,41 @@ export async function GET(request: Request) {
           const timeMatch = rec.match(/<time_on(?::\d+)?>\s*([^<\s]+)/i) || rec.match(/<time(?::\d+)?>\s*([^<\s]+)/i);
           const bandMatch = rec.match(/<band(?::\d+)?>\s*([^<\s]+)/i) || rec.match(/<frequency(?::\d+)?>\s*([^<\s]+)/i);
           const modeMatch = rec.match(/<mode(?::\d+)?>\s*([^<\s]+)/i);
+          const qthMatch = rec.match(/<qth(?::\d+)?>\s*([^<\s]+)/i);
+          const cityMatch = rec.match(/<city(?::\d+)?>\s*([^<\s]+)/i);
+          const stateMatch = rec.match(/<(?:state|cnty)(?::\d+)?>\s*([^<\s]+)/i);
+          const countryMatch = rec.match(/<country(?::\d+)?>\s*([^<\s]+)/i);
+
           const call = callMatch ? callMatch[1] : 'N/A';
           const date = dateMatch ? dateMatch[1] : '';
           const time = timeMatch ? timeMatch[1] : '';
           const band = bandMatch ? bandMatch[1] : '';
           const mode = modeMatch ? modeMatch[1] : '';
+          const qth = qthMatch ? qthMatch[1] : (cityMatch ? cityMatch[1] : '');
+          const city = cityMatch ? cityMatch[1] : '';
+          const state = stateMatch ? stateMatch[1] : '';
+          const country = countryMatch ? countryMatch[1] : '';
+
           const parts: string[] = [];
           if (date) parts.push(date + (time ? ' ' + time : ''));
           parts.push(call);
           if (band) parts.push(band);
           if (mode) parts.push(mode);
-          return parts.filter(Boolean).join(' — ');
+
+          return {
+            call,
+            date,
+            time,
+            band,
+            mode,
+            qth,
+            city,
+            state,
+            country,
+            display: parts.filter(Boolean).join(' — '),
+          };
         });
+
         return NextResponse.json({ source: 'local-adi', entries });
       }
     } catch (e) {
