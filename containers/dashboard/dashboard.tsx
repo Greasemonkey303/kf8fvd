@@ -15,7 +15,36 @@ function Clock() {
     <div className={styles.clock} aria-hidden>
       <div className={styles.callsign}>KF8FVD</div>
       <div className={styles.time}>{now ? now.toLocaleTimeString() : '—:—:—'}</div>
+      <div className={styles.utc}>{now ? `UTC ${now.toISOString().slice(11,19)}` : ''}</div>
       <div className={styles.tz}>{now ? now.toLocaleDateString() : ''}</div>
+      <div className={styles.citiesGrid} aria-hidden>
+        {[
+          {name:'New York', tz:'America/New_York', flag:'🇺🇸', color:'#2b6cb0'},
+          {name:'Los Angeles', tz:'America/Los_Angeles', flag:'🇺🇸', color:'#2b6cb0'},
+          {name:'London', tz:'Europe/London', flag:'🇬🇧', color:'#0ea5a4'},
+          {name:'Paris', tz:'Europe/Paris', flag:'🇫🇷', color:'#ef4444'},
+          {name:'Berlin', tz:'Europe/Berlin', flag:'🇩🇪', color:'#f59e0b'},
+          {name:'Moscow', tz:'Europe/Moscow', flag:'🇷🇺', color:'#ef4444'},
+          {name:'Dubai', tz:'Asia/Dubai', flag:'🇦🇪', color:'#f97316'},
+          {name:'Mumbai', tz:'Asia/Kolkata', flag:'🇮🇳', color:'#f97316'},
+          {name:'Beijing', tz:'Asia/Shanghai', flag:'🇨🇳', color:'#dc2626'},
+          {name:'Tokyo', tz:'Asia/Tokyo', flag:'🇯🇵', color:'#2563eb'},
+          {name:'Sydney', tz:'Australia/Sydney', flag:'🇦🇺', color:'#2563eb'},
+          {name:'Singapore', tz:'Asia/Singapore', flag:'🇸🇬', color:'#0ea5a4'},
+          {name:'São Paulo', tz:'America/Sao_Paulo', flag:'🇧🇷', color:'#16a34a'},
+          {name:'Mexico City', tz:'America/Mexico_City', flag:'🇲🇽', color:'#059669'},
+          {name:'Johannesburg', tz:'Africa/Johannesburg', flag:'🇿🇦', color:'#0ea5a4'},
+          {name:'Cairo', tz:'Africa/Cairo', flag:'🇪🇬', color:'#d97706'},
+        ].map((c) => (
+          <div key={c.tz} className={styles.cityItem} style={{borderLeft:`4px solid ${c.color}`}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div className={styles.cityName}>{c.flag} {c.name}</div>
+              <div className={styles.cityTz}>{now ? new Intl.DateTimeFormat(undefined, { timeZoneName: 'short', timeZone: c.tz }).format(now).split(' ').pop() : ''}</div>
+            </div>
+            <div className={styles.cityTime}>{now ? new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: c.tz }).format(now) : '—:—'}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -126,14 +155,15 @@ export default function Dashboard() {
 
   return (
     <section className={styles.dashboard} aria-label="Dashboard">
-      <div className={styles.row}>
-        <Card className={styles.smallCard} title="Live" subtitle="Clock & Status">
+      <div className={styles.topLive}>
+        <Card className={`${styles.largeCard}`} title="Live" subtitle="Clock & Status">
           <div className={styles.liveInner}>
             <Clock />
             <OnAirBadge />
           </div>
         </Card>
-
+      </div>
+      <div className={`${styles.row} ${styles.rowShiftLeft}`}>
         <Card className={styles.smallCard} title="Propagation" subtitle="Solar / K-index">
           <div className={styles.prop}>
             <div className={styles.propValues}>
