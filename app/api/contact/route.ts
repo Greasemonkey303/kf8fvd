@@ -72,6 +72,8 @@ export async function POST(req: Request) {
     const message = form.get('message')?.toString() || ''
 
     const attachments: SGAttachment[] = []
+    let totalBytes = 0
+    const MAX_TOTAL = 50 * 1024 * 1024 // 50MB total
     for (const entry of form.entries()) {
       const [, value] = entry
       // Some runtimes present uploaded files as File, Blob, or file-like objects.
@@ -80,6 +82,11 @@ export async function POST(req: Request) {
         const file = maybeFile as File
         const ab = await file.arrayBuffer()
         const uint8 = new Uint8Array(ab)
+        const bytes = uint8.byteLength
+        totalBytes += bytes
+        if (totalBytes > MAX_TOTAL) {
+          return NextResponse.json({ error: 'Total attachments exceed 50MB limit' }, { status: 413 })
+        }
         const base64 = Buffer.from(uint8).toString('base64')
         const isImage = (file.type || '').startsWith('image/')
         const attachment: any = {

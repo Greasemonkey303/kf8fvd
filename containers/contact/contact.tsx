@@ -82,9 +82,10 @@ export default function Contact() {
     else if (!isValidEmail(email.trim())) e.email = 'Please enter a valid email address.'
     if (!message.trim() || message.trim().length < 10) e.message = 'Please enter a message (10+ characters).'
     // file size limits (5MB each)
+    const MAX_FILE = 50 * 1024 * 1024 // 50MB per file
     for (let i=0;i<files.length;i++){
       const f = files[i]
-      if (f.size > 5 * 1024 * 1024) { e.files = 'Each attachment must be 5MB or smaller.'; break }
+      if (f.size > MAX_FILE) { e.files = 'Each attachment must be 50MB or smaller.'; break }
     }
     setErrors(e)
     // if there are errors, focus the first invalid field for accessibility
@@ -240,8 +241,12 @@ export default function Contact() {
               </label>
 
               <label className={`${styles.fileLabel} ${dragOver? styles.dropZone : ''}`} onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={()=> setDragOver(false)}>
-                Attachments (drag & drop supported)
-                <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.txt,.doc,.docx" multiple onChange={handleFileChange} />
+                Attachments
+                <div className={styles.fileControls}>
+                  <button type="button" className={styles.chooseBtn} onClick={()=> fileInputRef.current?.click()}>Choose files</button>
+                  <span className={styles.fileHint}>or drag & drop here</span>
+                  <input id="file-input" ref={fileInputRef} type="file" accept="image/*,application/pdf,.txt,.doc,.docx" multiple onChange={handleFileChange} style={{display:'none'}} />
+                </div>
                 {errors.files && <div className={styles.formError} role="alert">{errors.files}</div>}
                 {files.length>0 && (
                   <div className={styles.fileList}>
@@ -261,7 +266,14 @@ export default function Contact() {
                 )}
               </label>
               
-              <div className={styles.sizeInfo} aria-live="polite">{totalSize>0 && `Attachments: ${Math.round(totalSize/1024)} KB total`} {totalSize > 10 * 1024 * 1024 && <span className={styles.formError}> — total exceeds 10MB recommended</span>}</div>
+              <div className={styles.sizeInfo} aria-live="polite">
+                {totalSize>0 && `Total attachments: ${Math.round(totalSize/1024/1024*10)/10} MB`}
+                {totalSize > 50 * 1024 * 1024 ? (
+                  <span className={styles.formError}> — total exceeds 50MB limit</span>
+                ) : totalSize > 25 * 1024 * 1024 ? (
+                  <span className={styles.small}> — approaching 50MB limit</span>
+                ) : null}
+              </div>
 
               {/* Honeypot field (hidden) */}
               <div style={{position:'absolute',left:'-9999px',height:0,overflow:'hidden'}} aria-hidden>
@@ -277,7 +289,6 @@ export default function Contact() {
 
                 <div className={styles.actions}>
                   <button ref={submitButtonRef} type="submit" disabled={loading}>{loading? <span className={styles.spinner} aria-hidden></span>: 'Send'}</button>
-                  <a href="/credentials">View Credentials</a>
                 </div>
               </form>
             ) : (

@@ -44,6 +44,10 @@
 .fileList { display:flex; flex-direction:column; gap:8px; margin-top:8px }
 .fileItem { display:flex; gap:8px; align-items:center; background: rgba(255,255,255,0.02); padding:6px; border-radius:8px }
 .fileThumb { width:64px; height:48px; object-fit:cover; border-radius:6px }
+.fileControls { display:flex; align-items:center; gap:8px; margin-top:8px }
+.chooseBtn { background: linear-gradient(90deg,var(--color-link), #a78bfa); color: #041025; padding:0.55rem 0.9rem; border-radius:8px; border:0; font-weight:700; cursor:pointer }
+.chooseBtn:hover, .chooseBtn:focus { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(2,6,23,0.35) }
+.fileHint { color: rgba(255,255,255,0.65); font-size:0.9rem }
 .dropZone { border: 1px dashed rgba(255,255,255,0.08); padding: 8px; border-radius:8px }
 .dropZone:hover { background: rgba(255,255,255,0.01) }
 .sizeInfo { margin-top: 8px; font-size: 0.9rem }
