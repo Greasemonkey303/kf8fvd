@@ -42,6 +42,9 @@
 
 .fileLabel input[type="file"] { margin-top:8px }
 .confirmActions { display:flex; gap:8px; margin-top:12px }
+.confirmActions button { padding: .55rem 0.9rem; border-radius:8px; min-width:120px; border:0; cursor:pointer; font-weight:700 }
+.confirmActions button:first-child { background: transparent; color: var(--white-95); border: 1px solid var(--border-06) }
+.confirmActions button:last-child { background: linear-gradient(90deg,var(--color-link), var(--color-accent-2)); color: var(--text-dark) }
 .previewImg { max-width:100%; border-radius:8px; display:block }
 .fileList { display:flex; flex-direction:column; gap:8px; margin-top:8px }
 .fileItem { display:flex; gap:8px; align-items:center; background: var(--muted-bg); padding:6px; border-radius:8px }
