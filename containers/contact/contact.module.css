@@ -44,6 +44,11 @@
 .fileList { display:flex; flex-direction:column; gap:8px; margin-top:8px }
 .fileItem { display:flex; gap:8px; align-items:center; background: rgba(255,255,255,0.02); padding:6px; border-radius:8px }
 .fileThumb { width:64px; height:48px; object-fit:cover; border-radius:6px }
+.dropZone { border: 1px dashed rgba(255,255,255,0.08); padding: 8px; border-radius:8px }
+.dropZone:hover { background: rgba(255,255,255,0.01) }
+.sizeInfo { margin-top: 8px; font-size: 0.9rem }
+.progress { height:8px; background: rgba(255,255,255,0.06); border-radius:8px; overflow:hidden; margin-top:8px }
+.progressInner { height:100%; background: linear-gradient(90deg,var(--color-link), #8b5cf6); width:0% }
 .fileMeta { display:flex; flex-direction:column; gap:2px; font-size:0.9rem; color: rgba(255,255,255,0.9) }
 .fileName { font-weight:600 }
 .fileSize { font-size:0.8rem; color: rgba(255,255,255,0.65) }

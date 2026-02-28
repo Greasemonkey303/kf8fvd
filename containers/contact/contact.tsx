@@ -24,6 +24,12 @@ export default function Contact() {
   const submitButtonRef = useRef<HTMLButtonElement | null>(null)
   const [mounted, setMounted] = useState(false)
   const [totalSize, setTotalSize] = useState(0)
+  const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
+  const [cfToken, setCfToken] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+  const [previewName, setPreviewName] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
 
   useEffect(()=>{
     if (success) {
@@ -46,6 +52,27 @@ export default function Contact() {
         document.body.appendChild(s)
       }
     }
+  },[])
+
+  // When script loads, render turnstile widget programmatically and capture token via callback
+  useEffect(()=>{
+    const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
+    if (!sitekey) return
+    function tryRender(){
+      // @ts-ignore
+      if (typeof window !== 'undefined' && (window as any).turnstile && document.getElementById('cf-turnstile-container')) {
+        // @ts-ignore
+        const id = (window as any).turnstile.render(document.getElementById('cf-turnstile-container'), {
+          sitekey,
+          callback: (token: string) => setCfToken(token),
+        })
+        setCfWidgetId(typeof id === 'number' ? id : null)
+      }
+    }
+    // Try immediately and also after a short delay in case script loads later
+    tryRender()
+    const t = setInterval(tryRender, 500)
+    return ()=> clearInterval(t)
   },[])
 
   function validate(){
@@ -82,6 +109,35 @@ export default function Contact() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const dt = e.dataTransfer
+    if (!dt) return
+    const arr = Array.from(dt.files || [])
+    if (arr.length === 0) return
+    const merged = [...files, ...arr].slice(0,6)
+    setFiles(merged)
+    setTotalSize(merged.reduce((s,f)=> s + f.size, 0))
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  function openPreview(file: File) {
+    if (!file.type.startsWith('image/')) return
+    setPreviewSrc(URL.createObjectURL(file))
+    setPreviewName(file.name)
+  }
+
+  function closePreview() {
+    if (previewSrc) URL.revokeObjectURL(previewSrc)
+    setPreviewSrc(null)
+    setPreviewName(null)
+  }
+
   function removeFile(idx: number){ setFiles(files.filter((_,i)=> i!==idx)) }
 
   function handleSubmit(e: React.FormEvent){
@@ -103,23 +159,47 @@ export default function Contact() {
       // include honeypot value if present in DOM
       const hpEl = document.querySelector<HTMLInputElement>('input[name="hp"]')
       if (hpEl) fd.append('hp', hpEl.value)
-      // include Cloudflare Turnstile token if present
-      const cfEl = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]')
-      if (cfEl) fd.append('cf-turnstile-response', cfEl.value)
+      // include Cloudflare Turnstile token if present (use programmatic token if available)
+      if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
+        const token = cfToken || document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value
+        if (!token) {
+          throw new Error('Please complete the CAPTCHA to continue')
+        }
+        fd.append('cf-turnstile-response', token)
+      }
       files.forEach((f, i) => fd.append(`file-${i}`, f))
 
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        body: fd
+      // use XMLHttpRequest to track upload progress for attachments
+      const xhr = new XMLHttpRequest()
+      await new Promise<void>((resolve, reject) => {
+        xhr.open('POST', '/api/contact')
+        xhr.onload = () => {
+          try {
+            const data = JSON.parse(xhr.responseText || '{}')
+            if (xhr.status < 200 || xhr.status >= 300) {
+              console.error('API /api/contact error', data)
+              return reject(new Error(data?.details || data?.error || 'Send failed'))
+            }
+            resolve()
+          } catch (err) { reject(err as any) }
+        }
+        xhr.onerror = () => reject(new Error('Network error'))
+        if (xhr.upload) {
+          xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100))
+          }
+        }
+        xhr.send(fd)
       })
 
-      const data = await res.json()
-      if (!res.ok) {
-        console.error('API /api/contact error', data)
-        const msg = data?.details || data?.error || 'Send failed'
-        throw new Error(msg)
-      }
-
+      setUploadProgress(null)
+      // reset turnstile widget to avoid reusing token
+      try {
+        // @ts-ignore
+        if ((window as any).turnstile && cfWidgetId != null) (window as any).turnstile.reset(cfWidgetId)
+        setCfToken(null)
+      } catch (e) {}
+      
       setSuccess(true)
       // clear form
       setName(''); setEmail(''); setMessage(''); setFiles([])
@@ -159,8 +239,8 @@ export default function Contact() {
                 {errors.message && <div id="err-message" className={styles.formError} role="alert">{errors.message}</div>}
               </label>
 
-              <label className={styles.fileLabel}>
-                Attachments
+              <label className={`${styles.fileLabel} ${dragOver? styles.dropZone : ''}`} onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={()=> setDragOver(false)}>
+                Attachments (drag & drop supported)
                 <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.txt,.doc,.docx" multiple onChange={handleFileChange} />
                 {errors.files && <div className={styles.formError} role="alert">{errors.files}</div>}
                 {files.length>0 && (
@@ -168,7 +248,7 @@ export default function Contact() {
                     {files.map((f,i)=> (
                       <div key={i} className={styles.fileItem}>
                         {f.type.startsWith('image/') && (
-                          <img src={URL.createObjectURL(f)} alt={f.name} className={styles.fileThumb} />
+                          <img onClick={()=> openPreview(f)} src={URL.createObjectURL(f)} alt={f.name} className={styles.fileThumb} />
                         )}
                         <div className={styles.fileMeta}>
                           <div className={styles.fileName}>{f.name}</div>
@@ -206,7 +286,7 @@ export default function Contact() {
 
             <div className={styles.contactInfo}>
               <h3 className={styles.contactHeading}>Email me directly</h3>
-              <a className={styles.mailto} href="mailto:zach@kf8fvd">✉️ zach@kf8fvd</a>
+              <a className={styles.mailto} href="mailto:zach@kf8fvd.com">✉️ zach@kf8fvd.com</a>
             </div>
           </div>
         </Card>
@@ -228,6 +308,24 @@ export default function Contact() {
           </div>
         </div>
       )}
+
+        {previewSrc && (
+          <div className={styles.modalOverlay} role="dialog" aria-modal="true" onClick={closePreview}>
+            <div className={styles.modal} onClick={(e)=> e.stopPropagation()}>
+              <h4>{previewName}</h4>
+              <img src={previewSrc} alt={previewName || 'preview'} style={{maxWidth:'100%', borderRadius:8}} />
+              <div style={{display:'flex', justifyContent:'flex-end', marginTop:8}}>
+                <button onClick={closePreview}>Close</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {uploadProgress !== null && (
+          <div style={{position:'fixed',left:16,right:16,bottom:16,zIndex:2500}}>
+            <div className={styles.progress}><div className={styles.progressInner} style={{width:`${uploadProgress}%`}} /></div>
+          </div>
+        )}
 
       {success && (
         <div className={styles.toast} role="status">Message sent — thanks! I'll reply as soon as I can.</div>
