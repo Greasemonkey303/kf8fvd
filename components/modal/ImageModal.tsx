@@ -30,8 +30,10 @@ export default function ImageModal({ src, alt = '', onClose }: Props) {
     if (btn) btn.focus()
 
     // lock scroll
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const doc = document.documentElement
+    const prevOverflow = doc.style.overflow || ''
+    doc.style.overflow = 'hidden'
+    doc.setAttribute('data-modal-open', 'true')
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -40,7 +42,8 @@ export default function ImageModal({ src, alt = '', onClose }: Props) {
 
     return () => {
       window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
+      try { if (doc.getAttribute('data-modal-open')) doc.removeAttribute('data-modal-open') } catch(e) {}
+      try { doc.style.overflow = prevOverflow || '' } catch(e) {}
       if (prev && typeof prev.focus === 'function') prev.focus()
     }
   }, [onClose])

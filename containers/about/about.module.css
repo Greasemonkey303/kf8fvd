@@ -53,6 +53,7 @@
 .specBox { background: rgba(255,255,255,0.02); padding: 10px; border-radius:8px; margin: 0.6rem 0; box-shadow: 0 6px 14px rgba(2,6,23,0.18); }
 .specBox h4 { margin: 0 0 6px 0; color: var(--color-link); }
 .specBox ul { margin: 0; padding-left: 1rem; }
+.specLabel { font-weight: 700; margin-right: 6px; color: rgba(255,255,255,0.95); }
 
 
 .copy p { margin: 0 0 0.85rem 0; }

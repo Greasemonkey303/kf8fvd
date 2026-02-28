@@ -5,11 +5,29 @@ import Image from 'next/image'
 import Link from 'next/link'
 import styles from './about.module.css'
 import { Card } from '@/components'
-import dynamic from 'next/dynamic'
-const ImageModal = dynamic(() => import('@/components/modal/ImageModal'), { ssr: false })
+import modalStyles from '@/components/modal/imageModal.module.css'
+import { createPortal } from 'react-dom'
+import { useEffect } from 'react'
 
 export default function About() {
   const [open, setOpen] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null
+    const btn = document.querySelector(`.${modalStyles.close}`) as HTMLButtonElement | null
+    if (btn) btn.focus()
+    const doc = document.documentElement
+    const prevOverflow = doc.style.overflow || ''
+    doc.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null) }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      try { doc.style.overflow = prevOverflow || '' } catch (e) {}
+      if (prev && typeof prev.focus === 'function') prev.focus()
+    }
+  }, [open])
 
   return (
     <main className={styles.about}>
@@ -143,10 +161,10 @@ export default function About() {
               <div className={styles.specBox}>
                 <h4>Quick Specs</h4>
                 <ul>
-                  <li><strong>Printer:</strong> Bambu Lab X1-C Carbon</li>
-                  <li><strong>Rack:</strong> Small network rack under bench (switch, Pi services)</li>
-                  <li><strong>Under TV:</strong> Creality SpacePi X4; climate-controlled cabinet for filament</li>
-                  <li><strong>Primary:</strong> Radios, hotspots, antenna tuner</li>
+                  <li><span className={styles.specLabel}>Printer:</span> Bambu Lab X1-C Carbon</li>
+                  <li><span className={styles.specLabel}>Rack:</span> Small network rack under bench (switch, Pi services)</li>
+                  <li><span className={styles.specLabel}>Under TV:</span> Creality SpacePi X4; climate-controlled cabinet for filament</li>
+                  <li><span className={styles.specLabel}>Primary:</span> Radios, hotspots, antenna tuner</li>
                 </ul>
               </div>
               <ul>
@@ -157,7 +175,15 @@ export default function About() {
           </div>
         </Card>
       </div>
-      <ImageModal src={open} alt="" onClose={() => setOpen(null)} />
+      {open && typeof document !== 'undefined' && createPortal(
+        <div className={modalStyles.backdrop} onClick={() => setOpen(null)} role="dialog" aria-modal="true">
+          <div className={modalStyles.sheet} onClick={(e) => e.stopPropagation()}>
+            <button className={modalStyles.close} onClick={() => setOpen(null)} aria-label="Close image">✕</button>
+            <img src={open} alt="" className={modalStyles.image} />
+          </div>
+        </div>,
+        document.body
+      )}
     </main>
   )
 }
