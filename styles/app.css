@@ -41,7 +41,7 @@ a:focus {
 
 header, footer {
   background: var(--color-gradient);
-  color: #fff;
+  color: var(--white-100);
   padding: 1rem 0;
 }
 

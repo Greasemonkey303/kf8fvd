@@ -4,14 +4,22 @@ import React, { useState } from 'react'
 import { ImageModal } from '@/components'
 import styles from '../../app/credentials/credentials.module.css'
 
+function getCssVar(name: string, fallback: string) {
+  if (typeof window === 'undefined') return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name)
+  return v ? v.trim() : fallback
+}
+
 export default function FemaCard(){
   const [open, setOpen] = useState<string | null>(null)
-  // inline SVG placeholder for IS-100.C
+  const bg = getCssVar('--color-bg', '#071233')
+  const title = getCssVar('--color-accent-2', '#a78bfa')
+  const subtitle = getCssVar('--white-95', '#fef3c7')
   const svg = encodeURIComponent(`
     <svg xmlns='http://www.w3.org/2000/svg' width='1200' height='800'>
-      <rect width='100%' height='100%' fill='#071233'/>
-      <text x='50%' y='45%' dominant-baseline='middle' text-anchor='middle' fill='#a78bfa' font-family='Arial' font-size='56'>FEMA</text>
-      <text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' fill='#fef3c7' font-family='Arial' font-size='40'>IS-100.C</text>
+      <rect width='100%' height='100%' fill='${bg}'/>
+      <text x='50%' y='45%' dominant-baseline='middle' text-anchor='middle' fill='${title}' font-family='Arial' font-size='56'>FEMA</text>
+      <text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' fill='${subtitle}' font-family='Arial' font-size='40'>IS-100.C</text>
     </svg>
   `)
   const src = `data:image/svg+xml;utf8,${svg}`
@@ -26,7 +34,7 @@ export default function FemaCard(){
       <p className={styles.lead}>Introduction to Incident Command System (IS-100.C).</p>
 
       <div className={styles.mediaRow}>
-        <button className={styles.thumbWrap} onClick={() => setOpen(src)} style={{ padding:0, border:'none', background:'transparent' }} aria-label="Open FEMA IS-100.C preview">
+        <button className={styles.thumbWrap} onClick={() => setOpen(src)} aria-label="Open FEMA IS-100.C preview">
           <img src={src} alt="FEMA IS-100.C preview" className={styles.licenseThumb} />
           <div className={styles.overlay} aria-hidden>
             <span className={styles.overlayTitle}>IS-100.C</span>

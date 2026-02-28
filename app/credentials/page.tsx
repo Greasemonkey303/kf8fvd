@@ -13,7 +13,7 @@ export const canonical = 'https://kf8fvd.example/credentials'
 export default function CredentialsPage() {
   return (
     <main>
-      <section style={{ padding: '2rem' }}>
+      <section className="page-pad">
         <Card title="Licenses & Certifications" subtitle='KF8FVD' className={styles.noAnimCard}>
           <div className={styles.twoColumn}>
            {/* <div className={styles.leftCol}>

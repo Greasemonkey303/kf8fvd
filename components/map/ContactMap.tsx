@@ -203,9 +203,9 @@ export default function ContactMap(){
         const modes = Array.from(new Set(groupEntries.map((x:any)=> (x.mode||'').toString()))).filter(Boolean);
         const fm = getCssVar('--color-success', '#16a34a');
         const dstar = getCssVar('--color-accent-1', '#60a5fa');
-        const otherCol = '#94a3b8';
+        const otherCol = getCssVar('--color-other', '#94a3b8');
         const color = modes.map(m=>m.toUpperCase()).includes('FM') ? fm : (modes.map(m=>m.toUpperCase()).includes('DSTAR') ? dstar : otherCol);
-        const m = L.circleMarker([g.lat, g.lon], { radius:8, color:'#fff', weight:1, fillColor: color, fillOpacity:0.95 });
+        const m = L.circleMarker([g.lat, g.lon], { radius:8, color: getCssVar('--white-100','#fff'), weight:1, fillColor: color, fillOpacity:0.95 });
         const popup = `<div><strong>${k}</strong><br/>${groupEntries.slice(0,6).map((x:any)=>x.call||'').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
         m.bindPopup(popup);
         // tooltip on hover with callsign(s) and location
@@ -229,43 +229,41 @@ export default function ContactMap(){
     useEffect(()=>{ renderMarkers(days); }, [days, modeFilters]);
 
   return (
-    <div style={{ width:'100%', height:'100%', position:'relative' }}>
-      <div ref={ref} style={{ width:'100%', height:'100%' }} />
+    <div className="map-wrap">
+      <div ref={ref} className="map-ref" />
 
       {/* Collapsed controls: filter button (top-right) and legend button (bottom-right) */}
-      <button aria-label="Open filters" onClick={()=> setShowSliderPanel(true)} style={{ position:'absolute', right:12, top:12, zIndex:1100, background:'var(--overlay)', color:'var(--white-100)', border:'none', padding:'8px 10px', borderRadius:8, cursor:'pointer' }}>Filters</button>
+      <button aria-label="Open filters" onClick={()=> setShowSliderPanel(true)} className="panel-btn-top-right btn-ghost">Filters</button>
 
       {showSliderPanel && (
         <>
-        <div onClick={()=> { if (isMobile) { setShowSliderPanel(false) } }} style={{ position:'fixed', inset:0, zIndex:1190, display: showSliderPanel ? 'block' : 'none', background:'transparent' }} />
-        <div role="dialog" aria-label="Filter panel" style={{ position:'absolute', right:isMobile?0:12, top:isMobile?0:56, zIndex:1200, width:isMobile? '100vw' : 320, maxWidth:'95vw', height:isMobile? 'auto' : undefined, background:'var(--nav-mobile-bg)', padding:14, borderRadius:isMobile?0:10, color:'var(--white-100)' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-            <div style={{ fontWeight:800 }}>Filters</div>
-            <button aria-label="Close filters" onClick={()=> setShowSliderPanel(false)} style={{ background:'transparent', border:'none', color:'var(--white-100)', fontSize:16, cursor:'pointer' }}>✕</button>
+        <div onClick={()=> { if (isMobile) { setShowSliderPanel(false) } }} className="panel-backdrop" />
+        <div role="dialog" aria-label="Filter panel" className={`panel-dialog ${isMobile ? 'panel-dialog-full' : 'panel-dialog-top'}`}>
+          <div className="flex justify-between items-center mb-8">
+            <div className="fw-800">Filters</div>
+            <button aria-label="Close filters" onClick={()=> setShowSliderPanel(false)} className="btn-ghost fs-16">✕</button>
           </div>
 
-          <div style={{ marginBottom:8 }}>
-            <div style={{ fontSize:12, marginBottom:6 }}>Date range</div>
-            <input aria-label="Days back" type="range" min={0} max={365} value={days} onChange={(e)=> setDays(Number((e.target as HTMLInputElement).value))} style={{ width:'100%' }} />
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6 }}>
-              <div style={{ fontSize:13 }}>{days===0? 'All time' : `Last ${days} days`}</div>
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                <button onClick={()=> setDays(7)} style={{ padding:isMobile? '10px 12px' : '6px 10px', borderRadius:8, border:'none', cursor:'pointer' }}>7d</button>
-                <button onClick={()=> setDays(30)} style={{ padding:isMobile? '10px 12px' : '6px 10px', borderRadius:8, border:'none', cursor:'pointer' }}>30d</button>
-                <button onClick={()=> setDays(90)} style={{ padding:isMobile? '10px 12px' : '6px 10px', borderRadius:8, border:'none', cursor:'pointer' }}>90d</button>
-                <button onClick={()=> setDays(365)} style={{ padding:isMobile? '10px 12px' : '6px 10px', borderRadius:8, border:'none', cursor:'pointer' }}>365d</button>
-                <button onClick={()=> setDays(0)} style={{ padding:isMobile? '10px 12px' : '6px 10px', borderRadius:8, border:'none', cursor:'pointer' }}>All</button>
+            <div className="mb-8">
+            <input aria-label="Days back" type="range" min={0} max={365} value={days} onChange={(e)=> setDays(Number((e.target as HTMLInputElement).value))} className="full-width" />
+            <div className="flex justify-between items-center mt-6">
+              <div className="fs-13">{days===0? 'All time' : `Last ${days} days`}</div>
+              <div className="flex gap-6 flex-wrap">
+                <button onClick={()=> setDays(7)} className="btn-ghost btn-ghost-sm">7d</button>
+                <button onClick={()=> setDays(30)} className="btn-ghost btn-ghost-sm">30d</button>
+                <button onClick={()=> setDays(90)} className="btn-ghost btn-ghost-sm">90d</button>
+                <button onClick={()=> setDays(365)} className="btn-ghost btn-ghost-sm">365d</button>
+                <button onClick={()=> setDays(0)} className="btn-ghost btn-ghost-sm">All</button>
               </div>
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize:12, marginBottom:6 }}>Modes</div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            <div className="flex flex-wrap gap-8">
               {['FM','DSTAR','DMR','OTHER'].map(m=> (
-                <label key={m} style={{ display:'flex', alignItems:'center', gap:8, padding:isMobile? '8px' : undefined, borderRadius:6 }}>
+                <label key={m} className="label-pad flex items-center gap-8">
                   <input type="checkbox" checked={!!modeFilters[m]} onChange={()=> setModeFilters(prev=> ({ ...prev, [m]: !prev[m] }))} />
-                  <span style={{ fontSize:13 }}>{m}</span>
+                  <span className="fs-13">{m}</span>
                 </label>
               ))}
             </div>
@@ -274,27 +272,27 @@ export default function ContactMap(){
         </>
       )}
 
-      <button aria-label="Open legend" onClick={()=> setShowLegendPanel(true)} style={{ position:'absolute', right:12, bottom:12, zIndex:1100, background:'var(--overlay)', color:'var(--white-100)', border:'none', padding:isMobile? '12px 14px' : '8px 10px', borderRadius:8, cursor:'pointer' }}>Key</button>
+      <button aria-label="Open legend" onClick={()=> setShowLegendPanel(true)} className="panel-btn-bottom-right btn-ghost">Key</button>
 
       {showLegendPanel && (
         <>
-        <div onClick={()=> { if (isMobile) setShowLegendPanel(false) }} style={{ position:'fixed', inset:0, zIndex:1190, display: showLegendPanel ? 'block' : 'none', background:'transparent' }} />
-        <div role="dialog" aria-label="Legend" style={{ position:'absolute', right:isMobile?0:12, bottom:isMobile?0:64, zIndex:1200, width:isMobile? '100vw' : 260, maxWidth:'95vw', background:'var(--nav-mobile-bg)', padding:14, borderRadius:isMobile?0:10, color:'var(--white-100)' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-            <div style={{ fontWeight:800 }}>Modes</div>
-            <button aria-label="Close legend" onClick={()=> setShowLegendPanel(false)} style={{ background:'transparent', border:'none', color:'var(--white-100)', fontSize:16, cursor:'pointer' }}>✕</button>
+        <div onClick={()=> { if (isMobile) setShowLegendPanel(false) }} className="panel-backdrop" />
+        <div role="dialog" aria-label="Legend" className={`panel-dialog ${isMobile ? 'panel-dialog-full' : 'panel-dialog-bottom'}`}>
+          <div className="flex justify-between items-center mb-8">
+            <div className="fw-800">Modes</div>
+            <button aria-label="Close legend" onClick={()=> setShowLegendPanel(false)} className="btn-ghost fs-16">✕</button>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:getCssVar('--color-success','#16a34a') }}></span><div style={{fontSize:16}}>FM</div></div>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:getCssVar('--color-accent-1','#60a5fa') }}></span><div style={{fontSize:16}}>DSTAR</div></div>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:getCssVar('--color-accent-4','#f97316') }}></span><div style={{fontSize:16}}>DMR / Other</div></div>
+          <div className="flex flex-col gap-12">
+            <div className="legend-row"><span className="legend-swatch legend-swatch--success" aria-hidden></span><div className="fs-16">FM</div></div>
+            <div className="legend-row"><span className="legend-swatch legend-swatch--dstar" aria-hidden></span><div className="fs-16">DSTAR</div></div>
+            <div className="legend-row"><span className="legend-swatch legend-swatch--other" aria-hidden></span><div className="fs-16">DMR / Other</div></div>
           </div>
         </div>
         </>
       )}
 
       {loading && (
-        <div style={{ position:'absolute', left:12, top:96, padding:'8px 12px', background:'var(--overlay)', borderRadius:8, color:'var(--white-100)', fontWeight:700 }}>{status || 'Loading map…'}</div>
+        <div className="map-status">{status || 'Loading map…'}</div>
       )}
     </div>
   )

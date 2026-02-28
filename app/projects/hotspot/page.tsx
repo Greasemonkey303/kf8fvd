@@ -39,7 +39,7 @@ export default function Page(){
               <li>W0CHP WPSD — <a href="https://w0chp.radio/wpsd/" target="_blank" rel="noopener noreferrer">W0CHP WPSD</a></li>
             </ul>
 
-            <p style={{ fontSize: '0.9em', color: '#888' }}>
+            <p className="muted-small">
               Disclaimer: these are not affiliate links and I do not make any money from purchases.
             </p>
 

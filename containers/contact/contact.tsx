@@ -22,6 +22,7 @@ export default function Contact() {
   const emailRef = useRef<HTMLInputElement | null>(null)
   const messageRef = useRef<HTMLTextAreaElement | null>(null)
   const submitButtonRef = useRef<HTMLButtonElement | null>(null)
+  const progressInnerRef = useRef<HTMLDivElement | null>(null)
   const [mounted, setMounted] = useState(false)
   const [totalSize, setTotalSize] = useState(0)
   const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
@@ -212,6 +213,12 @@ export default function Contact() {
     }
   }
 
+  useEffect(() => {
+    if (progressInnerRef.current && uploadProgress !== null) {
+      progressInnerRef.current.style.width = `${uploadProgress}%`;
+    }
+  }, [uploadProgress]);
+
   return (
     <main className={styles.contact}>
       <div className={styles.wrapper}>
@@ -245,7 +252,7 @@ export default function Contact() {
                 <div className={styles.fileControls}>
                   <button type="button" className={styles.chooseBtn} onClick={()=> fileInputRef.current?.click()}>Choose files</button>
                   <span className={styles.fileHint}>or drag & drop here</span>
-                  <input id="file-input" ref={fileInputRef} type="file" accept="image/*,application/pdf,.txt,.doc,.docx" multiple onChange={handleFileChange} style={{display:'none'}} />
+                  <input id="file-input" ref={fileInputRef} type="file" accept="image/*,application/pdf,.txt,.doc,.docx" multiple onChange={handleFileChange} className="hidden-input" />
                 </div>
                 {errors.files && <div className={styles.formError} role="alert">{errors.files}</div>}
                 {files.length>0 && (
@@ -276,13 +283,13 @@ export default function Contact() {
               </div>
 
               {/* Honeypot field (hidden) */}
-              <div style={{position:'absolute',left:'-9999px',height:0,overflow:'hidden'}} aria-hidden>
+              <div className="sr-offscreen" aria-hidden>
                 <label>Leave this field empty<input name="hp" tabIndex={-1} /></label>
               </div>
 
               {/* Cloudflare Turnstile widget (requires NEXT_PUBLIC_CF_TURNSTILE_SITEKEY in env) */}
               {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
-                <div style={{marginTop:12}}>
+                <div className="mt-12">
                   <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY}></div>
                 </div>
               )}
@@ -312,7 +319,7 @@ export default function Contact() {
             <p><strong>Message:</strong></p>
             <div className={styles.preview}>{message || '—'}</div>
             {files.length>0 && <p><strong>Attachments:</strong> {files.map(f=> f.name).join(', ')}</p>}
-            <div style={{ display:'flex', gap:8, marginTop:12 }}>
+            <div className={styles.confirmActions}>
               <button onClick={()=> setConfirmOpen(false)}>Cancel</button>
               <button onClick={confirmSend}>Confirm & Send</button>
             </div>
@@ -320,21 +327,21 @@ export default function Contact() {
         </div>
       )}
 
-        {previewSrc && (
-          <div className={styles.modalOverlay} role="dialog" aria-modal="true" onClick={closePreview}>
-            <div className={styles.modal} onClick={(e)=> e.stopPropagation()}>
-              <h4>{previewName}</h4>
-              <img src={previewSrc} alt={previewName || 'preview'} style={{maxWidth:'100%', borderRadius:8}} />
-              <div style={{display:'flex', justifyContent:'flex-end', marginTop:8}}>
+              {previewSrc && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true" onClick={closePreview}>
+          <div className={styles.modal} onClick={(e)=> e.stopPropagation()}>
+            <h4>{previewName}</h4>
+            <img src={previewSrc} alt={previewName || 'preview'} className={styles.previewImg} />
+            <div className="flex justify-end mt-8">
                 <button onClick={closePreview}>Close</button>
               </div>
-            </div>
           </div>
+        </div>
         )}
 
         {uploadProgress !== null && (
-          <div style={{position:'fixed',left:16,right:16,bottom:16,zIndex:2500}}>
-            <div className={styles.progress}><div className={styles.progressInner} style={{width:`${uploadProgress}%`}} /></div>
+          <div className="progress-fixed">
+            <div className={styles.progress}><div ref={progressInnerRef} className={styles.progressInner} /></div>
           </div>
         )}
 

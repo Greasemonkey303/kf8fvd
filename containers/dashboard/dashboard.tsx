@@ -4,6 +4,12 @@ import React, { useEffect, useState } from 'react';
 import styles from './dashboard.module.css';
 import { Card } from '@/components';
 
+function getCssVar(name: string, fallback: string) {
+  if (typeof window === 'undefined') return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name)
+  return v ? v.trim() : fallback
+}
+
 function Clock() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -18,32 +24,36 @@ function Clock() {
       <div className={styles.utc}>{now ? `UTC ${now.toISOString().slice(11,19)}` : ''}</div>
       <div className={styles.tz}>{now ? now.toLocaleDateString() : ''}</div>
       <div className={styles.citiesGrid} aria-hidden>
-        {[
-          {name:'New York', tz:'America/New_York', flag:'🇺🇸', color:'#2b6cb0'},
-          {name:'Los Angeles', tz:'America/Los_Angeles', flag:'🇺🇸', color:'#2b6cb0'},
-          {name:'London', tz:'Europe/London', flag:'🇬🇧', color:'#0ea5a4'},
-          {name:'Paris', tz:'Europe/Paris', flag:'🇫🇷', color:'#ef4444'},
-          {name:'Berlin', tz:'Europe/Berlin', flag:'🇩🇪', color:'#f59e0b'},
-          {name:'Moscow', tz:'Europe/Moscow', flag:'🇷🇺', color:'#ef4444'},
-          {name:'Dubai', tz:'Asia/Dubai', flag:'🇦🇪', color:'#f97316'},
-          {name:'Mumbai', tz:'Asia/Kolkata', flag:'🇮🇳', color:'#f97316'},
-          {name:'Beijing', tz:'Asia/Shanghai', flag:'🇨🇳', color:'#dc2626'},
-          {name:'Tokyo', tz:'Asia/Tokyo', flag:'🇯🇵', color:'#2563eb'},
-          {name:'Sydney', tz:'Australia/Sydney', flag:'🇦🇺', color:'#2563eb'},
-          {name:'Singapore', tz:'Asia/Singapore', flag:'🇸🇬', color:'#0ea5a4'},
-          {name:'São Paulo', tz:'America/Sao_Paulo', flag:'🇧🇷', color:'#16a34a'},
-          {name:'Mexico City', tz:'America/Mexico_City', flag:'🇲🇽', color:'#059669'},
-          {name:'Johannesburg', tz:'Africa/Johannesburg', flag:'🇿🇦', color:'#0ea5a4'},
-          {name:'Cairo', tz:'Africa/Cairo', flag:'🇪🇬', color:'#d97706'},
-        ].map((c) => (
-          <div key={c.tz} className={styles.cityItem} style={{borderLeft:`4px solid ${c.color}`}}>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <div className={styles.cityName}>{c.flag} {c.name}</div>
-              <div className={styles.cityTz}>{now ? new Intl.DateTimeFormat(undefined, { timeZoneName: 'short', timeZone: c.tz }).format(now).split(' ').pop() : ''}</div>
+          {[
+          {name:'New York', tz:'America/New_York', flag:'🇺🇸'},
+          {name:'Los Angeles', tz:'America/Los_Angeles', flag:'🇺🇸'},
+          {name:'London', tz:'Europe/London', flag:'🇬🇧'},
+          {name:'Paris', tz:'Europe/Paris', flag:'🇫🇷'},
+          {name:'Berlin', tz:'Europe/Berlin', flag:'🇩🇪'},
+          {name:'Moscow', tz:'Europe/Moscow', flag:'🇷🇺'},
+          {name:'Dubai', tz:'Asia/Dubai', flag:'🇦🇪'},
+          {name:'Mumbai', tz:'Asia/Kolkata', flag:'🇮🇳'},
+          {name:'Beijing', tz:'Asia/Shanghai', flag:'🇨🇳'},
+          {name:'Tokyo', tz:'Asia/Tokyo', flag:'🇯🇵'},
+          {name:'Sydney', tz:'Australia/Sydney', flag:'🇦🇺'},
+          {name:'Singapore', tz:'Asia/Singapore', flag:'🇸🇬'},
+          {name:'São Paulo', tz:'America/Sao_Paulo', flag:'🇧🇷'},
+          {name:'Mexico City', tz:'America/Mexico_City', flag:'🇲🇽'},
+          {name:'Johannesburg', tz:'Africa/Johannesburg', flag:'🇿🇦'},
+          {name:'Cairo', tz:'Africa/Cairo', flag:'🇪🇬'},
+          ].map((c) => {
+          const varName = `--city-${c.tz.replace(/\//g,'_')}`
+          const cityColor = getCssVar(varName, getCssVar('--color-other', '#94a3b8'))
+          return (
+            <div key={c.tz} className={styles.cityItem} ref={(el) => { if (el) el.style.setProperty('--city-color', cityColor); }}>
+                <div className={styles.cityHeader}>
+                  <div className={styles.cityName}>{c.flag} {c.name}</div>
+                <div className={styles.cityTz}>{now ? new Intl.DateTimeFormat(undefined, { timeZoneName: 'short', timeZone: c.tz }).format(now).split(' ').pop() : ''}</div>
+              </div>
+              <div className={styles.cityTime}>{now ? new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: c.tz }).format(now) : '—:—'}</div>
             </div>
-            <div className={styles.cityTime}>{now ? new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: c.tz }).format(now) : '—:—'}</div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   );
@@ -201,11 +211,11 @@ export default function Dashboard() {
             <div className={styles.propValues}>
               <div className={styles.propItem}>
                 <div className={styles.propLabel}>K-index</div>
-                <div className={styles.propValue} style={{color:'#ffb020'}}>{space ? space.kIndex : '—'}</div>
+                <div className={`${styles.propValue} ${styles.propValueWarn}`}>{space ? space.kIndex : '—'}</div>
               </div>
               <div className={styles.propItem}>
                 <div className={styles.propLabel}>F10.7</div>
-                <div className={styles.propValue} style={{color:'#7dd3fc'}}>{space ? space.f107 : '—'}</div>
+                <div className={`${styles.propValue} ${styles.propValueLink}`}>{space ? space.f107 : '—'}</div>
               </div>
             </div>
             <div className={styles.propRecommend}>
@@ -252,7 +262,7 @@ export default function Dashboard() {
               <div key={band} className={styles.heatRow}>
                 <div className={styles.bandLabel}>{band}</div>
                 {Array.from({length:4}).map((_,i)=> (
-                  <div key={i} className={styles.heatCell} style={{opacity: getOpacity(band, i)}} />
+                  <div key={i} className={styles.heatCell} ref={(el) => { if (el) el.style.setProperty('--cell-opacity', String(getOpacity(band, i))); }} />
                 ))}
               </div>
             ))}
@@ -265,7 +275,7 @@ export default function Dashboard() {
               {label: 'Very High', o: 0.9},
             ].map((it) => (
               <div key={it.label} className={styles.legendItem}>
-                <span className={styles.legendSwatch} style={{opacity: it.o}} />
+                <span className={styles.legendSwatch} ref={(el) => { if (el) el.style.setProperty('--legend-opacity', String(it.o)); }} />
                 <span className={styles.legendLabel}>{it.label}</span>
               </div>
             ))}

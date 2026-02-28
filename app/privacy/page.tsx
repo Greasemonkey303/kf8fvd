@@ -7,7 +7,8 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main style={{padding: '2rem', maxWidth: 900, margin: '0 auto'}}>
+    <main className="page-pad">
+      <div className="center-900">
       <h1>Privacy Policy</h1>
       <p>Last updated: {new Date().toLocaleDateString()}</p>
 
@@ -63,6 +64,7 @@ export default function PrivacyPage() {
         If you have questions about this policy or want to request deletion of
         your data, email the site owner via the contact form on this site.
       </p>
+      </div>
     </main>
   );
 }

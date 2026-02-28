@@ -4,13 +4,22 @@ import React, { useState } from 'react'
 import { ImageModal } from '@/components'
 import styles from '../../app/credentials/credentials.module.css'
 
+function getCssVar(name: string, fallback: string) {
+  if (typeof window === 'undefined') return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name)
+  return v ? v.trim() : fallback
+}
+
 export default function HFMasterCard(){
   const [open, setOpen] = useState<string | null>(null)
+  const bg = getCssVar('--color-bg', '#021124')
+  const title = getCssVar('--color-accent-4', '#f97316')
+  const subtitle = getCssVar('--color-accent-1', '#93c5fd')
   const svg = encodeURIComponent(`
     <svg xmlns='http://www.w3.org/2000/svg' width='1200' height='800'>
-      <rect width='100%' height='100%' fill='#021124'/>
-      <text x='50%' y='45%' dominant-baseline='middle' text-anchor='middle' fill='#f97316' font-family='Arial' font-size='56'>HF Master Class</text>
-      <text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' fill='#93c5fd' font-family='Arial' font-size='32'>Advanced HF operation and propagation</text>
+      <rect width='100%' height='100%' fill='${bg}'/>
+      <text x='50%' y='45%' dominant-baseline='middle' text-anchor='middle' fill='${title}' font-family='Arial' font-size='56'>HF Master Class</text>
+      <text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' fill='${subtitle}' font-family='Arial' font-size='32'>Advanced HF operation and propagation</text>
     </svg>
   `)
   const src = `data:image/svg+xml;utf8,${svg}`
@@ -25,7 +34,7 @@ export default function HFMasterCard(){
       <p className={styles.lead}>Advanced HF techniques, propagation, and operating practices.</p>
 
       <div className={styles.mediaRow}>
-        <button className={styles.thumbWrap} onClick={() => setOpen(src)} style={{ padding:0, border:'none', background:'transparent' }} aria-label="Open HF Master Class preview">
+        <button className={styles.thumbWrap} onClick={() => setOpen(src)} aria-label="Open HF Master Class preview">
           <img src={src} alt="HF Master Class preview" className={styles.licenseThumb} />
           <div className={styles.overlay} aria-hidden>
             <span className={styles.overlayTitle}>HF Master Class</span>

@@ -54,12 +54,12 @@ export default function HotspotGallery({ images }: Props){
 
   return (
     <div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:8 }}>
-        <div style={{ flex:1 }}>
+      <div className="flex-between gap-12 mb-8">
+        <div className="flex-1">
           <div className={styles.gallery} aria-label="Hotspot images">
             {imgs.map((src,i)=> (
               <div key={i} className={styles.thumb} role="button" onClick={()=> setOpen(src)} onKeyDown={(e)=> { if (e.key==='Enter') setOpen(src) }} tabIndex={0}>
-                <Image src={src} alt={`Hotspot ${i+1}`} fill unoptimized={String(src).startsWith('data:')} style={{objectFit:'cover'}} />
+                <Image src={src} alt={`Hotspot ${i+1}`} fill unoptimized={String(src).startsWith('data:')} className={styles.img} />
               </div>
             ))}
           </div>

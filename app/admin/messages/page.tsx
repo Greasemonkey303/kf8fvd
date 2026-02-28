@@ -1,4 +1,5 @@
 import fs from 'fs/promises'
+import styles from './page.module.css'
 
 export default async function Page() {
   const out = './data/messages.log'
@@ -15,26 +16,26 @@ export default async function Page() {
   })
 
   return (
-    <main style={{padding:20}}>
+    <main className={styles.wrap}>
       <h1>Messages</h1>
       {items.length===0 && <p>No messages logged.</p>}
       {items.length>0 && (
-        <table style={{width:'100%',borderCollapse:'collapse'}}>
+        <table className={styles.table}>
           <thead>
             <tr>
-              <th style={{textAlign:'left',padding:8,borderBottom:'1px solid #ddd'}}>When</th>
-              <th style={{textAlign:'left',padding:8,borderBottom:'1px solid #ddd'}}>From</th>
-              <th style={{textAlign:'left',padding:8,borderBottom:'1px solid #ddd'}}>Email</th>
-              <th style={{textAlign:'left',padding:8,borderBottom:'1px solid #ddd'}}>Message</th>
+              <th className={styles.th}>When</th>
+              <th className={styles.th}>From</th>
+              <th className={styles.th}>Email</th>
+              <th className={styles.th}>Message</th>
             </tr>
           </thead>
           <tbody>
             {items.map((it, idx) => (
               <tr key={idx}>
-                <td style={{padding:8,borderBottom:'1px solid #eee'}}>{it.sentAt || '-'}</td>
-                <td style={{padding:8,borderBottom:'1px solid #eee'}}>{it.name || it.raw || '-'}</td>
-                <td style={{padding:8,borderBottom:'1px solid #eee'}}>{it.email || '-'}</td>
-                <td style={{padding:8,borderBottom:'1px solid #eee'}}>{it.message ? it.message.substring(0,200) : '-'}</td>
+                <td className={styles.td}>{it.sentAt || '-'}</td>
+                <td className={styles.td}>{it.name || it.raw || '-'}</td>
+                <td className={styles.td}>{it.email || '-'}</td>
+                <td className={styles.td}>{it.message ? it.message.substring(0,200) : '-'}</td>
               </tr>
             ))}
           </tbody>

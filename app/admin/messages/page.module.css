@@ -1,0 +1,5 @@
+/* Styles for admin messages table */
+.wrap { padding: 20px }
+.table { width: 100%; border-collapse: collapse }
+.th { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-04) }
+.td { padding: 8px; border-bottom: 1px solid var(--border-06) }

@@ -54,7 +54,7 @@
   top: 10px;
   background: var(--white-100);
   border: none;
-  color: #000000; /* black X for higher contrast */
+  color: var(--modal-close-color); /* black X for higher contrast */
   font-size: 20px;
   line-height: 1;
   padding: 6px 8px;

@@ -19,6 +19,8 @@
 .citiesGrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top:10px; width:100%; align-items:stretch }
 .cityItem { background: linear-gradient(180deg, var(--white-03), var(--white-01)); padding:10px 12px; border-radius:10px; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; min-height:44px }
 .cityName { font-size:0.8rem; font-weight:800; color: var(--white-95); }
+.cityHeader { display:flex; align-items:center; gap:8px }
+.cityItem { border-left: 4px solid var(--city-color, var(--color-other)); }
 .cityTime { font-size:1.02rem; font-weight:900; color: var(--color-link); }
 .cityTz { font-size:0.75rem; color: var(--white-66); margin-left:8px }
 
@@ -40,14 +42,16 @@
 .cityName { transition: color 160ms ease }
 .cityItem:hover .cityName { color: var(--white-100) }
 .badge { padding:6px 10px; border-radius:10px; font-weight:700; }
-.on { background: linear-gradient(90deg,var(--color-accent-3),#86efac); color: #042017; }
-.off { background: linear-gradient(90deg,#64748b,#94a3b8); color: #071023; }
+.on { background: linear-gradient(90deg,var(--color-accent-3),var(--color-success)); color: var(--text-dark); }
+.off { background: linear-gradient(90deg,var(--white-78),var(--color-other)); color: var(--text-dark); }
 
 .prop { display:flex; flex-direction:column; gap:0.5rem; align-items:flex-start }
 .propValues { display:flex; gap:1rem; align-items:center }
 .propItem { display:flex; flex-direction:column; gap:4px; align-items:center }
 .propLabel { font-size:.85rem; color: var(--white-85); text-transform:uppercase }
 .propValue { font-size:1.2rem; font-weight:900 }
+.propValueWarn { color: var(--color-warning) }
+.propValueLink { color: var(--color-link) }
 .propRecommend { font-size:0.92rem; color: var(--white-92); padding-top:4px }
 .propNote { font-size:0.82rem; color: var(--white-66); margin-top:6px }
 
@@ -69,7 +73,7 @@
 .heatHeader div { width:60px; }
 .heatRow { display:flex; gap:8px; align-items:center; }
 .bandLabel { width:60px; text-align:left; font-weight:700 }
-.heatCell { width:60px; height:20px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); }
+.heatCell { width:60px; height:20px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); opacity: var(--cell-opacity, 1); }
 
 /* subtle card polish */
 .dashboard :global(.card) { background: linear-gradient(180deg, var(--white-03), var(--white-01)); border-radius:12px; box-shadow: 0 6px 18px var(--shadow-25); }
@@ -119,6 +123,6 @@
 /* heatmap legend */
 .heatLegend { display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-top:8px }
 .legendItem { display:flex; gap:8px; align-items:center; }
-.legendSwatch { width:28px; height:14px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); border: 1px solid var(--border-06) }
+.legendSwatch { width:28px; height:14px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); border: 1px solid var(--border-06); opacity: var(--legend-opacity, 1) }
 .legendLabel { font-size:0.85rem; color: var(--white-78) }
 

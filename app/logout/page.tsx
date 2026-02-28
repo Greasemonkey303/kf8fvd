@@ -16,7 +16,7 @@ export default function LogoutPage() {
   }, [router]);
 
   return (
-    <main style={{padding:'2rem'}}>
+    <main className="page-pad">
       <h1>Signed Out</h1>
       <p>You have been signed out. Redirecting to home…</p>
     </main>
