@@ -43,6 +43,18 @@
   margin-bottom: 1rem;
 }
 
+/* summary / intro box */
+.summary { display:flex; gap:16px; align-items:center; justify-content:space-between; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding: 12px 14px; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 6px 18px rgba(2,6,23,0.28); }
+.summary h2 { margin: 0; font-size: 1.15rem; color: var(--color-link); }
+.summaryText { margin: 0; color: rgba(255,255,255,0.9); font-size: 0.98rem; }
+.ctaBtn { display:inline-block; background: var(--color-link); color: #fff; padding: 8px 12px; border-radius:8px; text-decoration:none; font-weight:700; box-shadow: 0 6px 18px rgba(2,6,23,0.25); }
+
+/* specs box */
+.specBox { background: rgba(255,255,255,0.02); padding: 10px; border-radius:8px; margin: 0.6rem 0; box-shadow: 0 6px 14px rgba(2,6,23,0.18); }
+.specBox h4 { margin: 0 0 6px 0; color: var(--color-link); }
+.specBox ul { margin: 0; padding-left: 1rem; }
+
+
 .copy p { margin: 0 0 0.85rem 0; }
 .copy ul { margin: 0 0 0.75rem 1.25rem; }
 .copy li { margin: 0.5rem 0; }
@@ -78,6 +90,15 @@
 
 /* small hint under images */
 .imgHint { font-size: 0.92rem; color: rgba(255,255,255,0.82); text-align: center; margin: 0.6rem auto 0; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 8px; width: fit-content; }
+
+/* stronger headings and spacing */
+.aboutCard > h3 { font-size: 1.6rem; line-height: 1.05; }
+.aboutCard > p { font-size: 1.05rem; color: rgba(255,255,255,0.92); margin-top: -0.25rem; }
+
+@media (min-width: 900px) {
+  .summary h2 { font-size: 1.25rem }
+}
+
 
 @media (min-width: 900px) {
   .topo { grid-template-columns: 420px 1fr; gap: 1.5rem; }

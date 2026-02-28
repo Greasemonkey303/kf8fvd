@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import styles from './about.module.css'
 import { Card } from '@/components'
 import dynamic from 'next/dynamic'
@@ -13,8 +14,15 @@ export default function About() {
   return (
     <main className={styles.about}>
       <div className={styles.wrapper}>
+        <div className={styles.summary} role="region" aria-labelledby="about-summary-title">
+          <h2 id="about-summary-title">Hi — I’m Zachary (KF8FVD)</h2>
+          <p className={styles.summaryText}>Technician-class ham operator in Kentwood, MI — radio, digital modes, and maker projects.</p>
+          <div>
+            <Link href="/contactme" className={styles.ctaBtn}>Contact Me</Link>
+          </div>
+        </div>
         <h1 id="about-title" className={styles.visuallyHidden}>About Me</h1>
-        <Card title="About Me" subtitle="KF8FVD" className={styles.aboutCard}>
+        <Card id="about-card" title="About Me" subtitle="KF8FVD" className={styles.aboutCard} ariaLabel="About Zachary KF8FVD">
           <div className={styles.content}>
               <Image src="/headshot.jpg" alt="Zachary (KF8FVD)" width={180} height={180} className={styles.avatar} priority />
             <div className={styles.copy}>
@@ -69,10 +77,10 @@ export default function About() {
             </div>
           </div>
         </Card>
-        <Card title="Home Topology" subtitle="Hidden Lakes Apartments, Kentwood" className={styles.aboutCard}>
+        <Card id="topology-card" title="Home Topology" subtitle="Hidden Lakes Apartments, Kentwood" className={styles.aboutCard} ariaLabel="Home topology and neighborhood details">
           <div className={styles.topo}>
             <div className={styles.topoImage} onClick={() => setOpen('/apts.jpg')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen('/apts.jpg') }}>
-              <Image src="/apts.jpg" alt="Hidden Lakes Apartments - Kentwood" width={1200} height={700} className={styles.topoImg} />
+              <Image src="/apts.jpg" alt="Hidden Lakes Apartments - Kentwood" width={1200} height={700} className={styles.topoImg} loading="lazy" />
               <div className={styles.imgHint} aria-hidden>Click image to view full screen</div>
             </div>
             <div className={styles.topoCopy}>
@@ -106,10 +114,10 @@ export default function About() {
             </div>
           </div>
         </Card>
-        <Card title="Ham Shack" subtitle="Home Radio & Workshop" className={styles.aboutCard}>
+        <Card id="hamshack-card" title="Ham Shack" subtitle="Home Radio & Workshop" className={styles.aboutCard} ariaLabel="Ham shack equipment and specs">
           <div className={styles.topo}>
             <div className={styles.topoImage} onClick={() => setOpen('/hamshack.jpg')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen('/hamshack.jpg') }}>
-              <Image src="/hamshack.jpg" alt="Ham Shack and workshop" width={1200} height={700} className={styles.topoImg} />
+              <Image src="/hamshack.jpg" alt="Ham Shack and workshop" width={1200} height={700} className={styles.topoImg} loading="lazy" />
               <div className={styles.imgHint} aria-hidden>Click image to view full screen</div>
             </div>
             <div className={styles.topoCopy}>
@@ -132,10 +140,16 @@ export default function About() {
                 minimize RF interference and allow quick changes during testing.
               </p>
 
+              <div className={styles.specBox}>
+                <h4>Quick Specs</h4>
+                <ul>
+                  <li><strong>Printer:</strong> Bambu Lab X1-C Carbon</li>
+                  <li><strong>Rack:</strong> Small network rack under bench (switch, Pi services)</li>
+                  <li><strong>Under TV:</strong> Creality SpacePi X4; climate-controlled cabinet for filament</li>
+                  <li><strong>Primary:</strong> Radios, hotspots, antenna tuner</li>
+                </ul>
+              </div>
               <ul>
-                <li>Bambu Lab X1-C Carbon for 3D-printed parts and prototyping.</li>
-                <li>Small network rack under the bench with switch and Pi-based services.</li>
-                <li>Under the TV: a Creality SpacePi X4 and a climate-controlled cabinet for filament storage.</li>
                 <li>Dedicated bench for radio gear, hotspots, and tuning.</li>
                 <li>Good ventilation and clearance for antenna experiments and printer use.</li>
               </ul>
