@@ -69,12 +69,34 @@ export default function Contact() {
   async function confirmSend(){
     setConfirmOpen(false)
     setLoading(true)
-    // simulate client-side send; replace with real POST to /api/contact later
-    await new Promise((r)=> setTimeout(r, 1000))
-    setLoading(false)
-    setSuccess(true)
-    // clear form
-    setName(''); setEmail(''); setMessage(''); setFiles([])
+    try {
+      const fd = new FormData()
+      fd.append('name', name)
+      fd.append('email', email)
+      fd.append('message', message)
+      files.forEach((f, i) => fd.append(`file-${i}`, f))
+
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        body: fd
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        console.error('API /api/contact error', data)
+        const msg = data?.details || data?.error || 'Send failed'
+        throw new Error(msg)
+      }
+
+      setSuccess(true)
+      // clear form
+      setName(''); setEmail(''); setMessage(''); setFiles([])
+    } catch (err) {
+      console.error('contact send error', err)
+      setErrors(prev => ({ ...prev, _global: (err as any)?.message || 'Send failed' }))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
