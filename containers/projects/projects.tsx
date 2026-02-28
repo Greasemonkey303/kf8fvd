@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import styles from './projects.module.css'
 import { Card } from '@/components'
-import ImageModal from '@/components/modal/ImageModal'
+import { ImageModal } from '@/components'
 
 export default function Projects() {
   const [open, setOpen] = useState<string | null>(null)

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import ImageModal from '@/components/modal/ImageModal'
+import { ImageModal } from '@/components'
 import styles from '../../app/credentials/credentials.module.css'
 
 export default function SatelliteCard(){

@@ -1,7 +1,7 @@
 import React from 'react'
 import styles from './dx.module.css'
 import { Card } from '@/components'
-import ContactMap from '@/components/map/ContactMap'
+import { ContactMap } from '@/components'
 
 export default function DX() {
   return (

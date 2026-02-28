@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Navbar } from "@/components";
+import { Navbar, BackButton } from "@/components";
 import { Footer } from "@/containers";
 import '../styles/app.css'
 import '../styles/global.css'
@@ -57,6 +57,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <a href="#main" className="skip">Skip to content</a>
         <Navbar />
+        <BackButton />
         {children}
         <Footer />
       </body>

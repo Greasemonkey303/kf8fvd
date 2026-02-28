@@ -1,12 +1,7 @@
 import React from 'react'
 import { Card } from '@/components'
 import styles from './credentials.module.css'
-import LicenseCard from '@/components/credentials/LicenseCard'
-import EcomCard from '@/components/credentials/EcomCard'
-import FemaCard from '@/components/credentials/FemaCard'
-import Is700Card from '@/components/credentials/Is700Card'
-import HFMasterCard from '@/components/credentials/HFMasterCard'
-import SatelliteCard from '@/components/credentials/SatelliteCard'
+import { LicenseCard, EcomCard, FemaCard, Is700Card, HFMasterCard, SatelliteCard } from '@/components'
 
 export const metadata = {
   title: 'Credentials - KF8FVD',

@@ -1,0 +1,18 @@
+.backBtn {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  background: var(--overlay);
+  color: var(--white-100);
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  box-shadow: var(--shadow-18);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  cursor: pointer;
+  z-index: 1200;
+}
+
+.backBtn:hover {
+  transform: translateY(-1px);
+}

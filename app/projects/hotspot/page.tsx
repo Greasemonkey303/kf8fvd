@@ -1,7 +1,7 @@
 import React from 'react'
 import { Card } from '@/components'
 import styles from './hotspot.module.css'
-import HotspotGallery from '@/components/projects/HotspotGallery'
+import { HotspotGallery } from '@/components'
 
 export default function Page(){
   return (
