@@ -1,9 +1,15 @@
-import React from 'react'
+"use client"
+
+import React, { useState } from 'react'
 import Image from 'next/image'
 import styles from './about.module.css'
 import { Card } from '@/components'
+import dynamic from 'next/dynamic'
+const ImageModal = dynamic(() => import('@/components/modal/ImageModal'), { ssr: false })
 
 export default function About() {
+  const [open, setOpen] = useState<string | null>(null)
+
   return (
     <main className={styles.about}>
       <div className={styles.wrapper}>
@@ -63,7 +69,81 @@ export default function About() {
             </div>
           </div>
         </Card>
+        <Card title="Home Topology" subtitle="Hidden Lakes Apartments, Kentwood" className={styles.aboutCard}>
+          <div className={styles.topo}>
+            <div className={styles.topoImage} onClick={() => setOpen('/apts.jpg')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen('/apts.jpg') }}>
+              <Image src="/apts.jpg" alt="Hidden Lakes Apartments - Kentwood" width={1200} height={700} className={styles.topoImg} />
+              <div className={styles.imgHint} aria-hidden>Click image to view full screen</div>
+            </div>
+            <div className={styles.topoCopy}>
+              <p className={styles.lead}>
+                Home base: Hidden Lakes Apartments in Kentwood, Michigan — a comfortable suburban
+                neighborhood just southeast of downtown Grand Rapids.
+              </p>
+
+              <p>
+                The complex sits in a mixed residential and light-commercial area with mature trees,
+                moderate building heights, and generally good line-of-sight toward the northwest
+                where downtown Grand Rapids rises. Streets are laid out in a predictable grid and
+                the immediate area provides convenient access to local services, grocery stores,
+                and several parks.
+              </p>
+
+              <p>
+                From an amateur radio perspective, the surroundings are typical suburban terrain —
+                low- to mid-rise buildings, tree cover that can affect VHF/UHF in dense foliage,
+                but generally friendly for handhelds and rooftop antennas with modest elevation.
+                Nearby repeater coverage is strong toward downtown and higher elevations just
+                beyond the city.
+              </p>
+
+              <ul>
+                <li>Approx. 6–10 minute drive to central Grand Rapids for urban services.</li>
+                <li>Several small parks and green corridors within walking distance.</li>
+                <li>Easy access to major roads for quick travel to area repeaters and contest sites.</li>
+                <li>Suburban tree cover may require higher mounting for reliable HF/VHF line-of-sight.</li>
+              </ul>
+            </div>
+          </div>
+        </Card>
+        <Card title="Ham Shack" subtitle="Home Radio & Workshop" className={styles.aboutCard}>
+          <div className={styles.topo}>
+            <div className={styles.topoImage} onClick={() => setOpen('/hamshack.jpg')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen('/hamshack.jpg') }}>
+              <Image src="/hamshack.jpg" alt="Ham Shack and workshop" width={1200} height={700} className={styles.topoImg} />
+              <div className={styles.imgHint} aria-hidden>Click image to view full screen</div>
+            </div>
+            <div className={styles.topoCopy}>
+              <p className={styles.lead}>
+                My ham shack and workshop: a compact, well-organized space for radio, digital
+                experimentation, and light fabrication.
+              </p>
+
+              <p>
+                The primary bench hosts radios, hotspots, and a modest antenna tuner setup. My
+                Bambu Lab X1-C Carbon 3D printer lives in the same area and is used for rapid
+                prototyping of mounts, enclosures, and small mechanical parts. The system is
+                integrated with my home network and printing workflow for easy remote prints.
+              </p>
+
+              <p>
+                Network and core services are housed in a small rack located under the bench —
+                this rack contains a switch, power distribution, and several Raspberry Pi devices
+                used for hotspots and server-side tooling. Cable management is kept tidy to
+                minimize RF interference and allow quick changes during testing.
+              </p>
+
+              <ul>
+                <li>Bambu Lab X1-C Carbon for 3D-printed parts and prototyping.</li>
+                <li>Small network rack under the bench with switch and Pi-based services.</li>
+                <li>Under the TV: a Creality SpacePi X4 and a climate-controlled cabinet for filament storage.</li>
+                <li>Dedicated bench for radio gear, hotspots, and tuning.</li>
+                <li>Good ventilation and clearance for antenna experiments and printer use.</li>
+              </ul>
+            </div>
+          </div>
+        </Card>
       </div>
+      <ImageModal src={open} alt="" onClose={() => setOpen(null)} />
     </main>
   )
 }

@@ -63,6 +63,33 @@
   .copy { text-align: left; }
 }
 
+/* Home topology section */
+.topo { display: grid; grid-template-columns: 1fr; gap: 1rem; align-items: start; margin-top: 1rem; }
+.topoImage { border-radius: 10px; overflow: hidden; box-shadow: 0 8px 28px rgba(2,6,23,0.45); }
+.topoImg { width: 100%; height: auto; display: block; object-fit: cover; }
+.topoCopy { color: rgba(255,255,255,0.94); font-family: var(--font-serif), var(--font-sans); line-height: 1.6; }
+.topoCopy p { margin-bottom: 0.8rem; }
+.topoCopy ul { margin-left: 1.25rem; }
+
+/* clickable image affordance */
+.topoImage { cursor: pointer; transition: transform .22s ease, box-shadow .22s ease; }
+.topoImage:focus { outline: 3px solid rgba(59,130,246,0.24); outline-offset: 3px; }
+.topoImage:hover { transform: translateY(-4px); box-shadow: 0 14px 36px rgba(2,6,23,0.5); }
+
+/* small hint under images */
+.imgHint { font-size: 0.92rem; color: rgba(255,255,255,0.82); text-align: center; margin: 0.6rem auto 0; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 8px; width: fit-content; }
+
+@media (min-width: 900px) {
+  .topo { grid-template-columns: 420px 1fr; gap: 1.5rem; }
+  .topoImage { height: 280px; }
+  .topoImg { height: 100%; width: 100%; object-fit: cover; }
+}
+
+@media (min-width: 720px) and (max-width: 899px) {
+  .topo { grid-template-columns: 320px 1fr; }
+  .topoImage { height: 220px; }
+}
+
 /* Larger header styles for About page Card */
 .aboutCard > h3 { font-size: 1.6rem; line-height: 1.05; }
 .aboutCard > p { font-size: 1.1rem; color: rgba(255,255,255,0.9); margin-top: -0.25rem; }
