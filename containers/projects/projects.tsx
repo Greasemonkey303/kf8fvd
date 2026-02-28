@@ -31,7 +31,7 @@ export default function Projects() {
         </Card>
       </div>
 
-      <ImageModal src={open} alt="Hotspot full" onClose={() => setOpen(null)} />
+      {open && <ImageModal src={open} alt="Hotspot full" onClose={() => setOpen(null)} />}
     </main>
   )
 }

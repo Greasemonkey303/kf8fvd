@@ -64,6 +64,10 @@ export default function ContactMap(){
   const [modeFilters, setModeFilters] = useState<{[k:string]:boolean}>({ FM:true, DSTAR:true, DMR:true, OTHER:true });
   const [isMobile, setIsMobile] = useState(false);
 
+  function getCssVar(name: string, fallback = '') {
+    try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback; } catch(e) { return fallback; }
+  }
+
   useEffect(()=>{
     let mounted = true;
     const onResize = ()=> setIsMobile(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
@@ -197,7 +201,10 @@ export default function ContactMap(){
         });
         if (!include) continue;
         const modes = Array.from(new Set(groupEntries.map((x:any)=> (x.mode||'').toString()))).filter(Boolean);
-        const color = modes.map(m=>m.toUpperCase()).includes('FM')? '#16a34a' : (modes.map(m=>m.toUpperCase()).includes('DSTAR')? '#60a5fa' : '#94a3b8');
+        const fm = getCssVar('--color-success', '#16a34a');
+        const dstar = getCssVar('--color-accent-1', '#60a5fa');
+        const otherCol = '#94a3b8';
+        const color = modes.map(m=>m.toUpperCase()).includes('FM') ? fm : (modes.map(m=>m.toUpperCase()).includes('DSTAR') ? dstar : otherCol);
         const m = L.circleMarker([g.lat, g.lon], { radius:8, color:'#fff', weight:1, fillColor: color, fillOpacity:0.95 });
         const popup = `<div><strong>${k}</strong><br/>${groupEntries.slice(0,6).map((x:any)=>x.call||'').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
         m.bindPopup(popup);
@@ -226,15 +233,15 @@ export default function ContactMap(){
       <div ref={ref} style={{ width:'100%', height:'100%' }} />
 
       {/* Collapsed controls: filter button (top-right) and legend button (bottom-right) */}
-      <button aria-label="Open filters" onClick={()=> setShowSliderPanel(true)} style={{ position:'absolute', right:12, top:12, zIndex:1100, background:'rgba(0,0,0,0.6)', color:'#fff', border:'none', padding:'8px 10px', borderRadius:8, cursor:'pointer' }}>Filters</button>
+      <button aria-label="Open filters" onClick={()=> setShowSliderPanel(true)} style={{ position:'absolute', right:12, top:12, zIndex:1100, background:'var(--overlay)', color:'var(--white-100)', border:'none', padding:'8px 10px', borderRadius:8, cursor:'pointer' }}>Filters</button>
 
       {showSliderPanel && (
         <>
         <div onClick={()=> { if (isMobile) { setShowSliderPanel(false) } }} style={{ position:'fixed', inset:0, zIndex:1190, display: showSliderPanel ? 'block' : 'none', background:'transparent' }} />
-        <div role="dialog" aria-label="Filter panel" style={{ position:'absolute', right:isMobile?0:12, top:isMobile?0:56, zIndex:1200, width:isMobile? '100vw' : 320, maxWidth:'95vw', height:isMobile? 'auto' : undefined, background:'rgba(0,0,0,0.95)', padding:14, borderRadius:isMobile?0:10, color:'#fff' }}>
+        <div role="dialog" aria-label="Filter panel" style={{ position:'absolute', right:isMobile?0:12, top:isMobile?0:56, zIndex:1200, width:isMobile? '100vw' : 320, maxWidth:'95vw', height:isMobile? 'auto' : undefined, background:'var(--nav-mobile-bg)', padding:14, borderRadius:isMobile?0:10, color:'var(--white-100)' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
             <div style={{ fontWeight:800 }}>Filters</div>
-            <button aria-label="Close filters" onClick={()=> setShowSliderPanel(false)} style={{ background:'transparent', border:'none', color:'#fff', fontSize:16, cursor:'pointer' }}>✕</button>
+            <button aria-label="Close filters" onClick={()=> setShowSliderPanel(false)} style={{ background:'transparent', border:'none', color:'var(--white-100)', fontSize:16, cursor:'pointer' }}>✕</button>
           </div>
 
           <div style={{ marginBottom:8 }}>
@@ -267,27 +274,27 @@ export default function ContactMap(){
         </>
       )}
 
-      <button aria-label="Open legend" onClick={()=> setShowLegendPanel(true)} style={{ position:'absolute', right:12, bottom:12, zIndex:1100, background:'rgba(0,0,0,0.6)', color:'#fff', border:'none', padding:isMobile? '12px 14px' : '8px 10px', borderRadius:8, cursor:'pointer' }}>Key</button>
+      <button aria-label="Open legend" onClick={()=> setShowLegendPanel(true)} style={{ position:'absolute', right:12, bottom:12, zIndex:1100, background:'var(--overlay)', color:'var(--white-100)', border:'none', padding:isMobile? '12px 14px' : '8px 10px', borderRadius:8, cursor:'pointer' }}>Key</button>
 
       {showLegendPanel && (
         <>
         <div onClick={()=> { if (isMobile) setShowLegendPanel(false) }} style={{ position:'fixed', inset:0, zIndex:1190, display: showLegendPanel ? 'block' : 'none', background:'transparent' }} />
-        <div role="dialog" aria-label="Legend" style={{ position:'absolute', right:isMobile?0:12, bottom:isMobile?0:64, zIndex:1200, width:isMobile? '100vw' : 260, maxWidth:'95vw', background:'rgba(0,0,0,0.95)', padding:14, borderRadius:isMobile?0:10, color:'#fff' }}>
+        <div role="dialog" aria-label="Legend" style={{ position:'absolute', right:isMobile?0:12, bottom:isMobile?0:64, zIndex:1200, width:isMobile? '100vw' : 260, maxWidth:'95vw', background:'var(--nav-mobile-bg)', padding:14, borderRadius:isMobile?0:10, color:'var(--white-100)' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
             <div style={{ fontWeight:800 }}>Modes</div>
-            <button aria-label="Close legend" onClick={()=> setShowLegendPanel(false)} style={{ background:'transparent', border:'none', color:'#fff', fontSize:16, cursor:'pointer' }}>✕</button>
+            <button aria-label="Close legend" onClick={()=> setShowLegendPanel(false)} style={{ background:'transparent', border:'none', color:'var(--white-100)', fontSize:16, cursor:'pointer' }}>✕</button>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:'#16a34a' }}></span><div style={{fontSize:16}}>FM</div></div>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:'#60a5fa' }}></span><div style={{fontSize:16}}>DSTAR</div></div>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:'#f97316' }}></span><div style={{fontSize:16}}>DMR / Other</div></div>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:getCssVar('--color-success','#16a34a') }}></span><div style={{fontSize:16}}>FM</div></div>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:getCssVar('--color-accent-1','#60a5fa') }}></span><div style={{fontSize:16}}>DSTAR</div></div>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}><span style={{ width:18, height:18, borderRadius:8, display:'inline-block', background:getCssVar('--color-accent-4','#f97316') }}></span><div style={{fontSize:16}}>DMR / Other</div></div>
           </div>
         </div>
         </>
       )}
 
       {loading && (
-        <div style={{ position:'absolute', left:12, top:96, padding:'8px 12px', background:'rgba(0,0,0,0.7)', borderRadius:8, color:'#fff', fontWeight:700 }}>{status || 'Loading map…'}</div>
+        <div style={{ position:'absolute', left:12, top:96, padding:'8px 12px', background:'var(--overlay)', borderRadius:8, color:'var(--white-100)', fontWeight:700 }}>{status || 'Loading map…'}</div>
       )}
     </div>
   )

@@ -12,13 +12,13 @@
   height: 140px;
   object-fit: cover;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 6px 18px rgba(2,6,23,0.35);
+  border: 1px solid var(--border-06);
+  box-shadow: 0 6px 18px var(--shadow-35);
   position: static;
   margin: 0 auto 0.75rem auto;
 }
 .copy {
-  color: rgba(255,255,255,0.92);
+  color: var(--white-92);
   font-family: var(--font-serif), var(--font-sans);
   line-height: 1.6;
 }
@@ -44,16 +44,16 @@
 }
 
 /* summary / intro box */
-.summary { display:flex; gap:16px; align-items:center; justify-content:space-between; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding: 12px 14px; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 6px 18px rgba(2,6,23,0.28); }
+.summary { display:flex; gap:16px; align-items:center; justify-content:space-between; background: linear-gradient(180deg, var(--white-03), var(--white-01)); padding: 12px 14px; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 6px 18px var(--shadow-28); }
 .summary h2 { margin: 0; font-size: 1.15rem; color: var(--color-link); }
-.summaryText { margin: 0; color: rgba(255,255,255,0.9); font-size: 0.98rem; }
-.ctaBtn { display:inline-block; background: var(--color-link); color: #fff; padding: 8px 12px; border-radius:8px; text-decoration:none; font-weight:700; box-shadow: 0 6px 18px rgba(2,6,23,0.25); }
+.summaryText { margin: 0; color: var(--white-90); font-size: 0.98rem; }
+.ctaBtn { display:inline-block; background: var(--color-link); color: var(--white-100); padding: 8px 12px; border-radius:8px; text-decoration:none; font-weight:700; box-shadow: 0 6px 18px var(--shadow-25); }
 
 /* specs box */
-.specBox { background: rgba(255,255,255,0.02); padding: 10px; border-radius:8px; margin: 0.6rem 0; box-shadow: 0 6px 14px rgba(2,6,23,0.18); }
+.specBox { background: var(--white-02); padding: 10px; border-radius:8px; margin: 0.6rem 0; box-shadow: 0 6px 14px var(--shadow-18); }
 .specBox h4 { margin: 0 0 6px 0; color: var(--color-link); }
 .specBox ul { margin: 0; padding-left: 1rem; }
-.specLabel { font-weight: 700; margin-right: 6px; color: rgba(255,255,255,0.95); }
+.specLabel { font-weight: 700; margin-right: 6px; color: var(--white-95); }
 
 
 .copy p { margin: 0 0 0.85rem 0; }
@@ -78,23 +78,23 @@
 
 /* Home topology section */
 .topo { display: grid; grid-template-columns: 1fr; gap: 1rem; align-items: start; margin-top: 1rem; }
-.topoImage { border-radius: 10px; overflow: hidden; box-shadow: 0 8px 28px rgba(2,6,23,0.45); }
+.topoImage { border-radius: 10px; overflow: hidden; box-shadow: 0 8px 28px var(--shadow-45); }
 .topoImg { width: 100%; height: auto; display: block; object-fit: cover; }
-.topoCopy { color: rgba(255,255,255,0.94); font-family: var(--font-serif), var(--font-sans); line-height: 1.6; }
+.topoCopy { color: var(--white-95); font-family: var(--font-serif), var(--font-sans); line-height: 1.6; }
 .topoCopy p { margin-bottom: 0.8rem; }
 .topoCopy ul { margin-left: 1.25rem; }
 
 /* clickable image affordance */
 .topoImage { cursor: pointer; transition: transform .22s ease, box-shadow .22s ease; }
-.topoImage:focus { outline: 3px solid rgba(59,130,246,0.24); outline-offset: 3px; }
-.topoImage:hover { transform: translateY(-4px); box-shadow: 0 14px 36px rgba(2,6,23,0.5); }
+.topoImage:focus { outline: 3px solid var(--focus-outline); outline-offset: 3px; }
+.topoImage:hover { transform: translateY(-4px); box-shadow: 0 14px 36px var(--shadow-45); }
 
 /* small hint under images */
-.imgHint { font-size: 0.92rem; color: rgba(255,255,255,0.82); text-align: center; margin: 0.6rem auto 0; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 8px; width: fit-content; }
+.imgHint { font-size: 0.92rem; color: var(--white-85); text-align: center; margin: 0.6rem auto 0; background: var(--white-02); padding: 6px 10px; border-radius: 8px; width: fit-content; }
 
 /* stronger headings and spacing */
 .aboutCard > h3 { font-size: 1.6rem; line-height: 1.05; }
-.aboutCard > p { font-size: 1.05rem; color: rgba(255,255,255,0.92); margin-top: -0.25rem; }
+.aboutCard > p { font-size: 1.05rem; color: var(--white-92); margin-top: -0.25rem; }
 
 @media (min-width: 900px) {
   .summary h2 { font-size: 1.25rem }

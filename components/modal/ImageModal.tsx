@@ -11,19 +11,9 @@ type Props = {
 }
 
 export default function ImageModal({ src, alt = '', onClose }: Props) {
-  if (!src) return null
-  const node = (typeof document !== 'undefined') ? document.body : null
-  const modal = (
-    <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true">
-      <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
-        <button className={styles.close} onClick={onClose} aria-label="Close image">✕</button>
-        <img src={src} alt={alt} className={styles.image} />
-      </div>
-    </div>
-  )
-
   const closeRef = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
+    if (!src) return
     const prev = document.activeElement as HTMLElement | null
     // focus close button
     const btn = document.querySelector(`.${styles.close}`) as HTMLButtonElement | null
@@ -63,7 +53,18 @@ export default function ImageModal({ src, alt = '', onClose }: Props) {
       try { doc.style.overflow = prevOverflow || '' } catch(e) {}
       if (prev && typeof prev.focus === 'function') prev.focus()
     }
-  }, [onClose])
+  }, [onClose, src])
+
+  if (!src) return null
+  const node = (typeof document !== 'undefined') ? document.body : null
+  const modal = (
+    <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
+        <button className={styles.close} onClick={onClose} aria-label="Close image">✕</button>
+        <img src={src} alt={alt} className={styles.image} />
+      </div>
+    </div>
+  )
 
   if (node) return createPortal(modal, node)
   return modal

@@ -41,7 +41,7 @@ export default function SatelliteCard(){
         </div>
       </div>
 
-      <ImageModal src={open} alt="Satellite & Space preview" onClose={() => setOpen(null)} />
+      {open && <ImageModal src={open} alt="Satellite & Space preview" onClose={() => setOpen(null)} />}
     </div>
   )
 }

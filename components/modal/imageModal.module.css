@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(2,6,23,0.6);
+  background: var(--overlay);
   backdrop-filter: blur(4px) saturate(120%);
   z-index: 200;
   padding: 1rem;
@@ -14,11 +14,11 @@
   border: 1px solid rgba(96,165,250,0.12);
   padding: 0.75rem;
   border-radius: 12px;
-  color: #fff;
+  color: var(--white-100);
   max-width: 92vw;
   width: auto;
   max-height: 92vh;
-  box-shadow: 0 30px 90px rgba(2,6,23,0.6);
+  box-shadow: 0 30px 90px var(--shadow-60);
   position: relative;
   display: flex;
   align-items: center;
@@ -35,7 +35,7 @@
   height: 6px;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
-  background: linear-gradient(90deg, #60a5fa, #a78bfa, #34d399);
+  background: linear-gradient(90deg, var(--color-accent-1), var(--color-accent-2), var(--color-accent-3));
   opacity: 0.95;
 }
 .image {
@@ -46,13 +46,13 @@
   border-radius: 8px;
   margin: 0 auto;
   object-fit: contain;
-  box-shadow: 0 10px 40px rgba(2,6,23,0.6);
+  box-shadow: 0 10px 40px var(--shadow-60);
 }
 .close {
   position: absolute;
   right: 12px;
   top: 10px;
-  background: #ffffff;
+  background: var(--white-100);
   border: none;
   color: #000000; /* black X for higher contrast */
   font-size: 20px;
@@ -60,7 +60,7 @@
   padding: 6px 8px;
   border-radius: 999px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(2,6,23,0.16);
+  box-shadow: 0 4px 12px var(--shadow-18);
 }
 
 @keyframes modalPop {

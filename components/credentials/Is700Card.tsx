@@ -41,7 +41,7 @@ export default function Is700Card(){
         </div>
       </div>
 
-      <ImageModal src={open} alt="FEMA IS-700.B preview" onClose={() => setOpen(null)} />
+      {open && <ImageModal src={open} alt="FEMA IS-700.B preview" onClose={() => setOpen(null)} />}
     </div>
   )
 }

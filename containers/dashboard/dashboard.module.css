@@ -8,19 +8,19 @@
 }
 .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
 .smallCard { padding: .5rem; }
-.highlightCard { box-shadow: 0 8px 30px rgba(12,14,20,0.45); border-radius: 12px; transform: translateY(-2px); }
+.highlightCard { box-shadow: 0 8px 30px var(--shadow-45); border-radius: 12px; transform: translateY(-2px); }
 .liveInner { display:flex; gap: 0.75rem; align-items:center; justify-content:space-between; }
 .clock { display:flex; flex-direction:column; align-items:flex-start; }
 .callsign { font-weight:900; font-size:1.05rem; color:var(--color-link); }
 .time { font-size:1.25rem; font-weight:700; }
-.utc { font-size:0.95rem; color: rgba(255,255,255,0.85); margin-top:2px }
-.tz { font-size:0.9rem; color: rgba(255,255,255,0.85); }
+.utc { font-size:0.95rem; color: var(--white-85); margin-top:2px }
+.tz { font-size:0.9rem; color: var(--white-85); }
 
 .citiesGrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top:10px; width:100%; align-items:stretch }
-.cityItem { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:10px 12px; border-radius:10px; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; min-height:44px }
-.cityName { font-size:0.8rem; font-weight:800; color: rgba(255,255,255,0.94); }
+.cityItem { background: linear-gradient(180deg, var(--white-03), var(--white-01)); padding:10px 12px; border-radius:10px; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; min-height:44px }
+.cityName { font-size:0.8rem; font-weight:800; color: var(--white-95); }
 .cityTime { font-size:1.02rem; font-weight:900; color: var(--color-link); }
-.cityTz { font-size:0.75rem; color: rgba(255,255,255,0.66); margin-left:8px }
+.cityTz { font-size:0.75rem; color: var(--white-66); margin-left:8px }
 
 @media (min-width: 720px) {
   .citiesGrid { grid-template-columns: repeat(4, minmax(0,1fr)); }
@@ -34,49 +34,49 @@
 
 /* City item hover + time animation */
 .cityItem { transition: transform 180ms ease, box-shadow 180ms ease; will-change: transform }
-.cityItem:hover { transform: translateY(-6px); box-shadow: 0 14px 36px rgba(2,6,23,0.28); }
+.cityItem:hover { transform: translateY(-6px); box-shadow: 0 14px 36px var(--shadow-28); }
 .cityTime { transition: transform 220ms cubic-bezier(.2,.9,.2,1), color 180ms ease; display:inline-block }
-.cityItem:hover .cityTime { transform: translateX(8px) scale(1.02); color: #fff; }
+.cityItem:hover .cityTime { transform: translateX(8px) scale(1.02); color: var(--white-100); }
 .cityName { transition: color 160ms ease }
-.cityItem:hover .cityName { color: #fff }
+.cityItem:hover .cityName { color: var(--white-100) }
 .badge { padding:6px 10px; border-radius:10px; font-weight:700; }
-.on { background: linear-gradient(90deg,#16a34a,#86efac); color: #042017; }
+.on { background: linear-gradient(90deg,var(--color-accent-3),#86efac); color: #042017; }
 .off { background: linear-gradient(90deg,#64748b,#94a3b8); color: #071023; }
 
 .prop { display:flex; flex-direction:column; gap:0.5rem; align-items:flex-start }
 .propValues { display:flex; gap:1rem; align-items:center }
 .propItem { display:flex; flex-direction:column; gap:4px; align-items:center }
-.propLabel { font-size:.85rem; color: rgba(255,255,255,0.8); text-transform:uppercase }
+.propLabel { font-size:.85rem; color: var(--white-85); text-transform:uppercase }
 .propValue { font-size:1.2rem; font-weight:900 }
-.propRecommend { font-size:0.92rem; color: rgba(255,255,255,0.92); padding-top:4px }
-.propNote { font-size:0.82rem; color: rgba(255,255,255,0.66); margin-top:6px }
+.propRecommend { font-size:0.92rem; color: var(--white-92); padding-top:4px }
+.propNote { font-size:0.82rem; color: var(--white-66); margin-top:6px }
 
-.qsoList { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; color: rgba(255,255,255,0.92)}
+.qsoList { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; color: var(--white-92)}
 
-.qsoItem { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:10px; background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02)); box-shadow: 0 4px 14px rgba(2,6,23,0.25); transition: transform .12s ease, box-shadow .12s ease; }
-.qsoItem:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(2,6,23,0.35); }
-.qsoText { font-weight:700; color: #fff; font-size:0.95rem; }
+.qsoItem { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:10px; background: linear-gradient(90deg, var(--white-03), var(--white-02)); box-shadow: 0 4px 14px var(--shadow-25); transition: transform .12s ease, box-shadow .12s ease; }
+.qsoItem:hover { transform: translateY(-4px); box-shadow: 0 10px 30px var(--shadow-35); }
+.qsoText { font-weight:700; color: var(--white-100); font-size:0.95rem; }
 
-.qsoLocation { font-size:0.8rem; color: rgba(255,255,255,0.7); margin-left:12px }
+.qsoLocation { font-size:0.8rem; color: var(--white-66); margin-left:12px }
 
 /* make the qso list scroll when long */
 .qsoList { max-height: 340px; overflow: auto; padding-right:6px; }
 
-.qsoItem::before { content: ''; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:10px; background: linear-gradient(180deg,#60a5fa,#a78bfa); opacity:0.95 }
+.qsoItem::before { content: ''; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:10px; background: linear-gradient(180deg,var(--color-accent-1),var(--color-accent-2)); opacity:0.95 }
 
 .heatmap { display:flex; flex-direction:column; gap:8px; }
-.heatHeader { display:flex; gap:8px; align-items:center; justify-content:center; color: rgba(255,255,255,0.85) }
+.heatHeader { display:flex; gap:8px; align-items:center; justify-content:center; color: var(--white-85) }
 .heatHeader div { width:60px; }
 .heatRow { display:flex; gap:8px; align-items:center; }
 .bandLabel { width:60px; text-align:left; font-weight:700 }
-.heatCell { width:60px; height:20px; border-radius:6px; background: linear-gradient(90deg,#60a5fa,#a78bfa); }
+.heatCell { width:60px; height:20px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); }
 
 /* subtle card polish */
-.dashboard :global(.card) { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; box-shadow: 0 6px 18px rgba(2,6,23,0.22); }
+.dashboard :global(.card) { background: linear-gradient(180deg, var(--white-03), var(--white-01)); border-radius:12px; box-shadow: 0 6px 18px var(--shadow-25); }
 
 .eventList { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
 .equipGrid { display:flex; gap:8px; flex-direction:column }
-.equipCard { background: rgba(255,255,255,0.03); padding:8px; border-radius:8px; font-weight:700 }
+.equipCard { background: var(--white-03); padding:8px; border-radius:8px; font-weight:700 }
 
 @media (max-width: 920px) {
   .row { grid-template-columns: 1fr; }
@@ -90,7 +90,7 @@
 
 /* Large top Live card */
 .topLive { width:100%; display:block; margin: 0 auto 1rem auto; position:relative; z-index:40; padding: 8px }
-.largeCard { max-width: 1180px; margin: 0 auto; padding: 22px; box-shadow: 0 22px 48px rgba(2,6,23,0.45); border-radius:14px }
+.largeCard { max-width: 1180px; margin: 0 auto; padding: 22px; box-shadow: 0 22px 48px var(--shadow-45); border-radius:14px }
 .largeCard .time { font-size:2rem; }
 .largeCard .utc { font-size:1.05rem }
 .largeCard .callsign { font-size:1.25rem }
@@ -103,7 +103,7 @@
 
 /* make list scroll a bit nicer */
 .qsoList::-webkit-scrollbar { width: 8px }
-.qsoList::-webkit-scrollbar-thumb { background: linear-gradient(180deg,#a78bfa,#60a5fa); border-radius:8px }
+.qsoList::-webkit-scrollbar-thumb { background: linear-gradient(180deg,var(--color-accent-2),var(--color-accent-1)); border-radius:8px }
 
 @media (max-width: 920px) {
   .row { grid-template-columns: 1fr; }
@@ -113,12 +113,12 @@
 }
 
 /* Band Activity source label */
-.cardSource { text-align: right; font-size: 0.82rem; color: rgba(255,255,255,0.66); margin-top:8px; font-style:italic }
+.cardSource { text-align: right; font-size: 0.82rem; color: var(--white-66); margin-top:8px; font-style:italic }
 .cardSource { display:block }
 
 /* heatmap legend */
 .heatLegend { display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-top:8px }
 .legendItem { display:flex; gap:8px; align-items:center; }
-.legendSwatch { width:28px; height:14px; border-radius:6px; background: linear-gradient(90deg,#60a5fa,#a78bfa); border: 1px solid rgba(255,255,255,0.06) }
-.legendLabel { font-size:0.85rem; color: rgba(255,255,255,0.78) }
+.legendSwatch { width:28px; height:14px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); border: 1px solid var(--border-06) }
+.legendLabel { font-size:0.85rem; color: var(--white-78) }
 

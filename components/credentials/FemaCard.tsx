@@ -42,7 +42,7 @@ export default function FemaCard(){
         </div>
       </div>
 
-      <ImageModal src={open} alt="FEMA preview" onClose={() => setOpen(null)} />
+      {open && <ImageModal src={open} alt="FEMA preview" onClose={() => setOpen(null)} />}
     </div>
   )
 }

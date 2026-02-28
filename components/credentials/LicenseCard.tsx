@@ -42,7 +42,7 @@ export default function LicenseCard(){
         </div>
       </div>
 
-      <ImageModal src={open} alt="Station License" onClose={() => setOpen(null)} />
+      {open && <ImageModal src={open} alt="Station License" onClose={() => setOpen(null)} />}
     </div>
   )
 }

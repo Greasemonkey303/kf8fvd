@@ -6,9 +6,9 @@
 	height:80px;
 	overflow: hidden;
 	border-radius:8px;
-	border:1px solid rgba(255,255,255,0.06);
+	border:1px solid var(--border-06);
 	cursor:pointer;
-	box-shadow: 0 8px 20px rgba(2,6,23,0.25);
+	box-shadow: 0 8px 20px var(--shadow-25);
 }
 .thumb:focus { outline:2px solid var(--color-link); }
 
@@ -20,7 +20,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(2,6,23,0.75);
+	background: var(--overlay);
 	backdrop-filter: blur(4px) saturate(120%);
 	z-index: 2000;
 	padding: 1rem;
@@ -30,11 +30,11 @@
 	border: 1px solid rgba(96,165,250,0.12);
 	padding: 0.75rem;
 	border-radius: 12px;
-	color: #fff;
+	color: var(--white-100);
 	max-width: 92vw;
 	width: auto;
 	max-height: 92vh;
-	box-shadow: 0 30px 90px rgba(2,6,23,0.6);
+	box-shadow: 0 30px 90px var(--shadow-60);
 	position: relative;
 	display: flex;
 	align-items: center;
@@ -51,7 +51,7 @@
 	height: 6px;
 	border-top-left-radius: 12px;
 	border-top-right-radius: 12px;
-	background: linear-gradient(90deg, #60a5fa, #a78bfa, #34d399);
+	background: linear-gradient(90deg, var(--color-accent-1), var(--color-accent-2), var(--color-accent-3));
 	opacity: 0.95;
 }
 .modal img { max-width:100%; height: auto; max-height: calc(100vh - 140px); display:block; border-radius:8px; margin: 0 auto; object-fit: contain }
@@ -61,7 +61,7 @@
 	top: 10px;
 	background: transparent;
 	border: none;
-	color: rgba(255,255,255,0.95);
+	color: var(--white-95);
 	font-size: 20px;
 	line-height: 1;
 	padding: 6px 8px;

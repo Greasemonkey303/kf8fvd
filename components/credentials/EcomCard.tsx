@@ -41,7 +41,7 @@ export default function EcomCard(){
         </div>
       </div>
 
-      <ImageModal src={open} alt="Ecom preview" onClose={() => setOpen(null)} />
+      {open && <ImageModal src={open} alt="Ecom preview" onClose={() => setOpen(null)} />}
     </div>
   )
 }

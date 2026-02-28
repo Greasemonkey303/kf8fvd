@@ -41,7 +41,7 @@ export default function HFMasterCard(){
         </div>
       </div>
 
-      <ImageModal src={open} alt="HF Master Class preview" onClose={() => setOpen(null)} />
+      {open && <ImageModal src={open} alt="HF Master Class preview" onClose={() => setOpen(null)} />}
     </div>
   )
 }

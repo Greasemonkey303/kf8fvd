@@ -2,17 +2,67 @@
   /* color palette */
   --color-primary: #0f172a; /* deep navy */
   --color-secondary: #60a5fa; /* bright blue */
-  --color-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #60a5fa 100%);
+  --color-accent-1: #60a5fa; /* sky blue */
+  --color-accent-2: #a78bfa; /* purple */
+  --color-accent-3: #34d399; /* green */
+  --color-accent-4: #f97316; /* orange */
+  --color-accent-5: #ef4444; /* red */
+  --color-gradient: linear-gradient(135deg, var(--color-primary) 0%, #1e3a8a 50%, var(--color-accent-1) 100%);
 
   /* background / text */
   --color-bg: #0f172a;
   --color-text: #ffffff;
   --color-link: #7dd3fc;
+  --color-footer-bg: var(--color-primary);
+  --text-dark: #041025; /* used on lighter buttons */
+
+  /* semantic states */
+  --color-success: #10b981;
+  --color-warning: #ffb020;
+  --color-muted: rgba(255,255,255,0.65);
+
+  /* borders & surfaces */
+  --muted-bg: rgba(255,255,255,0.02);
+  --muted-bg-01: rgba(255,255,255,0.01);
+  --border-06: rgba(255,255,255,0.06);
+  --border-04: rgba(255,255,255,0.04);
+
+  /* shadows */
+  --shadow-25: rgba(2,6,23,0.25);
+  --shadow-28: rgba(2,6,23,0.28);
+  --shadow-35: rgba(2,6,23,0.35);
+  --shadow-45: rgba(2,6,23,0.45);
+  --shadow-60: rgba(2,6,23,0.6);
+
+  /* white with opacities (labeled for readability) */
+  --white-100: #ffffff;
+  --white-95: rgba(255,255,255,0.95);
+  --white-92: rgba(255,255,255,0.92);
+  --white-90: rgba(255,255,255,0.90);
+  --white-85: rgba(255,255,255,0.85);
+  --white-78: rgba(255,255,255,0.78);
+  --white-66: rgba(255,255,255,0.66);
+  --white-65: rgba(255,255,255,0.65);
+  --white-02: rgba(255,255,255,0.02);
+  --white-03: rgba(255,255,255,0.03);
+  --white-01: rgba(255,255,255,0.01);
+  --white-04: rgba(255,255,255,0.04);
 
   /* fonts */
   --font-sans: 'Helvetica Neue', Arial, sans-serif;
   --font-serif: 'Merriweather', serif;
   --font-mono: 'Courier New', monospace;
+  --font-geist-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  /* utility overlays */
+  --overlay: rgba(2,6,23,0.7);
+  --overlay-dark: rgba(40,40,40,0.5);
+  /* error / danger */
+  --color-danger: #ff4d4f;
+  --color-danger-bg: rgba(255,100,100,0.04);
+  /* additional utilities */
+  --shadow-18: rgba(2,6,23,0.18);
+  --focus-outline: rgba(59,130,246,0.24);
+  --nav-mobile-bg: rgba(0,0,0,0.8);
 }
 
 /* global reset */

@@ -18,7 +18,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(40,40,40,0.5);
+  background: var(--overlay-dark);
   pointer-events: none;
 }
 
@@ -43,9 +43,9 @@
 }
 
 .heroCtaWrap { margin-top: 1rem; display:flex; flex-direction:column; align-items:center; gap:8px }
-.heroBtn { background: var(--color-link); color: #001021; padding: 10px 16px; border-radius: 8px; font-weight:700; text-decoration:none; box-shadow: 0 8px 24px rgba(2,6,23,0.35); }
+.heroBtn { background: var(--color-link); color: var(--text-dark); padding: 10px 16px; border-radius: 8px; font-weight:700; text-decoration:none; box-shadow: 0 8px 24px var(--shadow-35); }
 .heroBtn:hover { transform: translateY(-3px); }
-.heroNote { font-size: 0.95rem; color: rgba(255,255,255,0.85); }
+.heroNote { font-size: 0.95rem; color: var(--white-85); }
 
 .hero h1 {
   margin: 0.25rem 0 0.5rem;

@@ -1,10 +1,10 @@
 .container { padding: 2rem 1rem; max-width:1100px; margin:0 auto }
 .content { display:flex; flex-direction:column; gap:1rem }
 .media { display:flex; flex-direction:column; gap:8px; align-items:center }
-.photo { width:100%; max-width:600px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); box-shadow: 0 18px 42px rgba(2,6,23,0.36); }
-.callout { font-size:0.95rem; color:rgba(255,255,255,0.9); background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:8px 12px; border-radius:8px }
+.photo { width:100%; max-width:600px; border-radius:12px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
+.callout { font-size:0.95rem; color:var(--white-90); background: linear-gradient(90deg, var(--white-02), var(--white-01)); padding:8px 12px; border-radius:8px }
 .story { display:flex; flex-direction:column; gap:10px }
 .story h4 { margin:0; color: var(--color-link); font-weight:800 }
-.story p, .story li { color: rgba(255,255,255,0.9); line-height:1.5 }
+.story p, .story li { color: var(--white-90); line-height:1.5 }
 
 @media (min-width:900px) { .content { flex-direction:row; } .media { flex:0 0 46%; } .story { flex:1 } }

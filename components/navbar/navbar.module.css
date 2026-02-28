@@ -16,7 +16,7 @@
 }
 
 .brand a {
-  color: #fff;
+  color: var(--white-100);
   font-weight: 800;
   font-size: 1.05rem;
   text-decoration: none;
@@ -29,14 +29,14 @@
   align-items: center;
   justify-content: center;
   padding: 0.25rem;
-  color: #fff;
+  color: var(--white-100);
 }
 
 .hamburger {
   display: block;
   width: 22px;
   height: 2px;
-  background: #fff;
+  background: var(--white-100);
   position: relative;
 }
 
@@ -47,7 +47,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: #fff;
+  background: var(--white-100);
 }
 
 .hamburger::before { top: -7px; }
@@ -60,7 +60,7 @@
 }
 
 .nav a {
-  color: #fff;
+  color: var(--white-100);
   font-weight: 600;
   text-decoration: none;
 }
@@ -75,7 +75,7 @@
     position: absolute;
     top: 64px;
     right: 1rem;
-    background: rgba(0,0,0,0.8);
+    background: var(--nav-mobile-bg);
     flex-direction: column;
     align-items: flex-end;
     padding: 1rem;
