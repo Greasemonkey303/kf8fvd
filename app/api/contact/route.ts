@@ -10,10 +10,12 @@ type SGAttachment = {
 
 import fs from 'fs/promises'
 
-// Simple in-memory rate limiter (per IP)
+// Simple rate limiter configuration (per IP)
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
 const RATE_LIMIT_MAX = 20 // max requests per window
-const rateMap = new Map<string, number[]>()
+
+// In-memory rate limiter store (single-instance)
+const rateMap = new Map<string, number[]>();
 
 export async function POST(req: Request) {
   try {
@@ -28,19 +30,19 @@ export async function POST(req: Request) {
     const form = await req.formData()
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.headers.get('x-forwarded') || 'unknown'
     const userAgent = req.headers.get('user-agent') || 'unknown'
-    // rate limit check
+    // rate limit check (in-memory)
     try {
-      const now = Date.now()
-      const arr = rateMap.get(ip) || []
-      const filtered = arr.filter(t => now - t < RATE_LIMIT_WINDOW_MS)
+      const now = Date.now();
+      const arr = rateMap.get(ip) || [];
+      const filtered = arr.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
       if (filtered.length >= RATE_LIMIT_MAX) {
-        console.warn('[api/contact] rate limit exceeded', ip)
-        return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+        console.warn('[api/contact] rate limit exceeded', ip);
+        return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
       }
-      filtered.push(now)
-      rateMap.set(ip, filtered)
+      filtered.push(now);
+      rateMap.set(ip, filtered);
     } catch (e) {
-      console.warn('[api/contact] rate limiter error', e)
+      console.warn('[api/contact] rate limiter error', e);
     }
     // honeypot check
     const honeypot = form.get('hp')?.toString() || ''

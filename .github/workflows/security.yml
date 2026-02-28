@@ -1,0 +1,25 @@
+name: Security Checks
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install
+        run: npm ci
+      - name: Run npm audit
+        run: npm run audit
+      - name: Run secret scan
+        run: node tools/scan-secrets.js
+      - name: Run linter
+        run: npm run lint
