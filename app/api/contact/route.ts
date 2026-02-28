@@ -5,7 +5,10 @@ type SGAttachment = {
   filename: string
   type: string
   disposition: string
+  content_id?: string
 }
+
+import fs from 'fs/promises'
 
 export async function POST(req: Request) {
   try {
@@ -18,6 +21,31 @@ export async function POST(req: Request) {
     }
 
     const form = await req.formData()
+    // honeypot check
+    const honeypot = form.get('hp')?.toString() || ''
+    if (honeypot.trim()) {
+      console.warn('[api/contact] honeypot triggered')
+      return NextResponse.json({ error: 'Spam detected' }, { status: 400 })
+    }
+
+    // Cloudflare Turnstile verification (if configured)
+    const cfToken = form.get('cf-turnstile-response')?.toString() || form.get('cf-turnstile-response')?.toString() || form.get('cf-turnstile')?.toString() || ''
+    const CF_SECRET = process.env.CF_TURNSTILE_SECRET
+    if (CF_SECRET) {
+      if (!cfToken) {
+        return NextResponse.json({ error: 'Missing Turnstile token' }, { status: 400 })
+      }
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${encodeURIComponent(CF_SECRET)}&response=${encodeURIComponent(cfToken)}`,
+      })
+      const vr = await verifyRes.json()
+      if (!vr.success) {
+        console.warn('[api/contact] turnstile failed', vr)
+        return NextResponse.json({ error: 'Turnstile verification failed', details: vr }, { status: 400 })
+      }
+    }
     const name = form.get('name')?.toString() || 'Website visitor'
     const email = form.get('email')?.toString() || ''
     const message = form.get('message')?.toString() || ''
@@ -113,6 +141,16 @@ export async function POST(req: Request) {
       const text = await res.text()
       console.error('[api/contact] SendGrid error', res.status, text)
       return NextResponse.json({ error: 'SendGrid error', details: text, status: res.status }, { status: 500 })
+    }
+
+    // append message to local log for backup/inspection
+    try {
+      const outDir = './data'
+      await fs.mkdir(outDir, { recursive: true })
+      const logLine = JSON.stringify({ name, email, message, attachments: attachments.map(a=>a.filename), ip, userAgent, sentAt: new Date().toISOString() }) + '\n'
+      await fs.appendFile(`${outDir}/messages.log`, logLine, 'utf8')
+    } catch (e) {
+      console.error('[api/contact] failed to write message log', e)
     }
 
     return NextResponse.json({ ok: true })

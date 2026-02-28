@@ -18,8 +18,12 @@ export default function Contact() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const nameRef = useRef<HTMLInputElement | null>(null)
+  const emailRef = useRef<HTMLInputElement | null>(null)
+  const messageRef = useRef<HTMLTextAreaElement | null>(null)
   const submitButtonRef = useRef<HTMLButtonElement | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [totalSize, setTotalSize] = useState(0)
 
   useEffect(()=>{
     if (success) {
@@ -30,6 +34,18 @@ export default function Contact() {
 
   useEffect(()=>{
     setMounted(true)
+    // dynamically load Cloudflare Turnstile script if sitekey is present
+    if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
+      const id = 'cf-turnstile-script'
+      if (!document.getElementById(id)) {
+        const s = document.createElement('script')
+        s.id = id
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+        s.async = true
+        s.defer = true
+        document.body.appendChild(s)
+      }
+    }
   },[])
 
   function validate(){
@@ -44,6 +60,13 @@ export default function Contact() {
       if (f.size > 5 * 1024 * 1024) { e.files = 'Each attachment must be 5MB or smaller.'; break }
     }
     setErrors(e)
+    // if there are errors, focus the first invalid field for accessibility
+    const first = Object.keys(e)[0]
+    if (first) {
+      if (first === 'name' && nameRef.current) nameRef.current.focus()
+      else if (first === 'email' && emailRef.current) emailRef.current.focus()
+      else if (first === 'message' && messageRef.current) messageRef.current.focus()
+    }
     return Object.keys(e).length === 0
   }
 
@@ -54,6 +77,7 @@ export default function Contact() {
     // limit total attachments to 6
     const merged = [...files, ...arr].slice(0,6)
     setFiles(merged)
+    setTotalSize(merged.reduce((s,f)=> s + f.size, 0))
     // reset input to allow re-adding same file
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -70,10 +94,18 @@ export default function Contact() {
     setConfirmOpen(false)
     setLoading(true)
     try {
+      // small analytics/log
+      console.log('[analytics] contact.submit')
       const fd = new FormData()
       fd.append('name', name)
       fd.append('email', email)
       fd.append('message', message)
+      // include honeypot value if present in DOM
+      const hpEl = document.querySelector<HTMLInputElement>('input[name="hp"]')
+      if (hpEl) fd.append('hp', hpEl.value)
+      // include Cloudflare Turnstile token if present
+      const cfEl = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]')
+      if (cfEl) fd.append('cf-turnstile-response', cfEl.value)
       files.forEach((f, i) => fd.append(`file-${i}`, f))
 
       const res = await fetch('/api/contact', {
@@ -107,23 +139,23 @@ export default function Contact() {
             {mounted ? (
               <form className={styles.form} onSubmit={handleSubmit} noValidate>
                 <h3 className={styles.formHeading}>Message me now</h3>
-                {errors._global && <div className={styles.formError} role="alert">{errors._global}</div>}
+              {errors._global && <div className={styles.formError} role="alert" aria-live="assertive">{errors._global}</div>}
 
               <label>
                 Name
-                <input aria-label="Name" aria-invalid={!!errors.name} aria-describedby={errors.name? 'err-name':''} value={name} onChange={(e)=> setName(e.target.value)} placeholder="Your name" />
+                <input ref={nameRef} aria-label="Name" aria-invalid={!!errors.name} aria-describedby={errors.name? 'err-name':''} value={name} onChange={(e)=> setName(e.target.value)} placeholder="Your name" />
                 {errors.name && <div id="err-name" className={styles.formError} role="alert">{errors.name}</div>}
               </label>
 
               <label>
                 Email
-                <input aria-label="Email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email? 'err-email':''} value={email} onChange={(e)=> setEmail(e.target.value)} placeholder="you@example.com" />
+                <input ref={emailRef} aria-label="Email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email? 'err-email':''} value={email} onChange={(e)=> setEmail(e.target.value)} placeholder="you@example.com" />
                 {errors.email && <div id="err-email" className={styles.formError} role="alert">{errors.email}</div>}
               </label>
 
               <label>
                 Message
-                <textarea aria-label="Message" aria-invalid={!!errors.message} aria-describedby={errors.message? 'err-message':''} value={message} onChange={(e)=> setMessage(e.target.value)} placeholder="Message" />
+                <textarea ref={messageRef} aria-label="Message" aria-invalid={!!errors.message} aria-describedby={errors.message? 'err-message':''} value={message} onChange={(e)=> setMessage(e.target.value)} placeholder="Message" />
                 {errors.message && <div id="err-message" className={styles.formError} role="alert">{errors.message}</div>}
               </label>
 
@@ -148,9 +180,23 @@ export default function Contact() {
                   </div>
                 )}
               </label>
+              
+              <div className={styles.sizeInfo} aria-live="polite">{totalSize>0 && `Attachments: ${Math.round(totalSize/1024)} KB total`} {totalSize > 10 * 1024 * 1024 && <span className={styles.formError}> — total exceeds 10MB recommended</span>}</div>
+
+              {/* Honeypot field (hidden) */}
+              <div style={{position:'absolute',left:'-9999px',height:0,overflow:'hidden'}} aria-hidden>
+                <label>Leave this field empty<input name="hp" tabIndex={-1} /></label>
+              </div>
+
+              {/* Cloudflare Turnstile widget (requires NEXT_PUBLIC_CF_TURNSTILE_SITEKEY in env) */}
+              {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
+                <div style={{marginTop:12}}>
+                  <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY}></div>
+                </div>
+              )}
 
                 <div className={styles.actions}>
-                  <button ref={submitButtonRef} type="submit">{loading? <span className={styles.spinner} aria-hidden></span>: 'Send'}</button>
+                  <button ref={submitButtonRef} type="submit" disabled={loading}>{loading? <span className={styles.spinner} aria-hidden></span>: 'Send'}</button>
                   <a href="/credentials">View Credentials</a>
                 </div>
               </form>
