@@ -33,11 +33,14 @@ export async function POST(req: Request) {
         const ab = await file.arrayBuffer()
         const uint8 = new Uint8Array(ab)
         const base64 = Buffer.from(uint8).toString('base64')
+        const isImage = (file.type || '').startsWith('image/')
         attachments.push({
           content: base64,
           filename: file.name,
           type: file.type || 'application/octet-stream',
-          disposition: 'attachment'
+          disposition: isImage ? 'inline' : 'attachment',
+          // set content_id for inline images so they can be referenced by cid
+          ...(isImage ? { content_id: file.name } : {}),
         })
       }
     }
@@ -47,20 +50,51 @@ export async function POST(req: Request) {
 
     // Always use the verified `SENDGRID_FROM` as the envelope 'from' to satisfy SendGrid.
     // Use the visitor's email in `reply_to` so you can reply directly.
+    function escapeHtml(str: string) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+    }
+
+    const sentAt = new Date().toUTCString()
+    const safeName = escapeHtml(name)
+    const safeEmail = escapeHtml(email)
+    const safeMessage = escapeHtml(message).replace(/\r?\n/g, '<br/>')
+    const userAgent = req.headers.get('user-agent') || 'unknown'
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+
+    const plain = `Name: ${name}\nEmail: ${email}\n\n${message}\n\nSent: ${sentAt}`
+    const html = `
+      <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.4;color:#111">
+        <h2 style="margin:0 0 8px 0">New message from your website</h2>
+        <p style="margin:0 0 12px 0;color:#555">
+          <strong>From:</strong> ${safeName} &lt;<a href="mailto:${safeEmail}">${safeEmail}</a>&gt;<br/>
+          <strong>Received:</strong> ${sentAt}
+        </p>
+        <hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
+        <div style="white-space:normal;color:#111">${safeMessage}</div>
+        ${attachments.length ? `<hr style="border:none;border-top:1px solid #eee;margin:12px 0"/><p style="margin:0 0 8px 0;color:#555"><strong>Attachments:</strong> ${attachments.map(a=>escapeHtml(a.filename)).join(', ')}</p>` : ''}
+        ${attachments.filter(a=> (a.type||'').startsWith('image/')).length ? `<div style="margin-top:12px">${attachments.filter(a=> (a.type||'').startsWith('image/')).map(a=>`<img src="cid:${escapeHtml(a.filename)}" alt="${escapeHtml(a.filename)}" style="max-width:240px;display:block;margin:8px 0;border-radius:6px;border:1px solid #eee"/>`).join('')}</div>` : ''}
+        <p style="margin:12px 0 0 0;color:#666;font-size:12px">Visitor IP: ${escapeHtml(ip)} • User agent: ${escapeHtml(userAgent)}</p>
+        <p style="margin:8px 0 0 0;color:#888;font-size:12px">This message was sent via kf8fvd.com contact form.</p>
+      </div>
+    `
+
     const body: any = {
       personalizations: [
         {
           to: [{ email: TO_EMAIL }],
-          subject: `Website contact from ${name}`,
+          subject: `Website contact from ${safeName || 'visitor'}`,
         },
       ],
       from: { email: FROM_EMAIL, name: 'kf8fvd.com' },
       reply_to: emailIsValid ? { email, name } : undefined,
       content: [
-        {
-          type: 'text/plain',
-          value: `Name: ${name}\nEmail: ${email}\n\n${message}`,
-        },
+        { type: 'text/plain', value: plain },
+        { type: 'text/html', value: html },
       ],
     }
 

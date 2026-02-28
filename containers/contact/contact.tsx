@@ -107,6 +107,7 @@ export default function Contact() {
             {mounted ? (
               <form className={styles.form} onSubmit={handleSubmit} noValidate>
                 <h3 className={styles.formHeading}>Message me now</h3>
+                {errors._global && <div className={styles.formError} role="alert">{errors._global}</div>}
 
               <label>
                 Name
