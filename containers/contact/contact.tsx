@@ -19,6 +19,7 @@ export default function Contact() {
   const [success, setSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const submitButtonRef = useRef<HTMLButtonElement | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(()=>{
     if (success) {
@@ -26,6 +27,10 @@ export default function Contact() {
       return ()=> clearTimeout(t)
     }
   },[success])
+
+  useEffect(()=>{
+    setMounted(true)
+  },[])
 
   function validate(){
     const e: Record<string,string> = {}
@@ -77,8 +82,9 @@ export default function Contact() {
       <div className={styles.wrapper}>
         <Card title="Contact" subtitle="Get in touch">
           <div className={styles.inner}>
-            <form className={styles.form} onSubmit={handleSubmit} noValidate>
-              <h3 className={styles.formHeading}>Message me now</h3>
+            {mounted ? (
+              <form className={styles.form} onSubmit={handleSubmit} noValidate>
+                <h3 className={styles.formHeading}>Message me now</h3>
 
               <label>
                 Name
@@ -120,11 +126,14 @@ export default function Contact() {
                 )}
               </label>
 
-              <div className={styles.actions}>
-                <button ref={submitButtonRef} type="submit">{loading? <span className={styles.spinner} aria-hidden></span>: 'Send'}</button>
-                <a href="/credentials">View Credentials</a>
-              </div>
-            </form>
+                <div className={styles.actions}>
+                  <button ref={submitButtonRef} type="submit">{loading? <span className={styles.spinner} aria-hidden></span>: 'Send'}</button>
+                  <a href="/credentials">View Credentials</a>
+                </div>
+              </form>
+            ) : (
+              <div className={styles.formPlaceholder} aria-hidden>Loading form…</div>
+            )}
 
             <div className={styles.contactInfo}>
               <h3 className={styles.contactHeading}>Email me directly</h3>
