@@ -36,7 +36,24 @@ export default function ImageModal({ src, alt = '', onClose }: Props) {
     doc.setAttribute('data-modal-open', 'true')
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key === 'Tab') {
+        // focus trap inside modal sheet
+        try {
+          const sheet = document.querySelector(`.${styles.sheet}`) as HTMLElement | null
+          if (!sheet) return
+          const focusable = Array.from(sheet.querySelectorAll<HTMLElement>(`a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])`)).filter(Boolean)
+          if (focusable.length === 0) return
+          const first = focusable[0]
+          const last = focusable[focusable.length - 1]
+          const active = document.activeElement as HTMLElement | null
+          if (e.shiftKey) {
+            if (active === first) { e.preventDefault(); last.focus(); }
+          } else {
+            if (active === last) { e.preventDefault(); first.focus(); }
+          }
+        } catch (err) { /* ignore focus trap errors */ }
+      }
     }
     window.addEventListener('keydown', onKey)
 

@@ -13,6 +13,8 @@ export const metadata = {
   description: 'Credentials and certifications for KF8FVD',
 }
 
+export const canonical = 'https://kf8fvd.example/credentials'
+
 export default function CredentialsPage() {
   return (
     <main>

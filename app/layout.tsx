@@ -27,7 +27,34 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preload" as="image" href="/grand_rapids.jpg" />
+        <meta property="og:site_name" content="KF8FVD" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Person",
+              "@id": "https://kf8fvd.com/#person",
+              "name": "Zachary (KF8FVD)",
+              "alternateName": "KF8FVD",
+              "url": "https://kf8fvd.com/",
+              "jobTitle": "CNC & EDM Specialist",
+              "description": "Amateur radio operator and maker based in Kentwood, MI."
+            },
+            {
+              "@type": "WebSite",
+              "@id": "https://kf8fvd.com/#website",
+              "url": "https://kf8fvd.com/",
+              "name": "KF8FVD",
+              "publisher": { "@id": "https://kf8fvd.com/#person" }
+            }
+          ]
+        }) }} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <a href="#main" className="skip">Skip to content</a>
         <Navbar />
         {children}
         <Footer />

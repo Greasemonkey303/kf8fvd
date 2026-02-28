@@ -34,6 +34,10 @@ body {
   color: var(--color-text);
 }
 
+/* skip link */
+.skip { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden }
+.skip:focus { position: fixed; left: 12px; top: 12px; width: auto; height: auto; z-index: 9999; background: #001021; color: #fff; padding: 8px 10px; border-radius: 6px; text-decoration: none }
+
 img, picture, video, canvas, svg {
   display: block;
   max-width: 100%;
