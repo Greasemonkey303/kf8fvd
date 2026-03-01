@@ -12,11 +12,40 @@ function getCssVar(name: string, fallback: string) {
 
 function Clock() {
   const [now, setNow] = useState<Date | null>(null);
+  const [width, setWidth] = useState<number | null>(null);
+
   useEffect(() => {
     setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
+    const onResize = () => setWidth(window.innerWidth);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => { clearInterval(id); window.removeEventListener('resize', onResize); };
   }, []);
+
+  const cities = [
+    {name:'New York', tz:'America/New_York', flag:'🇺🇸'},
+    {name:'Los Angeles', tz:'America/Los_Angeles', flag:'🇺🇸'},
+    {name:'London', tz:'Europe/London', flag:'🇬🇧'},
+    {name:'Paris', tz:'Europe/Paris', flag:'🇫🇷'},
+    {name:'Berlin', tz:'Europe/Berlin', flag:'🇩🇪'},
+    {name:'Moscow', tz:'Europe/Moscow', flag:'🇷🇺'},
+    {name:'Dubai', tz:'Asia/Dubai', flag:'🇦🇪'},
+    {name:'Mumbai', tz:'Asia/Kolkata', flag:'🇮🇳'},
+    {name:'Beijing', tz:'Asia/Shanghai', flag:'🇨🇳'},
+    {name:'Tokyo', tz:'Asia/Tokyo', flag:'🇯🇵'},
+    {name:'Sydney', tz:'Australia/Sydney', flag:'🇦🇺'},
+    {name:'Singapore', tz:'Asia/Singapore', flag:'🇸🇬'},
+    {name:'São Paulo', tz:'America/Sao_Paulo', flag:'🇧🇷'},
+    {name:'Mexico City', tz:'America/Mexico_City', flag:'🇲🇽'},
+    {name:'Johannesburg', tz:'Africa/Johannesburg', flag:'🇿🇦'},
+    {name:'Cairo', tz:'Africa/Cairo', flag:'🇪🇬'},
+  ];
+
+  // On small viewports, only show primary major cities to keep a single-row layout
+  const majorNames = new Set(['New York','Los Angeles','London','Tokyo']);
+  const displayed = (width !== null && width <= 720) ? cities.filter(c => majorNames.has(c.name)) : cities;
+
   return (
     <div className={styles.clock} aria-hidden>
       <div className={styles.callsign}>KF8FVD</div>
@@ -24,24 +53,7 @@ function Clock() {
       <div className={styles.utc}>{now ? `UTC ${now.toISOString().slice(11,19)}` : ''}</div>
       <div className={styles.tz}>{now ? now.toLocaleDateString() : ''}</div>
       <div className={styles.citiesGrid} aria-hidden>
-          {[
-          {name:'New York', tz:'America/New_York', flag:'🇺🇸'},
-          {name:'Los Angeles', tz:'America/Los_Angeles', flag:'🇺🇸'},
-          {name:'London', tz:'Europe/London', flag:'🇬🇧'},
-          {name:'Paris', tz:'Europe/Paris', flag:'🇫🇷'},
-          {name:'Berlin', tz:'Europe/Berlin', flag:'🇩🇪'},
-          {name:'Moscow', tz:'Europe/Moscow', flag:'🇷🇺'},
-          {name:'Dubai', tz:'Asia/Dubai', flag:'🇦🇪'},
-          {name:'Mumbai', tz:'Asia/Kolkata', flag:'🇮🇳'},
-          {name:'Beijing', tz:'Asia/Shanghai', flag:'🇨🇳'},
-          {name:'Tokyo', tz:'Asia/Tokyo', flag:'🇯🇵'},
-          {name:'Sydney', tz:'Australia/Sydney', flag:'🇦🇺'},
-          {name:'Singapore', tz:'Asia/Singapore', flag:'🇸🇬'},
-          {name:'São Paulo', tz:'America/Sao_Paulo', flag:'🇧🇷'},
-          {name:'Mexico City', tz:'America/Mexico_City', flag:'🇲🇽'},
-          {name:'Johannesburg', tz:'Africa/Johannesburg', flag:'🇿🇦'},
-          {name:'Cairo', tz:'Africa/Cairo', flag:'🇪🇬'},
-          ].map((c) => {
+        {displayed.map((c) => {
           const varName = `--city-${c.tz.replace(/\//g,'_')}`
           const cityColor = getCssVar(varName, getCssVar('--color-other', '#94a3b8'))
           return (

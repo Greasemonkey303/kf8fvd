@@ -16,7 +16,17 @@
 .utc { font-size:0.95rem; color: var(--white-85); margin-top:2px }
 .tz { font-size:0.9rem; color: var(--white-85); }
 
-.citiesGrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top:10px; width:100%; align-items:stretch }
+/* ensure clock lines don't overlap and scale down on small screens */
+.clock .time, .clock .utc, .clock .tz { line-height: 1.2 }
+
+@media (max-width: 920px) {
+  .liveInner { flex-direction: column; align-items: flex-start; gap: 0.5rem }
+  .largeCard .time { font-size: 1.4rem }
+  .largeCard .callsign { font-size: 1rem }
+  .largeCard .utc, .largeCard .tz { font-size: 0.9rem }
+}
+
+.citiesGrid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top:10px; width:100%; align-items:stretch }
 .cityItem { background: linear-gradient(180deg, var(--white-03), var(--white-01)); padding:10px 12px; border-radius:10px; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; min-height:44px }
 .cityName { font-size:0.8rem; font-weight:800; color: var(--white-95); }
 .cityHeader { display:flex; align-items:center; gap:8px }
@@ -25,6 +35,10 @@
 .cityTz { font-size:0.75rem; color: var(--white-66); margin-left:8px }
 
 @media (min-width: 720px) {
+  .citiesGrid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+@media (min-width: 920px) {
   .citiesGrid { grid-template-columns: repeat(4, minmax(0,1fr)); }
 }
 
