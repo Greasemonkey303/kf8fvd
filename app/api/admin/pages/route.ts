@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
+import { marked } from 'marked'
+import createDOMPurify from 'dompurify'
+import { JSDOM } from 'jsdom'
 
 export async function GET(req: Request) {
   const admin = await requireAdmin()
@@ -23,7 +26,11 @@ export async function POST(req: Request) {
   const body = await req.json()
   const { slug, title, content, metadata, is_published } = body
   if (!slug || !title) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-  const res: any = await query('INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?)', [slug, title, content || null, metadata ? JSON.stringify(metadata) : JSON.stringify({}), is_published ? 1 : 0])
+  // Sanitize content server-side before saving
+  const window = (new JSDOM('')).window as any
+  const DOMPurify = createDOMPurify(window)
+  const sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
+  const res: any = await query('INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?)', [slug, title, sanitized || null, metadata ? JSON.stringify(metadata) : JSON.stringify({}), is_published ? 1 : 0])
   return NextResponse.json({ id: res.insertId, ok: true })
 }
 
@@ -33,7 +40,11 @@ export async function PUT(req: Request) {
   const body = await req.json()
   const { id, slug, title, content, metadata, is_published } = body
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-  await query('UPDATE pages SET slug = ?, title = ?, content = ?, metadata = ?, is_published = ? WHERE id = ?', [slug, title, content || null, metadata ? JSON.stringify(metadata) : JSON.stringify({}), is_published ? 1 : 0, id])
+  // Sanitize content server-side before saving
+  const window = (new JSDOM('')).window as any
+  const DOMPurify = createDOMPurify(window)
+  const sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
+  await query('UPDATE pages SET slug = ?, title = ?, content = ?, metadata = ?, is_published = ? WHERE id = ?', [slug, title, sanitized || null, metadata ? JSON.stringify(metadata) : JSON.stringify({}), is_published ? 1 : 0, id])
   return NextResponse.json({ ok: true })
 }
 

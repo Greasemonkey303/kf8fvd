@@ -189,6 +189,14 @@ button, input, select, textarea {
 .field-label { margin-bottom:6px; font-size:13px }
 .form-input { display:block; width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:inherit }
 
+/* Modal styles for in-page confirmations */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:3000 }
+.modal { background: var(--color-bg); padding: 18px; border-radius: 10px; box-shadow: 0 10px 30px var(--shadow-28); max-width: 480px; width: 95%; }
+.modal h4 { margin: 0 0 8px 0 }
+.modal p { margin: 0 0 12px 0; color: var(--color-muted) }
+.btn-danger { background: var(--color-danger); color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer }
+.btn-danger:hover { opacity: 0.95 }
+
 /* small-screen global tweaks to improve spacing and readability */
 @media (max-width: 640px) {
   .page-pad { padding: 1rem }

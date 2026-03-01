@@ -18,6 +18,11 @@
     "mysql2": "^3.18.2",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
+    "marked": "^5.1.1",
+    "dompurify": "^3.0.4",
+    "jsdom": "^21.1.1",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

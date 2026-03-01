@@ -1,6 +1,8 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components'
 
@@ -9,6 +11,17 @@ export default function PageEditor({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [form, setForm] = useState({ id: 0, slug: '', title: '', content: '', is_published: false })
   const [loading, setLoading] = useState(true)
+
+  const sanitizedHtml = useMemo(() => {
+    try {
+      const raw = marked.parse(form.content || '')
+      return DOMPurify.sanitize(raw)
+    } catch (err) {
+      return ''
+    }
+  }, [form.content])
+
+  const [showPreview, setShowPreview] = useState(true)
 
   useEffect(() => {
     (async () => {
@@ -44,6 +57,17 @@ export default function PageEditor({ params }: { params: { id: string } }) {
                 <div className="field-label">Content (Markdown)</div>
                 <textarea rows={12} value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className="form-input" />
               </label>
+
+              <div>
+                <div className="flex between items-center">
+                  <div className="field-label">Preview</div>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={showPreview} onChange={e=>setShowPreview(e.target.checked)} />
+                    <span className="muted">Show</span>
+                  </label>
+                </div>
+                {showPreview && <div className="card markdown-preview" dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />}
+              </div>
               <div className="flex gap-2">
                 <button className="btn-ghost" type="submit">Save</button>
                 <button className="btn-ghost" type="button" onClick={()=>router.push('/admin/pages')}>Cancel</button>

@@ -50,15 +50,15 @@ export default function AdminPages() {
             <form onSubmit={submit} className="form-grid" suppressHydrationWarning>
               <label>
                 <div className="field-label">Slug</div>
-                <input value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} className="form-input" />
+                <input suppressHydrationWarning value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} className="form-input" />
               </label>
               <label>
                 <div className="field-label">Title</div>
-                <input value={form.title} onChange={e=>setForm({...form, title: e.target.value})} className="form-input" />
+                <input suppressHydrationWarning value={form.title} onChange={e=>setForm({...form, title: e.target.value})} className="form-input" />
               </label>
               <label>
                 <div className="field-label">Published</div>
-                <input type="checkbox" checked={form.is_published} onChange={e=>setForm({...form, is_published: e.target.checked})} />
+                <input suppressHydrationWarning type="checkbox" checked={form.is_published} onChange={e=>setForm({...form, is_published: e.target.checked})} />
               </label>
               <div className="flex justify-end mt-4">
                 <button className="btn-ghost" type="submit">Save</button>
