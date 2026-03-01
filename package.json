@@ -14,19 +14,22 @@
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
+    "bcryptjs": "^3.0.3",
+    "mysql2": "^3.18.2",
     "next": "16.1.6",
+    "next-auth": "^4.24.13",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^20.19.35",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "typescript": "^5",
     "husky": "^8.0.0",
-    "lint-staged": "^14.0.0"
+    "lint-staged": "^14.0.0",
+    "typescript": "^5"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [

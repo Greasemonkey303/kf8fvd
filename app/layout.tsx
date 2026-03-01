@@ -4,6 +4,7 @@ import { Navbar, BackButton } from "@/components";
 import { Footer } from "@/containers";
 import '../styles/app.css'
 import '../styles/global.css'
+import SessionProviderClient from './providers/SessionProviderClient'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,7 +59,9 @@ export default function RootLayout({
         <a href="#main" className="skip">Skip to content</a>
         <Navbar />
         <BackButton />
-        {children}
+        <SessionProviderClient>
+          {children}
+        </SessionProviderClient>
         <Footer />
       </body>
     </html>
