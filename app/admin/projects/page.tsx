@@ -33,33 +33,22 @@ export default function AdminProjects() {
     if (!file) return
     if (!form.slug) { alert('Please enter a slug before uploading'); return }
 
-    // Prefer presigned POST (browser-friendly). Fallback to presigned PUT then server direct upload.
-    // 1) presigned POST
+    // Prefer server-side direct upload to avoid CORS issues with browser->MinIO in some environments.
     try {
-      const postRes = await fetch('/api/uploads/presign-post', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: form.slug, filename: file.name, contentType: file.type })
-      })
-      const postData = await postRes.json()
-      if (postData?.url && postData?.fields) {
-        const formData = new FormData()
-        // append returned fields
-        Object.entries(postData.fields).forEach(([k, v]) => { formData.append(k, v as any) })
-        // include Content-Type as a form field — S3 policies match form fields, not the request header
-        formData.append('Content-Type', file.type || 'application/octet-stream')
-        // S3 expects the file field named 'file'
-        formData.append('file', file)
-        const uploadPost = await fetch(postData.url, { method: 'POST', body: formData, credentials: 'omit' })
-        if (uploadPost.ok) {
-          setForm({...form, image_path: postData.publicUrl || postData.key})
-          return
-        }
-        // if POST failed, fall through to PUT flow
-        console.error('presign-post upload failed', uploadPost.status, uploadPost.statusText)
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('slug', form.slug)
+      fd.append('filename', file.name)
+      const direct = await fetch('/api/uploads/direct', { method: 'POST', body: fd })
+      const d = await direct.json()
+      if (direct.ok && d.publicUrl) {
+        setForm({...form, image_path: d.publicUrl || d.key})
+        return
       }
-    } catch (err: any) {
-      console.error('presign-post error', err)
+      console.error('direct upload failed', direct.status, d)
+      // fall through to presigned flows below
+    } catch (derr: any) {
+      console.error('direct upload error', derr)
     }
 
     // 2) Request presigned PUT URL
@@ -169,7 +158,7 @@ export default function AdminProjects() {
                 <input suppressHydrationWarning value={form.external_link} onChange={e=>setForm({...form, external_link: e.target.value})} className="form-input" />
               </label>
               <div className="flex gap-2">
-                <button className="btn-ghost" type="submit">Create</button>
+                <button suppressHydrationWarning className="btn-ghost" type="submit">Create</button>
               </div>
             </form>
 
