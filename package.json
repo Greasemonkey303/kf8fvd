@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.ts,.tsx",
@@ -21,8 +22,7 @@
     "marked": "^5.1.1",
     "dompurify": "^3.0.4",
     "jsdom": "^21.1.1",
-    "@aws-sdk/client-s3": "^3.0.0",
-    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "minio": "^8.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

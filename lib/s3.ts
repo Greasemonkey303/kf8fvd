@@ -6,15 +6,7 @@ export async function getUploadKey(slug: string, filename: string): Promise<stri
 }
 
 export function buildPublicUrl(key: string) {
-  // Prefer explicit base URL if provided (access point alias)
-  const base = process.env.NEXT_PUBLIC_S3_BASE_URL
-  if (base) return `${base.replace(/\/$/, '')}/${key}`
-  // fallback: S3 path-style using bucket env (may not work for access points)
-  const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-  const region = process.env.AWS_REGION || 'us-east-2'
-  if (bucket && bucket.startsWith('arn:')) {
-    // cannot reliably construct from ARN; return key only
-    return key
-  }
-  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`
+  // Prefer returning a proxied API URL so the app can fetch objects regardless of MinIO bucket policy
+  // This returns a relative API URL: /api/uploads/get?key=...
+  return `/api/uploads/get?key=${encodeURIComponent(key)}`
 }

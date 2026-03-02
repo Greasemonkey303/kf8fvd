@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import * as Minio from 'minio'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
 
 type ReqBody = { key?: string; contentType: string; slug?: string; filename?: string }
@@ -17,20 +16,40 @@ export async function POST(req: Request) {
       key = await getUploadKey(body.slug, body.filename)
     }
 
-    const region = process.env.AWS_REGION
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-    if (!region || !bucket) {
-      return NextResponse.json({ error: 'S3 not configured' }, { status: 500 })
+    if (!bucket) {
+      return NextResponse.json({ error: 'MinIO bucket not configured (NEXT_PUBLIC_S3_BUCKET)' }, { status: 500 })
     }
 
-    const hasCreds = !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
-    // eslint-disable-next-line no-console
-    console.log('uploads.presign: hasCreds=', hasCreds, 'bucket=', bucket, 'key=', key, 'contentType=', body.contentType)
+    // Build MinIO client from env (fall back to AWS env names if present)
+    const minioClient = new Minio.Client({
+      endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
+      port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
+      useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
+      accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
+      secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
+    })
 
-    const client = new S3Client({ region, credentials: { accessKeyId: process.env.AWS_ACCESS_KEY_ID!, secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY! } })
-    const cmd = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: body.contentType })
-    const url = await getSignedUrl(client, cmd, { expiresIn: 300 })
-    const publicUrl = buildPublicUrl(key)
+    // eslint-disable-next-line no-console
+    console.log('uploads.presign (minio): bucket=', bucket, 'key=', key, 'contentType=', body.contentType)
+
+    // MinIO presigned PUT
+    const url = await new Promise<string>((resolve, reject) => {
+      const expires = 300
+      minioClient.presignedPutObject(bucket, key, expires, (err, presignedUrl) => {
+        if (err) return reject(err)
+        resolve(presignedUrl)
+      })
+    })
+
+    // generate a presigned GET so clients can fetch the uploaded object
+    const publicUrl = await new Promise<string>((resolve, reject) => {
+      const getExpires = 24 * 60 * 60
+      minioClient.presignedGetObject(bucket, key, getExpires, (err, presignedUrl) => {
+        if (err) return resolve(buildPublicUrl(key))
+        resolve(presignedUrl)
+      })
+    })
 
     // parse signed url to surface signing hints in dev
     let debug: any = undefined
