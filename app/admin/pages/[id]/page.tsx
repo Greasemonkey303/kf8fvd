@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components'
+import styles from '../admin.module.css'
 
 export default function PageEditor({ params }: { params: { id: string } }) {
   const id = params.id
@@ -42,39 +42,41 @@ export default function PageEditor({ params }: { params: { id: string } }) {
   return (
     <main className="page-pad">
       <div className="center-max">
-        <Card title="Edit Page" subtitle={`ID: ${id}`}>
+        <div className={styles.panel}>
+          <h2>Edit Page — ID: {id}</h2>
           {loading ? <p>Loading…</p> : (
             <form onSubmit={save} className="form-grid">
               <label>
-                <div className="field-label">Slug</div>
-                <input value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} className="form-input" />
+                <div className={styles.fieldLabel}>Slug</div>
+                <input value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} className={styles.formInput} />
               </label>
               <label>
-                <div className="field-label">Title</div>
-                <input value={form.title} onChange={e=>setForm({...form, title: e.target.value})} className="form-input" />
+                <div className={styles.fieldLabel}>Title</div>
+                <input value={form.title} onChange={e=>setForm({...form, title: e.target.value})} className={styles.formInput} />
               </label>
               <label>
-                <div className="field-label">Content (Markdown)</div>
-                <textarea rows={12} value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className="form-input" />
+                <div className={styles.fieldLabel}>Content (Markdown)</div>
+                <textarea rows={12} value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className={styles.formTextarea} />
               </label>
 
               <div>
                 <div className="flex between items-center">
-                  <div className="field-label">Preview</div>
-                  <label className="flex items-center gap-2">
+                  <div className={styles.fieldLabel}>Preview</div>
+                  <label className={styles.switch + ' ' + styles.switchSmall}>
                     <input type="checkbox" checked={showPreview} onChange={e=>setShowPreview(e.target.checked)} />
-                    <span className="muted">Show</span>
+                    <span className={`${styles.slider} ${showPreview ? styles.on : ''}`} />
+                    <span className={styles.switchLabel}>{showPreview ? 'Shown' : 'Hidden'}</span>
                   </label>
                 </div>
                 {showPreview && <div className="card markdown-preview" dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />}
               </div>
               <div className="flex gap-2">
-                <button className="btn-ghost" type="submit">Save</button>
-                <button className="btn-ghost" type="button" onClick={()=>router.push('/admin/pages')}>Cancel</button>
+                <button className={styles.btnGhost} type="submit">Save</button>
+                <button className={styles.btnGhost} type="button" onClick={()=>router.push('/admin/pages')}>Cancel</button>
               </div>
             </form>
           )}
-        </Card>
+        </div>
       </div>
     </main>
   )

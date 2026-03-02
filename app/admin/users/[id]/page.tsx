@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components'
+import styles from '../admin.module.css'
 
 export default function UserEditor({ params }: { params: { id: string } }) {
   // `params` may be a Promise in the App Router — unwrap with React.use when available
@@ -42,28 +42,29 @@ export default function UserEditor({ params }: { params: { id: string } }) {
   return (
     <main className="page-pad">
       <div className="center-max">
-        <Card title="Edit User" subtitle={`ID: ${id}`}>
+        <div className={styles.panel}>
+          <h2>Edit User — ID: {id}</h2>
           {loading ? <p>Loading…</p> : (
             <form onSubmit={save} className="form-grid">
               <label>
-                <div className="field-label">Name</div>
-                <input value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="form-input" suppressHydrationWarning />
+                <div className={styles.fieldLabel}>Name</div>
+                <input value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className={styles.formInput} suppressHydrationWarning />
               </label>
               <label>
-                <div className="field-label">Email</div>
-                <input type="email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className="form-input" suppressHydrationWarning />
+                <div className={styles.fieldLabel}>Email</div>
+                <input type="email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className={styles.formInput} suppressHydrationWarning />
               </label>
               <label>
-                <div className="field-label">Password (leave blank to keep)</div>
-                <input type="password" value={form.password} onChange={e=>setForm({...form, password: e.target.value})} className="form-input" suppressHydrationWarning />
+                <div className={styles.fieldLabel}>Password (leave blank to keep)</div>
+                <input type="password" value={form.password} onChange={e=>setForm({...form, password: e.target.value})} className={styles.formInput} suppressHydrationWarning />
               </label>
               <label>
-                <div className="field-label">Active</div>
+                <div className={styles.fieldLabel}>Active</div>
                 <input type="checkbox" checked={form.is_active} onChange={e=>setForm({...form, is_active: e.target.checked})} suppressHydrationWarning />
               </label>
 
               <div>
-                <div className="field-label">Roles</div>
+                <div className={styles.fieldLabel}>Roles</div>
                 <div className="flex gap-2">
                   {AVAILABLE_ROLES.map(r => (
                     <label key={r} className="flex items-center gap-2">
@@ -77,9 +78,9 @@ export default function UserEditor({ params }: { params: { id: string } }) {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="btn-ghost" type="submit">Save</button>
-                <button className="btn-ghost" type="button" onClick={()=>router.push('/admin/users')}>Cancel</button>
-                <button className="btn-danger" type="button" onClick={()=>setShowDeleteConfirm(true)}>Delete</button>
+                <button className={styles.btnGhost} type="submit">Save</button>
+                <button className={styles.btnGhost} type="button" onClick={()=>router.push('/admin/users')}>Cancel</button>
+                <button className={styles.btnDanger} type="button" onClick={()=>setShowDeleteConfirm(true)}>Delete</button>
               </div>
             </form>
           )}
@@ -89,13 +90,13 @@ export default function UserEditor({ params }: { params: { id: string } }) {
                 <h4>Confirm delete</h4>
                 <p>Are you sure you want to delete this user? This action cannot be undone.</p>
                 <div className="flex gap-2">
-                  <button className="btn-danger" onClick={confirmDelete}>Delete</button>
-                  <button className="btn-ghost" onClick={()=>setShowDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnDanger} onClick={confirmDelete}>Delete</button>
+                  <button className={styles.btnGhost} onClick={()=>setShowDeleteConfirm(false)}>Cancel</button>
                 </div>
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </main>
   )

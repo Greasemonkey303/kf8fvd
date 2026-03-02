@@ -7,4 +7,29 @@
 .story h4 { margin:0; color: var(--color-link); font-weight:800 }
 .story p, .story li { color: var(--white-90); line-height:1.5 }
 
-@media (min-width:900px) { .content { flex-direction:row; } .media { flex:0 0 46%; } .story { flex:1 } }
+@media (min-width:900px) { .content { flex-direction:row; } .media { flex:0 0 46%; align-items:flex-start } .story { flex:1 } }
+
+/* Gallery: grid layout for detail images
+	 - small screens: single column
+	 - larger screens: two columns
+	 - supports up to 6 images; grid will reflow if fewer
+*/
+.mediaRow { display:flex; gap:12px; align-items:flex-start }
+.thumbs {
+	display:grid;
+	grid-template-columns: 1fr;
+	gap:12px;
+	flex: 0 0 100%;
+	width:100%;
+}
+.thumbImg { width:100%; aspect-ratio: 16/9; object-fit:cover; border-radius:8px; border:1px solid var(--border-06); display:block }
+.mainPhotoWrap { display:flex; align-items:flex-start; flex: 1 }
+.mainPhoto { width:100%; max-width:420px; border-radius:12px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
+
+@media (min-width:900px) {
+	.thumbs { grid-template-columns: 1fr 1fr; max-width:360px; flex:0 0 360px }
+}
+
+@media (max-width:640px) {
+	.thumbs { gap:10px }
+}

@@ -14,6 +14,11 @@ export default function LogoutPage() {
       } catch (e) {
         // ignore
       }
+      try {
+        // clear any client-side auth flags used previously
+        localStorage.removeItem('kf8fvd_auth')
+        localStorage.removeItem('kf8fvd_user')
+      } catch (e) {}
       const t = setTimeout(() => router.push('/'), 600);
       return () => clearTimeout(t);
     })()

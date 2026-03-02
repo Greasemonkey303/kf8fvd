@@ -65,6 +65,15 @@
   text-decoration: none;
 }
 
+.linkButton {
+  background: none;
+  border: none;
+  color: var(--white-100);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
 .nav a:hover,
 .nav a:focus { text-decoration: underline; }
 

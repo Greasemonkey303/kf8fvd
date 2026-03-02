@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
-import { Card } from '@/components'
+import styles from '../admin.module.css'
 
 type PageItem = { id: number; slug: string; title: string; is_published: number }
 
@@ -45,23 +45,28 @@ export default function AdminPages() {
   return (
     <main className="page-pad">
       <div className="center-max">
-        <Card title="Pages" subtitle="Create and edit site pages">
+        <div className={styles.panel}>
+          <h2>Pages</h2>
           <div className="stack">
             <form onSubmit={submit} className="form-grid" suppressHydrationWarning>
               <label>
-                <div className="field-label">Slug</div>
-                <input suppressHydrationWarning value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} className="form-input" />
+                <div className={styles.fieldLabel}>Slug</div>
+                <input suppressHydrationWarning value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} className={styles.formInput} />
               </label>
               <label>
-                <div className="field-label">Title</div>
-                <input suppressHydrationWarning value={form.title} onChange={e=>setForm({...form, title: e.target.value})} className="form-input" />
+                <div className={styles.fieldLabel}>Title</div>
+                <input suppressHydrationWarning value={form.title} onChange={e=>setForm({...form, title: e.target.value})} className={styles.formInput} />
               </label>
-              <label>
-                <div className="field-label">Published</div>
-                <input suppressHydrationWarning type="checkbox" checked={form.is_published} onChange={e=>setForm({...form, is_published: e.target.checked})} />
-              </label>
+              <div>
+                <div className={styles.fieldLabel}>Published</div>
+                <label className={styles.switch + ' ' + styles.switchSmall}>
+                  <input suppressHydrationWarning type="checkbox" checked={form.is_published} onChange={e=>setForm({...form, is_published: e.target.checked})} />
+                  <span className={`${styles.slider} ${form.is_published ? styles.on : ''}`} />
+                  <span className={styles.switchLabel}>{form.is_published ? 'Published' : 'Draft'}</span>
+                </label>
+              </div>
               <div className="flex justify-end mt-4">
-                <button className="btn-ghost" type="submit">Save</button>
+                <button className={styles.btnGhost} type="submit">Save</button>
               </div>
             </form>
 
@@ -76,20 +81,20 @@ export default function AdminPages() {
                         <strong>{p.title}</strong> <span className="muted">({p.slug})</span>
                       </div>
                       <div className="flex gap-2">
-                        <a className="btn-ghost" href={`/admin/pages/${p.id}`}>Edit</a>
-                        <button className="btn-ghost" onClick={()=>remove(p.id)}>Delete</button>
+                        <a className={styles.btnGhost} href={`/admin/pages/${p.id}`}>Edit</a>
+                        <button className={styles.btnGhost} onClick={()=>remove(p.id)}>Delete</button>
                       </div>
                     </li>
                   ))}
                 </ul>
                 <div className="flex gap-2">
-                  <button className="btn-ghost" onClick={()=>load(1)}>First</button>
-                  <button className="btn-ghost" onClick={()=>load()}>Refresh</button>
+                  <button className={styles.btnGhost} onClick={()=>load(1)}>First</button>
+                  <button className={styles.btnGhost} onClick={()=>load()}>Refresh</button>
                 </div>
               </>
             )}
           </div>
-        </Card>
+        </div>
       </div>
     </main>
   )

@@ -3,24 +3,28 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './navbar.module.css';
+import useAdmin from '@/components/hooks/useAdmin'
+import { signIn, signOut } from 'next-auth/react'
 
 const Navbar: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [isAuth, setIsAuth] = useState(false);
   const [user, setUser] = useState<string | null>(null);
+  const { isAdmin, user: adminUser, loading: adminLoading } = useAdmin()
 
   useEffect(() => {
-    const readAuth = () => {
+    const readAuth = async () => {
       try {
-        const auth = !!localStorage.getItem('kf8fvd_auth');
-        const u = localStorage.getItem('kf8fvd_user');
-        setIsAuth(auth);
-        setUser(u);
+        const s = await fetch('/api/auth/session')
+        const session = await s.json().catch(()=>null)
+        const auth = !!session?.user
+        setIsAuth(auth)
+        setUser(session?.user?.name || session?.user?.email || null)
       } catch (err) {
-        setIsAuth(false);
-        setUser(null);
+        setIsAuth(false)
+        setUser(null)
       }
-    };
+    }
 
     readAuth();
     const onStorage = () => readAuth();
@@ -55,7 +59,8 @@ const Navbar: React.FC = () => {
               <span className={styles.user} aria-hidden>
                 {user ? `Hi, ${user}` : 'You'}
               </span>
-              <Link href="/logout">Log Out</Link>
+              {isAdmin ? <Link href="/admin">Admin</Link> : null}
+              <button onClick={() => { signOut({ callbackUrl: '/' }) }} className={styles.linkButton}>Log Out</button>
             </>
           ) : (
             <Link href="/signin">Sign In</Link>

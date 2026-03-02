@@ -18,7 +18,10 @@ export async function POST(req: Request) {
 
     const key = await getUploadKey(slug, filename)
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-    if (!bucket) return NextResponse.json({ error: 'MinIO bucket not configured (NEXT_PUBLIC_S3_BUCKET)' }, { status: 500 })
+    if (!bucket) {
+      console.error('direct upload error: missing bucket env', { bucket: process.env.NEXT_PUBLIC_S3_BUCKET })
+      return NextResponse.json({ error: 'MinIO bucket not configured (NEXT_PUBLIC_S3_BUCKET)' }, { status: 500 })
+    }
 
     const minioClient = new Minio.Client({
       endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
@@ -28,10 +31,16 @@ export async function POST(req: Request) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
+    // log minimal upload attempt data (no file contents)
+    console.log('direct upload attempt', { bucket, key, filename, contentType })
     const buffer = Buffer.from(await file.arrayBuffer())
     await new Promise<void>((resolve, reject) => {
       minioClient.putObject(bucket, key, buffer, contentType, (err) => {
-        if (err) return reject(err)
+        if (err) {
+          console.error('minio.putObject error', err)
+          return reject(err)
+        }
+        console.log('minio.putObject success', { bucket, key })
         resolve()
       })
     })
@@ -52,6 +61,8 @@ export async function POST(req: Request) {
   } catch (err: any) {
     // eslint-disable-next-line no-console
     console.error('direct upload error', err)
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 })
+    const payload: any = { error: String(err?.message || err) }
+    if (process.env.NODE_ENV !== 'production' && err?.stack) payload.stack = err.stack
+    return NextResponse.json(payload, { status: 500 })
   }
 }

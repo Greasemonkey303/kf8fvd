@@ -19,6 +19,7 @@
     "mysql2": "^3.18.2",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
+    "jsonwebtoken": "^9.0.0",
     "marked": "^5.1.1",
     "dompurify": "^3.0.4",
     "jsdom": "^21.1.1",

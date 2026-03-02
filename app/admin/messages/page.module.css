@@ -1,5 +1,7 @@
-/* Styles for admin messages table */
-.wrap { padding: 20px }
-.table { width: 100%; border-collapse: collapse }
-.th { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-04) }
-.td { padding: 8px; border-bottom: 1px solid var(--border-06) }
+/* Styles for admin messages table, adjusted to admin theme */
+.wrap { padding: 8px 0 }
+.table { width: 100%; border-collapse: collapse; background: transparent }
+.th { text-align: left; padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color:#cfe8ff; font-size:13px }
+.td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.02); color:#dbeefe; vertical-align:top }
+.rowHover:hover { background: rgba(255,255,255,0.015) }
+.empty { color:#9fb7d6; padding:18px }
