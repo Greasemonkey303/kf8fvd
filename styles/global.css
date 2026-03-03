@@ -6,7 +6,7 @@
   --color-primary: #070707; /* near-black background */
 
   --color-bg: var(--color-primary);
-  --logo-green: #16a34a; /* richer green (emerald) */
+  --logo-green: #10b981; /* bright green (emerald-500) */
   --logo-blue: #1ea6ff; /* bright cyan-blue */
   --logo-silver: #cfcfcf; /* metallic/silver */
   --color-accent-1: var(--logo-blue);
@@ -86,7 +86,7 @@
   --city-Asia_Tokyo: #2563eb;
   --city-Australia_Sydney: #2563eb;
   --city-Asia_Singapore: #0ea5a4;
-  --city-America_Sao_Paulo: #16a34a;
+  --city-America_Sao_Paulo: var(--logo-green);
   --city-America_Mexico_City: #059669;
   --city-Africa_Johannesburg: #0ea5a4;
   --city-Africa_Cairo: #d97706;
@@ -94,9 +94,14 @@
   --color-other: #94a3b8;
   /* card surface tokens (shared) */
   --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  --card-border: rgba(22,163,74,0.10); /* subtle green highlight */
-  --card-accent-top: linear-gradient(90deg, rgba(22,163,74,0.25), rgba(22,163,74,0.06));
-  --card-shadow: 0 12px 30px rgba(2,6,23,0.28), 0 6px 20px rgba(22,163,74,0.04);
+  --card-border: rgba(16,185,129,0.10); /* subtle green highlight */
+  --card-accent-top: linear-gradient(90deg, rgba(16,185,129,0.25), rgba(16,185,129,0.06));
+  --card-shadow: 0 12px 30px rgba(2,6,23,0.28), 0 6px 20px rgba(16,185,129,0.04);
+  /* main logo backdrop to improve contrast against light backgrounds */
+  --mainlogo-plate-bg: rgba(2,6,23,0.55);
+  --mainlogo-plate-border: rgba(255,255,255,0.04);
+  --navbarlogo-plate-bg: rgba(2,6,23,0.72);
+  --navbarlogo-plate-border: rgba(255,255,255,0.06);
 }
 
 /* Accent scrollbar - green-themed gradient thumb for WebKit, fallbacks for Firefox */
@@ -116,6 +121,56 @@
 *, *::before, *::after {
   box-sizing: border-box;
 }
+
+/* Light theme overrides - apply by adding `theme-light` class to <html> */
+.theme-light {
+  /* backgrounds */
+  --color-primary: #f8fafc;
+  --color-bg: #f8fafc;
+
+  /* primary text color (used widely) */
+  --color-text: #071218; /* black-ish */
+
+  /* links and accents remain brand green */
+  --color-link: var(--logo-green);
+
+  /* logo/heading silver becomes dark for contrast */
+  --logo-silver: #071218;
+
+  /* muted backgrounds/borders become subtle dark-on-light */
+  --muted-bg: rgba(7,18,24,0.02);
+  --muted-bg-01: rgba(7,18,24,0.01);
+  --border-04: rgba(7,18,24,0.06);
+  --border-06: rgba(7,18,24,0.04);
+
+  /* normalize white-* tokens to dark text equivalents so components using those tokens become dark */
+  --white-100: #071218;
+  --white-95: rgba(7,18,24,0.95);
+  --white-92: rgba(7,18,24,0.92);
+  --white-90: rgba(7,18,24,0.90);
+  --white-85: rgba(7,18,24,0.85);
+  --white-78: rgba(7,18,24,0.78);
+  --white-66: rgba(7,18,24,0.66);
+  --white-65: rgba(7,18,24,0.65);
+  --white-04: rgba(7,18,24,0.04);
+  --white-03: rgba(7,18,24,0.03);
+  --white-02: rgba(7,18,24,0.02);
+
+  /* overlays invert to lighter variants on light backgrounds */
+  --overlay: rgba(0,0,0,0.06);
+  --overlay-dark: rgba(0,0,0,0.08);
+
+  /* card surfaces adapt for light theme */
+  --card-bg: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96));
+  --card-border: rgba(7,18,24,0.06);
+  --card-accent-top: linear-gradient(90deg, rgba(16,185,129,0.22), rgba(16,185,129,0.06));
+  --card-shadow: 0 6px 20px rgba(7,18,24,0.06), 0 3px 10px rgba(16,185,129,0.02);
+
+  /* main logo plate for light mode */
+  --mainlogo-plate-bg: rgba(255,255,255,0.98);
+  --mainlogo-plate-border: rgba(7,18,24,0.06);
+}
+/* end .theme-light */
 
 html {
   font-family: var(--font-sans);

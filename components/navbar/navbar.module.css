@@ -15,6 +15,48 @@
   backdrop-filter: blur(4px);
 }
 
+/* Theme switch placed in navbar (distinct from admin slider) */
+.themeSwitch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 12px;
+  color: var(--logo-green);
+}
+.themeToggle {
+  width: 60px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--white-03);
+  border: 1px solid var(--border-06);
+  position: relative;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+}
+.themeToggle .knob {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--logo-green);
+  transition: transform .18s ease, left .18s ease;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.24);
+  position: relative;
+  left: 0;
+}
+.themeToggle.light { background: var(--card-accent-top); }
+.themeToggle.light .knob { left: 30px; background: var(--logo-green); }
+.themeIcon { width: 18px; height: 18px; display: inline-flex; align-items:center; justify-content:center }
+.themeIcon svg { width: 18px; height: 18px; display:block; fill: currentColor }
+.themeLabel { font-size: 12px; color: var(--white-95); font-weight:700 }
+
+/* module-scoped helpers so TSX can toggle via styles.light and styles.knob */
+.light { background: var(--card-accent-top); }
+.light .knob { left: 30px; background: var(--logo-green); }
+.knob { width: 26px; height: 26px; border-radius: 999px; background: var(--logo-green); box-shadow: 0 6px 18px rgba(2,6,23,0.24); position: relative; left: 0; transition: transform .18s ease, left .18s ease }
+
+
 .brand a {
   color: var(--white-100);
   font-weight: 800;

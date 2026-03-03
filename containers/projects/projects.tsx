@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import styles from './projects.module.css'
+import { buildPublicUrl } from '@/lib/s3'
 import useAdmin from '@/components/hooks/useAdmin'
 import { Card } from '@/components'
 
@@ -55,7 +56,30 @@ export default function Projects() {
                 <div className={styles.imgWrap}>
                   {p.image_path ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.image_path} alt={p.title} className={styles.thumb} />
+                    <img
+                      src={(() => {
+                        try {
+                          // if it's a presigned MinIO/S3 URL (contains X-Amz-Algorithm) or points to local MinIO host,
+                          // extract the object key and proxy through our uploads API so we avoid expired presigned URLs/CORS.
+                          if (typeof p.image_path === 'string' && (p.image_path.indexOf('X-Amz-Algorithm') !== -1 || p.image_path.indexOf('minio') !== -1 || p.image_path.indexOf('127.0.0.1') !== -1)) {
+                            try {
+                              const u = new URL(p.image_path)
+                              let path = u.pathname.replace(/^\//, '')
+                              const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
+                              if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
+                              return buildPublicUrl(path)
+                            } catch (e) {
+                              return buildPublicUrl(p.image_path)
+                            }
+                          }
+                          // if absolute or site-relative, use as-is; otherwise treat as object key and proxy
+                          if (p.image_path.startsWith('http') || p.image_path.startsWith('/')) return p.image_path
+                          return buildPublicUrl(p.image_path)
+                        } catch (e) { return '' }
+                      })()}
+                      alt={p.title}
+                      className={styles.thumb}
+                    />
                   ) : (
                     <div className={styles.thumbFake} />
                   )}

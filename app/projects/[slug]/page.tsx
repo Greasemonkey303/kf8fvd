@@ -92,6 +92,26 @@ export default async function Page({ params }: Props){
     }
   }
   const mainImg = project.image_path
+  // If image_path is an object key (not an http(s) URL), proxy it through our uploads API
+  const mainImgSrc = (() => {
+    if (!mainImg) return mainImg
+    try {
+      // presigned URL detection
+      if (typeof mainImg === 'string' && (mainImg.indexOf('X-Amz-Algorithm') !== -1 || mainImg.indexOf('minio') !== -1 || mainImg.indexOf('127.0.0.1') !== -1)) {
+        try {
+          const u = new URL(mainImg)
+          let path = u.pathname.replace(/^\//, '')
+          const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
+          if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
+          return buildPublicUrl(path)
+        } catch (e) {
+          return buildPublicUrl(mainImg)
+        }
+      }
+      if (mainImg.startsWith('http') || mainImg.startsWith('/')) return mainImg
+      return buildPublicUrl(mainImg)
+    } catch (e) { return mainImg }
+  })()
 
   return (
     <main className={styles.container}>
@@ -102,7 +122,7 @@ export default async function Page({ params }: Props){
               <HotspotGallery images={[ '/hotspot/hotspot-1.jpg', '/hotspot/hotspot-2.jpg', '/hotspot/hotspot-3.jpg' ]} />
             ) : (
               <>
-                {mainImg ? <div className={styles.mainPhotoWrap}><img src={mainImg} alt={project.title} className={styles.mainPhoto} /></div> : null}
+                {mainImg ? <div className={styles.mainPhotoWrap}><img src={mainImgSrc} alt={project.title} className={styles.mainPhoto} /></div> : null}
                 <ProjectMediaWrapper images={allImgs.slice(0,6)} title={project.title} />
               </>
             )}

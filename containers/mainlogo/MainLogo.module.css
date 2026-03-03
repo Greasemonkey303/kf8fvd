@@ -5,8 +5,10 @@
   margin: 8px 0;
   padding: 0;
   border-radius: 6px;
-  background: transparent;
-  box-shadow: none;
+  background: var(--mainlogo-plate-bg);
+  box-shadow: 0 12px 28px rgba(2,6,23,0.55);
+  padding: 12px 18px;
+  border: 1px solid var(--mainlogo-plate-border);
 }
 .sideLogo {
   display: block;
@@ -14,8 +16,9 @@
   max-width: 140px;
   height: auto;
   object-fit: contain;
-  opacity: 0.95;
+  opacity: 1;
   margin: 0 12px;
+  filter: drop-shadow(0 6px 14px rgba(2,6,23,0.45));
 }
 
 .mainLogo {
@@ -24,7 +27,49 @@
   height: auto;
   display: block;
   object-fit: contain;
-  opacity: 0.98;
+  opacity: 1;
+  filter: drop-shadow(0 12px 30px rgba(2,6,23,0.5));
+}
+
+/* per-logo wrapper to create a larger blurred backdrop behind each image */
+.logoItem {
+  position: relative;
+  display: inline-block;
+  padding: 6px;
+  border-radius: 10px;
+}
+.logoItem::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% + 28px);
+  height: calc(100% + 18px);
+  background: rgba(2,6,23,0.45);
+  filter: blur(14px);
+  z-index: -1;
+  border-radius: 12px;
+}
+
+.logoItemMain {
+  position: relative;
+  display: inline-block;
+  padding: 10px;
+  border-radius: 12px;
+}
+.logoItemMain::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% + 48px);
+  height: calc(100% + 36px);
+  background: rgba(2,6,23,0.6);
+  filter: blur(20px);
+  z-index: -1;
+  border-radius: 14px;
 }
 
 @media (max-width: 1024px) {
