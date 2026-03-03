@@ -245,8 +245,8 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card className={`${styles.smallCard} ${styles.highlightCard}`} title="Recent QSOs" subtitle="Latest contacts">
-          <ul className={styles.qsoList}>
+          <Card className={`${styles.smallCard} ${styles.highlightCard}`} title="Recent QSOs" subtitle="Latest contacts">
+          <ul className={`${styles.qsoList} accent-scroll`}>
             {qsos === null && <li className={styles.qsoItem}>loading…</li>}
             {qsos && qsos.length === 0 && <li className={styles.qsoItem}>No recent QSOs found</li>}
             {qsos && qsos.map((q, i) => (

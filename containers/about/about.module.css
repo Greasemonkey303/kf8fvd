@@ -44,10 +44,10 @@
 }
 
 /* summary / intro box */
-.summary { display:flex; gap:16px; align-items:center; justify-content:space-between; background: linear-gradient(180deg, var(--white-03), var(--white-01)); padding: 12px 14px; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 6px 18px var(--shadow-28); }
-.summary h2 { margin: 0; font-size: 1.15rem; color: var(--color-link); }
+.summary { display:flex; gap:16px; align-items:center; justify-content:space-between; background: var(--card-bg); padding: 12px 14px; border-radius: 10px; margin-bottom: 1rem; box-shadow: var(--card-shadow); }
+.summary h2 { margin: 0; font-size: 1.15rem; color: var(--logo-green); }
 .summaryText { margin: 0; color: var(--white-90); font-size: 0.98rem; }
-.ctaBtn { display:inline-block; background: var(--color-link); color: var(--white-100); padding: 8px 12px; border-radius:8px; text-decoration:none; font-weight:700; box-shadow: 0 6px 18px var(--shadow-25); }
+.ctaBtn { display:inline-block; background: var(--card-accent-top); color: var(--text-dark); padding: 8px 12px; border-radius:8px; text-decoration:none; font-weight:700; box-shadow: 0 6px 18px var(--shadow-25); }
 
 /* specs box */
 .specBox { background: var(--white-02); padding: 10px; border-radius:8px; margin: 0.6rem 0; box-shadow: 0 6px 14px var(--shadow-18); }

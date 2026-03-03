@@ -27,10 +27,10 @@
 }
 
 .citiesGrid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top:10px; width:100%; align-items:stretch }
-.cityItem { background: linear-gradient(180deg, var(--white-03), var(--white-01)); padding:10px 12px; border-radius:10px; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; min-height:44px }
+.cityItem { background: var(--card-bg); padding:10px 12px; border-radius:10px; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; min-height:44px }
 .cityName { font-size:0.8rem; font-weight:800; color: var(--white-95); }
 .cityHeader { display:flex; align-items:center; gap:8px }
-.cityItem { border-left: 4px solid var(--city-color, var(--color-other)); }
+.cityItem { border-left: 4px solid var(--city-color, var(--logo-green)); }
 .cityTime { font-size:1.02rem; font-weight:900; color: var(--color-link); }
 .cityTz { font-size:0.75rem; color: var(--white-66); margin-left:8px }
 
@@ -71,8 +71,8 @@
 
 .qsoList { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; color: var(--white-92)}
 
-.qsoItem { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:10px; background: linear-gradient(90deg, var(--white-03), var(--white-02)); box-shadow: 0 4px 14px var(--shadow-25); transition: transform .12s ease, box-shadow .12s ease; }
-.qsoItem:hover { transform: translateY(-4px); box-shadow: 0 10px 30px var(--shadow-35); }
+.qsoItem { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:10px; background: var(--card-bg); box-shadow: 0 4px 14px var(--shadow-25); transition: transform .12s ease, box-shadow .12s ease; }
+.qsoItem:hover { transform: translateY(-4px); box-shadow: 0 10px 30px var(--shadow-35), 0 6px 24px rgba(22,163,74,0.04); }
 .qsoText { font-weight:700; color: var(--white-100); font-size:0.95rem; }
 
 .qsoLocation { font-size:0.8rem; color: var(--white-66); margin-left:12px }
@@ -87,10 +87,10 @@
 .heatHeader div { width:60px; }
 .heatRow { display:flex; gap:8px; align-items:center; }
 .bandLabel { width:60px; text-align:left; font-weight:700 }
-.heatCell { width:60px; height:20px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); opacity: var(--cell-opacity, 1); }
+.heatCell { width:60px; height:20px; border-radius:6px; background: var(--card-accent-top); opacity: var(--cell-opacity, 1); }
 
 /* subtle card polish */
-.dashboard :global(.card) { background: linear-gradient(180deg, var(--white-03), var(--white-01)); border-radius:12px; box-shadow: 0 6px 18px var(--shadow-25); }
+.dashboard :global(.card) { background: var(--card-bg); border-radius:12px; box-shadow: var(--card-shadow); }
 
 .eventList { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
 .equipGrid { display:flex; gap:8px; flex-direction:column }

@@ -1,19 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Oswald:wght@300;400;500;600;700&display=swap');
+
 :root {
   /* color palette */
-  --color-primary: #0f172a; /* deep navy */
-  --color-secondary: #60a5fa; /* bright blue */
-  --color-accent-1: #60a5fa; /* sky blue */
-  --color-accent-2: #a78bfa; /* purple */
-  --color-accent-3: #34d399; /* green */
-  --color-accent-4: #f97316; /* orange */
-  --color-accent-5: #ef4444; /* red */
-  --color-gradient: linear-gradient(135deg, var(--color-primary) 0%, #1e3a8a 50%, var(--color-accent-1) 100%);
+  /* brand palette (from logo) */
+  --color-primary: #070707; /* near-black background */
+
+  --color-bg: var(--color-primary);
+  --logo-green: #16a34a; /* richer green (emerald) */
+  --logo-blue: #1ea6ff; /* bright cyan-blue */
+  --logo-silver: #cfcfcf; /* metallic/silver */
+  --color-accent-1: var(--logo-blue);
+  --color-accent-2: #8f7bff; /* soft purple */
+  --color-accent-3: var(--logo-green);
+  --color-accent-4: #f97316;
+  --color-accent-5: #ef4444;
+  --color-gradient: linear-gradient(135deg, rgba(30,30,30,0.8) 0%, rgba(30,58,138,0.65) 50%, var(--logo-blue) 100%);
 
   /* background / text */
-  --color-bg: #0f172a;
   --color-text: #ffffff;
-  --color-link: #7dd3fc;
-  --color-footer-bg: var(--color-primary);
+  --color-link: var(--logo-blue);
+  --color-footer-bg: #07102a;
   --text-dark: #041025; /* used on lighter buttons */
 
   /* semantic states */
@@ -49,10 +55,11 @@
   --white-04: rgba(255,255,255,0.04);
 
   /* fonts */
-  --font-sans: 'Helvetica Neue', Arial, sans-serif;
+  /* fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  --font-heading: 'Oswald', 'Helvetica Neue', Arial, sans-serif;
   --font-serif: 'Merriweather', serif;
   --font-mono: 'Courier New', monospace;
-  --font-geist-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
   /* utility overlays */
   --overlay: rgba(2,6,23,0.7);
   --overlay-dark: rgba(40,40,40,0.5);
@@ -85,7 +92,25 @@
   --city-Africa_Cairo: #d97706;
   /* small misc token */
   --color-other: #94a3b8;
+  /* card surface tokens (shared) */
+  --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  --card-border: rgba(22,163,74,0.10); /* subtle green highlight */
+  --card-accent-top: linear-gradient(90deg, rgba(22,163,74,0.25), rgba(22,163,74,0.06));
+  --card-shadow: 0 12px 30px rgba(2,6,23,0.28), 0 6px 20px rgba(22,163,74,0.04);
 }
+
+/* Accent scrollbar - green-themed gradient thumb for WebKit, fallbacks for Firefox */
+.accent-scroll::-webkit-scrollbar { width: 10px; height: 10px }
+.accent-scroll::-webkit-scrollbar-track { background: transparent }
+.accent-scroll::-webkit-scrollbar-thumb {
+  background: var(--card-accent-top);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.accent-scroll { scrollbar-width: thin; scrollbar-color: var(--logo-green) transparent }
+
+/* Apply accent scrollbar to common scroll areas */
 
 /* global reset */
 *, *::before, *::after {
@@ -105,6 +130,21 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
 }
+
+/* headings use brand display font */
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-heading);
+  color: var(--logo-silver);
+  letter-spacing: -0.5px;
+}
+
+/* subtle link and accent tokens */
+a { color: var(--color-link); }
+a:hover { opacity: 0.92 }
+
+/* utility brand tokens */
+.brand-accent { color: var(--logo-green) }
+.brand-accent-blue { color: var(--logo-blue) }
 
 /* skip link */
 .skip { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden }

@@ -10,16 +10,16 @@
 .contactInfo { color: var(--white-90); display:flex; flex-direction:column; gap:6px }
 
 .mailto {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	background: linear-gradient(90deg,var(--color-link), var(--color-accent-2));
-	color: var(--text-dark);
-	padding: 0.45rem 0.8rem;
-	border-radius: 8px;
-	text-decoration: none;
-	font-weight: 600;
-	box-shadow: 0 8px 30px var(--shadow-35);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-accent-top);
+  color: var(--text-dark);
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  box-shadow: 0 8px 30px var(--shadow-35);
 }
 .mailto:hover, .mailto:focus { transform: translateY(-1px); box-shadow: 0 12px 40px rgba(2,6,23,0.45) }
 .formHeading {
@@ -44,20 +44,20 @@
 .confirmActions { display:flex; gap:8px; margin-top:12px }
 .confirmActions button { padding: .55rem 0.9rem; border-radius:8px; min-width:120px; border:0; cursor:pointer; font-weight:700 }
 .confirmActions button:first-child { background: transparent; color: var(--white-95); border: 1px solid var(--border-06) }
-.confirmActions button:last-child { background: linear-gradient(90deg,var(--color-link), var(--color-accent-2)); color: var(--text-dark) }
+.confirmActions button:last-child { background: var(--card-accent-top); color: var(--text-dark) }
 .previewImg { max-width:100%; border-radius:8px; display:block }
 .fileList { display:flex; flex-direction:column; gap:8px; margin-top:8px }
 .fileItem { display:flex; gap:8px; align-items:center; background: var(--muted-bg); padding:6px; border-radius:8px }
 .fileThumb { width:64px; height:48px; object-fit:cover; border-radius:6px }
 .fileControls { display:flex; align-items:center; gap:8px; margin-top:8px }
-.chooseBtn { background: linear-gradient(90deg,var(--color-link), var(--color-accent-2)); color: var(--text-dark); padding:0.55rem 0.9rem; border-radius:8px; border:0; font-weight:700; cursor:pointer }
+.chooseBtn { background: var(--card-accent-top); color: var(--text-dark); padding:0.55rem 0.9rem; border-radius:8px; border:0; font-weight:700; cursor:pointer }
 .chooseBtn:hover, .chooseBtn:focus { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(2,6,23,0.35) }
 .fileHint { color: var(--white-65); font-size:0.9rem }
 .dropZone { border: 1px dashed rgba(255,255,255,0.08); padding: 8px; border-radius:8px }
 .dropZone:hover { background: var(--white-01) }
 .sizeInfo { margin-top: 8px; font-size: 0.9rem }
 .progress { height:8px; background: var(--border-06); border-radius:8px; overflow:hidden; margin-top:8px }
-.progressInner { height:100%; background: linear-gradient(90deg,var(--color-link), var(--color-accent-2)); width:0% }
+.progressInner { height:100%; background: var(--card-accent-top); width:0% }
 .fileMeta { display:flex; flex-direction:column; gap:2px; font-size:0.9rem; color: var(--white-90) }
 .fileName { font-weight:600 }
 .fileSize { font-size:0.8rem; color: var(--white-65) }
@@ -67,7 +67,7 @@
 @keyframes spin { to { transform: rotate(360deg) } }
 
 .modalOverlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: var(--overlay); z-index:2200; padding: 1rem }
-.modal { background: linear-gradient(180deg, rgba(8,18,40,0.98), rgba(6,12,30,0.95)); padding: 1rem 1.25rem; border-radius: 10px; color:var(--white-100); max-width:720px; width:100% }
+.modal { background: var(--card-bg); padding: 1rem 1.25rem; border-radius: 10px; color:var(--white-100); max-width:720px; width:100% }
 .preview { white-space: pre-wrap; background: var(--muted-bg); padding:8px; border-radius:6px; margin-top:6px }
 
 .toast { position: fixed; right: 16px; bottom: 16px; background: var(--color-success); color: var(--white-100); padding: 0.6rem 0.9rem; border-radius: 8px; box-shadow: 0 16px 40px var(--shadow-45); z-index:2400 }

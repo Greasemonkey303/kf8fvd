@@ -22,7 +22,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className={styles.adminRoot}>
-      <aside className={styles.sidebar}>
+      <aside className={`${styles.sidebar} accent-scroll`}>
         <a href="/admin" className={styles.brandButton} aria-label="Admin Home">kf8fvd — Admin</a>
         <nav>
           <a className={styles.navLink} href="/admin/projects">Projects</a>
