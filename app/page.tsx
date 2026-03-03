@@ -2,7 +2,7 @@ import Dashboard from '@/containers/dashboard/dashboard';
 import Image from "next/image";
 import styles from "./home.module.css";
 import { Navbar } from "@/components";
-import { Hero, Bands } from "@/containers";
+import { Hero, Bands, MainLogo } from "@/containers";
 
 export const metadata = {
   title: 'KF8FVD — Amateur Radio',
@@ -20,7 +20,8 @@ export default function Home() {
     <div className={styles.page}>
       <main id="main" className={styles.main}>
         <Hero />
-           <Dashboard />
+        <MainLogo />
+        <Dashboard />
         <Bands />
       </main>
     </div>

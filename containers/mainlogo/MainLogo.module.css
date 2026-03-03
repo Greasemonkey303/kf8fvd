@@ -1,0 +1,69 @@
+.wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 8px 0;
+  padding: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+.sideLogo {
+  display: block;
+  width: 100%;
+  max-width: 140px;
+  height: auto;
+  object-fit: contain;
+  opacity: 0.95;
+  margin: 0 12px;
+}
+
+.mainLogo {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  opacity: 0.98;
+}
+
+@media (max-width: 1024px) {
+  .sideLogo { max-width: 100px; margin: 0 10px }
+  .mainLogo { max-width: 280px }
+}
+
+@media (max-width: 640px) {
+  .sideLogo { max-width: 72px; margin: 0 8px }
+  .mainLogo { max-width: 180px }
+}
+
+/* Animation variants */
+.animateSubtle .mainLogo {
+  animation: float 6s ease-in-out infinite;
+}
+.animatePulse .mainLogo {
+  animation: pulse 3s ease-in-out infinite;
+}
+.animateSpin .mainLogo {
+  animation: spin 20s linear infinite;
+}
+.noAnimation .mainLogo { animation: none }
+
+.mainLogo:hover { transform: scale(1.03); transition: transform 220ms ease; }
+
+@keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

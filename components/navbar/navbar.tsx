@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './navbar.module.css';
+import Image from 'next/image';
 import useAdmin from '@/components/hooks/useAdmin'
 import { signIn, signOut } from 'next-auth/react'
 
@@ -36,7 +37,9 @@ const Navbar: React.FC = () => {
     <header className={styles.header}>
       <div className={styles.container}>
         <div className={styles.brand}>
-          <Link href="/">KF8FVD</Link>
+          <Link href="/">
+            <Image src="/logo/navbar-logo.svg" alt="KF8FVD" className={styles.logo} width={420} height={168} priority />
+          </Link>
         </div>
 
         <button

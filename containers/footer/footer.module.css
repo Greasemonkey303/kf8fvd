@@ -26,3 +26,9 @@
 .privacy:hover {
   text-decoration: underline;
 }
+
+.miniLogo {
+  height: 28px;
+  width: auto;
+  display: block;
+}

@@ -1,17 +1,17 @@
-.header {
+ .header {
   width: 100%;
   position: sticky;
   top: 0;
   z-index: 50;
 }
 
-.container {
+ .container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
+  padding: 0.125rem 0.9rem;
   width: 100%;
-  background: transparent; /* remove blue bar so page gradient shows through */
+  background: transparent;
   backdrop-filter: blur(4px);
 }
 
@@ -20,6 +20,26 @@
   font-weight: 800;
   font-size: 1.05rem;
   text-decoration: none;
+}
+
+ .brand img,
+ .brand .logo {
+  display: block;
+  height: 104px;
+  width: auto;
+  margin-top: -12px; /* overlap slightly while keeping header compact */
+}
+
+/* extra large logo for desktop, smaller on mobile */
+/* extra large logo for desktop, smaller on mobile */
+@media (max-width: 1024px) {
+  .brand img,
+  .brand .logo { height: 80px; margin-top: -10px; }
+}
+
+@media (max-width: 768px) {
+  .brand img,
+  .brand .logo { height: 48px; margin-top: -4px; }
 }
 
 .toggle {

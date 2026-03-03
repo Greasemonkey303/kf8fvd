@@ -8,3 +8,22 @@
   flex: 1;
   padding: 0 1rem; /* remove top padding so hero sits directly under navbar */
 }
+
+.mainLogo { display: none }
+
+@media (max-width: 1024px) {
+  .mainLogo {
+    margin: 14px 0;
+    padding: 10px 14px;
+  }
+  .mainLogo img { max-width: 420px; }
+}
+
+@media (max-width: 640px) {
+  .mainLogo {
+    margin: 10px 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+  }
+  .mainLogo img { max-width: 260px; }
+}
