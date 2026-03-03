@@ -7,6 +7,8 @@ import { buildPublicUrl } from '@/lib/s3'
 import styles from '../hotspot/hotspot.module.css'
 import { HotspotGallery } from '@/components'
 import { query } from '@/lib/db'
+import createDOMPurify from 'dompurify'
+import { JSDOM } from 'jsdom'
 
 type Props = { params: { slug: string } }
 
@@ -113,6 +115,18 @@ export default async function Page({ params }: Props){
     } catch (e) { return mainImg }
   })()
 
+  // sanitize metadata.details before rendering
+  let detailsHtml: string | null = null
+  try {
+    if (md && md.details) {
+      const window = (new JSDOM('')).window as any
+      const DOMPurify = createDOMPurify(window)
+      detailsHtml = DOMPurify.sanitize(String(md.details))
+    }
+  } catch (e) {
+    detailsHtml = md && md.details ? String(md.details) : null
+  }
+
   return (
     <main className={styles.container}>
       <Card title={project.title} subtitle={project.subtitle}>
@@ -136,6 +150,7 @@ export default async function Page({ params }: Props){
 
           <div className={styles.story}>
             <div dangerouslySetInnerHTML={{ __html: project.description || '' }} />
+            {detailsHtml ? <div style={{marginTop:20}} dangerouslySetInnerHTML={{ __html: detailsHtml }} /> : null}
             <p className="muted-small">
               <a href="/projects">Back to Projects</a>
             </p>

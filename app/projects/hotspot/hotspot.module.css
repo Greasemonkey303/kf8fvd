@@ -7,7 +7,12 @@
 .story h4 { margin:0; color: var(--color-link); font-weight:800 }
 .story p, .story li { color: var(--white-90); line-height:1.5 }
 
-@media (min-width:900px) { .content { flex-direction:row; } .media { flex:0 0 46%; align-items:flex-start } .story { flex:1 } }
+@media (min-width:900px) { 
+	.content { flex-direction:row; align-items:flex-start }
+	/* place media on the left of the text so images remain at the top-left of the card */
+	.media { order: 1; flex: 0 0 360px; align-items:flex-start }
+	.story { order: 2; flex:1 }
+}
 
 /* Gallery: grid layout for detail images
 	 - small screens: single column

@@ -22,7 +22,7 @@ export default function ProjectEditorSidebar({
       <div style={{marginBottom:12}}>
         <div className={styles.fieldLabel}>Main image</div>
         <div className={styles.mainPreview} style={{width:'100%', borderRadius:8}}>
-          <img src={form.image_path || ''} alt="Main" style={{width:'100%', height:220, objectFit:'cover', display:'block'}} />
+          <img src={form.image_path || undefined} alt="Main" style={{width:'100%', height:220, objectFit:'cover', display:'block'}} />
         </div>
         <div style={{marginTop:10}} className={styles.smallMuted}>Select an image from the gallery to set as main, or upload/change below.</div>
         <div className={styles.controls} style={{marginTop:10}}>

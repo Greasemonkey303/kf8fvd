@@ -101,3 +101,26 @@
 .cardAction a, .card-action a { color: var(--logo-green); text-decoration: none; font-weight:700 }
 .statNumber { font-size:20px; font-weight:700; color:var(--white-95) }
 .statLabel { font-size:13px; color:var(--white-66) }
+
+/* Modal preview for admin create/edit */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2,6,12,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+.modalContent {
+  background: linear-gradient(180deg,#071423,#03121a);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 20px 60px rgba(2,6,12,0.7);
+  border: 1px solid rgba(255,255,255,0.04);
+  color: #e6eef8;
+  max-width: 920px;
+  width: 92vw;
+  max-height: 92vh;
+  overflow: auto;
+}

@@ -2,6 +2,7 @@
 
 import React from 'react'
 import styles from '../../../app/admin/admin.module.css'
+import { buildPublicUrl } from '@/lib/s3'
 
 function IconList() {
   return (
@@ -24,7 +25,33 @@ export default function ProjectsList({ items, loading }: { items: ProjectItem[];
           {items.map(i => (
             <li key={i.id} className="row between">
               <div style={{display:'flex', alignItems:'center', gap:8}}>
-                {i.image_path ? <img src={i.image_path} alt={i.title} style={{width:64, height:48, objectFit:'cover', borderRadius:6}} /> : <div style={{width:64, height:48, background:'rgba(255,255,255,0.03)', borderRadius:6}} />}
+                {i.image_path ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={(() => {
+                      try {
+                        const path = String(i.image_path || '')
+                        if (path.indexOf('X-Amz-Algorithm') !== -1 || path.indexOf('minio') !== -1 || path.indexOf('127.0.0.1') !== -1) {
+                          try {
+                            const u = new URL(path)
+                            let p = u.pathname.replace(/^\/+/,'')
+                            const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
+                            if (bucket && p.startsWith(bucket + '/')) p = p.slice(bucket.length + 1)
+                            return buildPublicUrl(p)
+                          } catch (e) {
+                            return buildPublicUrl(path)
+                          }
+                        }
+                        if (path.startsWith('http') || path.startsWith('/')) return path
+                        return buildPublicUrl(path)
+                      } catch (e) { return '' }
+                    })()}
+                    alt={i.title}
+                    style={{width:64, height:48, objectFit:'cover', borderRadius:6}}
+                  />
+                ) : (
+                  <div style={{width:64, height:48, background:'rgba(255,255,255,0.03)', borderRadius:6}} />
+                )}
                 <div>
                   <strong style={{display:'flex', alignItems:'center', gap:8}}>{i.title} <small className="muted-small">{i.subtitle}</small></strong>
                 </div>

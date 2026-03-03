@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
+import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
 
 type ProjectItem = { id: number; slug: string; title: string; subtitle?: string; image_path?: string; description?: string; external_link?: string; is_published: number }
@@ -16,6 +17,11 @@ export default function AdminProjects() {
   const [form, setForm] = useState({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
   const [detailImages, setDetailImages] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState<number>(0)
+  const descRef = useRef<HTMLDivElement | null>(null)
+  const detailsRef = useRef<HTMLDivElement | null>(null)
+  const [descExpanded, setDescExpanded] = useState(false)
+  const [detailsExpanded, setDetailsExpanded] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -33,6 +39,8 @@ export default function AdminProjects() {
     if (!form.slug || !form.title) return
     const metadata: any = form.createDetails ? { details: form.details, images: detailImages } : undefined
     await fetch('/api/admin/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+    // clear any saved draft for this slug
+    try { localStorage.removeItem(`admin_project_draft:${form.slug}`) } catch (e) {}
     setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
     setDetailImages([])
     await load()
@@ -43,6 +51,95 @@ export default function AdminProjects() {
     const id = setTimeout(() => setDebouncedQuery(query), 300)
     return () => clearTimeout(id)
   }, [query])
+
+  // Ctrl/Cmd+S handler for save
+  useEffect(() => {
+    const handler = (ev: KeyboardEvent) => {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
+        ev.preventDefault()
+        // call submit handler (form submit)
+        const fakeEvent: any = { preventDefault: () => {} }
+        submit(fakeEvent)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [form, detailImages])
+
+  // Debounced autosave to server when slug exists
+  const autosaveTimer = React.useRef<number | null>(null)
+  // Draft autosave (localStorage). We avoid creating server records until user explicitly submits.
+  const draftIdRef = React.useRef<string>(`temp-${Date.now()}`)
+  const draftKey = () => `admin_project_draft:${form.slug || draftIdRef.current}`
+
+  useEffect(() => {
+    // debounce localStorage writes
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current)
+    autosaveTimer.current = window.setTimeout(() => {
+      try {
+        const payload = { form, detailImages, updated: Date.now() }
+        try { localStorage.setItem(draftKey(), JSON.stringify(payload)) } catch (e) {}
+        // lightweight toast for autosave
+        try { toast?.showToast && toast.showToast('Draft saved locally', 'info') } catch(e){}
+      } catch (e) {}
+    }, 800)
+    return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
+  }, [form, detailImages])
+
+  // On mount, restore any temp draft (when slug not yet set)
+  useEffect(()=>{
+    try {
+      const key = `admin_project_draft:${draftIdRef.current}`
+      const raw = localStorage.getItem(key)
+      if (raw) {
+        const p = JSON.parse(raw)
+        if (p && p.form) {
+          setForm(f=>({ ...f, ...p.form }))
+          setDetailImages(p.detailImages || [])
+          try { toast?.showToast && toast.showToast('Restored unsaved draft', 'info') } catch(e){}
+        }
+      }
+    } catch (e) {}
+  }, [])
+
+  // When slug becomes available, if there's a draft for that slug, load it
+  useEffect(()=>{
+    if (!form.slug) return
+    try {
+      const key = `admin_project_draft:${form.slug}`
+      const raw = localStorage.getItem(key)
+      if (raw) {
+        const p = JSON.parse(raw)
+        if (p && p.form) {
+          setForm(f=>({ ...f, ...p.form }))
+          setDetailImages(p.detailImages || [])
+          try { toast?.showToast && toast.showToast('Loaded draft for slug', 'info') } catch(e){}
+        }
+      }
+    } catch (e) {}
+  }, [form.slug])
+
+  // Keep the contentEditable DOM in sync only when the editor is not focused.
+  // This avoids React re-setting innerHTML on every render which moves the caret to start.
+  useEffect(() => {
+    try {
+      if (descRef.current && document.activeElement !== descRef.current) {
+        if (descRef.current.innerHTML !== (form.description || '')) {
+          descRef.current.innerHTML = form.description || ''
+        }
+      }
+    } catch (e) {}
+  }, [form.description])
+
+  useEffect(() => {
+    try {
+      if (detailsRef.current && document.activeElement !== detailsRef.current) {
+        if (detailsRef.current.innerHTML !== (form.details || '')) {
+          detailsRef.current.innerHTML = form.details || ''
+        }
+      }
+    } catch (e) {}
+  }, [form.details])
 
   // Derived filtered items for client-side search (debounced)
   const filtered = items.filter(i => {
@@ -66,10 +163,14 @@ export default function AdminProjects() {
       fd.append('file', file)
       fd.append('slug', form.slug)
       fd.append('filename', file.name)
+      // indicate upload started
+      setUploadProgress(-1)
       const direct = await fetch('/api/uploads/direct', { method: 'POST', body: fd })
       const d = await direct.json()
       if (direct.ok && d.publicUrl) {
         setForm({...form, image_path: d.publicUrl || d.key})
+        try { toast?.showToast && toast.showToast('Main image uploaded', 'success') } catch(e){}
+        setUploadProgress(0)
         return
       }
       console.error('direct upload failed', direct.status, d)
@@ -150,6 +251,7 @@ export default function AdminProjects() {
 
     // Set image_path to returned public URL
     setForm({...form, image_path: data.publicUrl || data.key})
+    setUploadProgress(0)
   }
 
   // Upload multiple files for details images with progress and limits
@@ -238,7 +340,24 @@ export default function AdminProjects() {
               </label>
               <label>
                 <div className="field-label">Description (HTML allowed)</div>
-                <textarea suppressHydrationWarning rows={6} value={form.description} onChange={e=>setForm({...form, description: e.target.value})} className={styles.formTextarea} />
+                <div style={{marginBottom:8}} className={styles.smallMuted}>Use the toolbar to format text; content is stored as HTML.</div>
+                <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background: 'var(--card-bg)'}}>
+                  <div style={{display:'flex', gap:8, marginBottom:8}}>
+                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('bold'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Bold">B</button>
+                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('italic'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Italic">I</button>
+                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Bullet list">• List</button>
+                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Numbered list">1. List</button>
+                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; const url = prompt('Insert link URL'); if (url) { descRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); } }} title="Insert link">🔗</button>
+                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('undo'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Undo">↶</button>
+                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('redo'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Redo">↷</button>
+                    <button type="button" className={styles.btnGhost} onClick={() => setDescExpanded(v=>!v)}>⤢</button>
+                  </div>
+                  <div id="admin-desc-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e:any)=>{ try { const v = e?.currentTarget?.innerHTML || ''; setForm(f=>({...f, description: v})); } catch (err) {} }} style={{minHeight: descExpanded ? 400 : 220, maxHeight:800, overflow:'auto', resize:'vertical'}} />
+                  <div style={{display:'flex', justifyContent:'space-between', marginTop:8}}>
+                    <div className={styles.smallMuted}>{(form.description || '').replace(/<[^>]+>/g,'').length} chars</div>
+                    <div className={styles.smallMuted}>{((form.description || '').replace(/<[^>]+>/g,'').trim().split(/\s+/).filter(Boolean)).length} words</div>
+                  </div>
+                </div>
               </label>
               <label>
                 <div className="field-label">External link</div>
@@ -256,7 +375,24 @@ export default function AdminProjects() {
               {form.createDetails && (
                 <label>
                   <div className="field-label">Details HTML</div>
-                  <textarea suppressHydrationWarning rows={8} value={form.details} onChange={e=>setForm({...form, details: e.target.value})} className={styles.formTextarea} />
+                  <div style={{marginBottom:8}} className={styles.smallMuted}>Use the toolbar to format the details; content is stored as HTML.</div>
+                  <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background: 'var(--card-bg)'}}>
+                    <div style={{display:'flex', gap:8, marginBottom:8}}>
+                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('bold'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Bold">B</button>
+                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('italic'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Italic">I</button>
+                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Bullet list">• List</button>
+                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Numbered list">1. List</button>
+                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; const url = prompt('Insert link URL'); if (url) { detailsRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); } }} title="Insert link">🔗</button>
+                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('undo'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Undo">↶</button>
+                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('redo'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Redo">↷</button>
+                      <button type="button" className={styles.btnGhost} onClick={() => setDetailsExpanded(v=>!v)}>⤢</button>
+                    </div>
+                    <div id="admin-details-editor" ref={detailsRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e:any)=>{ try { const v = e?.currentTarget?.innerHTML || ''; setForm(f=>({...f, details: v})); } catch (err) {} }} style={{minHeight: detailsExpanded ? 600 : 400, maxHeight:1200, overflow:'auto', resize:'vertical'}} />
+                    <div style={{display:'flex', justifyContent:'space-between', marginTop:8}}>
+                      <div className={styles.smallMuted}>{(form.details || '').replace(/<[^>]+>/g,'').length} chars</div>
+                      <div className={styles.smallMuted}>{((form.details || '').replace(/<[^>]+>/g,'').trim().split(/\s+/).filter(Boolean)).length} words</div>
+                    </div>
+                  </div>
                   <div style={{marginTop:8}}>
                     <div className="field-label">Details images (max 6, 50MB each)</div>
                     <label className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{display:'inline-flex', alignItems:'center', gap:8}}>
@@ -281,7 +417,14 @@ export default function AdminProjects() {
                 </label>
               )}
                 <div className="flex gap-2">
-                  <button suppressHydrationWarning className={styles.btnGhost} type="submit">Create</button>
+                    <button suppressHydrationWarning className={styles.btnGhost} type="submit">Create</button>
+                    <button type="button" className={styles.btnGhost} onClick={()=>setPreviewOpen(true)}>Preview</button>
+                    <button type="button" className={styles.btnDanger} onClick={()=>{
+                      try { localStorage.removeItem(`admin_project_draft:${form.slug || draftIdRef.current}`) } catch(e){}
+                      setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
+                      setDetailImages([])
+                      try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch(e){}
+                    }}>Discard draft</button>
                 </div>
                 </form>
               </div>
@@ -299,8 +442,17 @@ export default function AdminProjects() {
                   </div>
                   <div style={{marginTop:12}}>
                     <input placeholder="Search by title or slug" className={styles.formInput} value={query} onChange={e=>{ setQuery(e.target.value) }} />
-                    <div className={styles.smallMuted} style={{marginTop:8}}>Tip: click Edit to open project editor</div>
-                  </div>
+                      <div className={styles.smallMuted} style={{marginTop:8}}>Tip: click Edit to open project editor</div>
+                      {uploadProgress < 0 ? (
+                        <span style={{display:'block', marginTop:8, color:'#9fb7d6'}}>Uploading…</span>
+                      ) : uploadProgress > 0 ? (
+                        <div style={{display:'block', marginTop:8}}>
+                          <div className="progress-bar" style={{width:120}}>
+                            <div className="progress-bar-inner" style={{width: `${uploadProgress}%`}} />
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                 </div>
               </aside>
 
@@ -308,6 +460,35 @@ export default function AdminProjects() {
                 <hr />
                 <ProjectsList items={filtered} loading={loading} />
               </div>
+              {previewOpen && (
+                <div className={styles.modalOverlay} onClick={()=>setPreviewOpen(false)}>
+                  <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+                      <div style={{fontWeight:700}}>Preview</div>
+                      <button className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
+                    </div>
+                    <div style={{maxWidth:520}}>
+                      <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
+                        <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
+                          <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
+                            {form.image_path ? <img src={form.image_path} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : (detailImages[0] ? <img src={detailImages[0]} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>)}
+                          </div>
+                          <div style={{flex:1}}>
+                            <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: form.description || '' }} />
+                            {(() => {
+                              const generated = form.createDetails && form.slug ? `/projects/${form.slug}` : null
+                              const linkUrl = form.external_link || generated
+                              return linkUrl ? (
+                                <div style={{marginTop:8}} className={styles.smallMuted}>Link: <a href={linkUrl} target="_blank" rel="noopener noreferrer">Click here to read more</a></div>
+                              ) : null
+                            })()}
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           </div>
