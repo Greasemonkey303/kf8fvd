@@ -26,6 +26,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <a href="/admin" className={styles.brandButton} aria-label="Admin Home">kf8fvd — Admin</a>
         <nav>
           <a className={styles.navLink} href="/admin/projects">Projects</a>
+          <a className={styles.navLink} href="/admin/about">About</a>
           <a className={styles.navLink} href="/admin/messages">Messages</a>
           <a className={styles.navLink} href="/admin">Dashboard</a>
           <a className={styles.navLink} href="/">View site</a>

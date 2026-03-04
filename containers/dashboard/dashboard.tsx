@@ -11,10 +11,15 @@ function getCssVar(name: string, fallback: string) {
 }
 
 function Clock() {
-  const [now, setNow] = useState<Date | null>(() => (typeof window === 'undefined' ? null : new Date()));
-  const [width, setWidth] = useState<number | null>(() => (typeof window === 'undefined' ? null : window.innerWidth));
+  const [now, setNow] = useState<Date | null>(null);
+  const [width, setWidth] = useState<number | null>(null);
 
   useEffect(() => {
+    // Defer creating a Date / reading window until after mount so
+    // the server-rendered HTML (placeholder) matches the client's
+    // initial render and avoids hydration mismatches.
+    setNow(new Date());
+    setWidth(window.innerWidth);
     const id = setInterval(() => setNow(new Date()), 1000);
     const onResize = () => setWidth(window.innerWidth);
     window.addEventListener('resize', onResize);

@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   // Some MySQL setups don't accept prepared params for LIMIT/OFFSET; inline integers after sanitizing
   const safeLimit = Number.isFinite(limit) ? limit : 20
   const safeOffset = Number.isFinite(offset) ? offset : 0
-  const rows = await query<{ id: number; slug: string; title: string; content?: string | null; is_published: number; updated_at: string }[]>(`SELECT id, slug, title, content, is_published, updated_at FROM pages ORDER BY updated_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`)
+  const rows = await query<{ id: number; slug: string; title: string; content?: string | null; metadata?: string | null; is_published: number; updated_at: string }[]>(`SELECT id, slug, title, content, metadata, is_published, updated_at FROM pages ORDER BY updated_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`)
   const countRows = await query<{ total: number }[]>('SELECT COUNT(*) as total FROM pages')
   const total = countRows?.[0]?.total ?? 0
   return NextResponse.json({ items: rows, page, limit, total })
@@ -31,7 +31,31 @@ export async function POST(req: Request) {
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   const sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
-  const insertRes = await query('INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?)', [slug, title, sanitized || null, metadata ? JSON.stringify(metadata) : JSON.stringify({}), is_published ? 1 : 0])
+  // sanitize known metadata HTML fields to avoid storing unsafe markup
+  let safeMetadata = metadata ? { ...metadata } : {}
+  try {
+    if (safeMetadata?.summary?.text) safeMetadata.summary.text = DOMPurify.sanitize(String(safeMetadata.summary.text))
+    // If authors are using a cards array, sanitize each card's title, subtitle, and content
+    if (Array.isArray(safeMetadata?.cards)) {
+      safeMetadata.cards = safeMetadata.cards.map((c: any) => {
+        if (!c || typeof c !== 'object') return c
+        const copy: any = { ...c }
+        if (copy.title) copy.title = DOMPurify.sanitize(String(copy.title))
+        if (copy.subtitle) copy.subtitle = DOMPurify.sanitize(String(copy.subtitle))
+        if (copy.content) copy.content = DOMPurify.sanitize(String(copy.content))
+        return copy
+      })
+    } else {
+      // Backwards compatible: sanitize old-style named cards
+      if (safeMetadata?.aboutCard?.content) safeMetadata.aboutCard.content = DOMPurify.sanitize(String(safeMetadata.aboutCard.content))
+      if (safeMetadata?.topologyCard?.content) safeMetadata.topologyCard.content = DOMPurify.sanitize(String(safeMetadata.topologyCard.content))
+      if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = DOMPurify.sanitize(String(safeMetadata.hamshackCard.content))
+    }
+  } catch (e) {
+    safeMetadata = metadata ? { ...metadata } : {}
+  }
+
+  const insertRes = await query('INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?)', [slug, title, sanitized || null, safeMetadata ? JSON.stringify(safeMetadata) : JSON.stringify({}), is_published ? 1 : 0])
   const insertId = (insertRes as unknown as { insertId?: number })?.insertId ?? null
   return NextResponse.json({ id: insertId, ok: true })
 }
@@ -46,7 +70,30 @@ export async function PUT(req: Request) {
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   const sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
-  await query('UPDATE pages SET slug = ?, title = ?, content = ?, metadata = ?, is_published = ? WHERE id = ?', [slug, title, sanitized || null, metadata ? JSON.stringify(metadata) : JSON.stringify({}), is_published ? 1 : 0, id])
+  // sanitize known metadata HTML fields
+  let safeMetadata = metadata ? { ...metadata } : {}
+  try {
+    if (safeMetadata?.summary?.text) safeMetadata.summary.text = DOMPurify.sanitize(String(safeMetadata.summary.text))
+    // If a cards array is provided, sanitize each card entry
+    if (Array.isArray(safeMetadata?.cards)) {
+      safeMetadata.cards = safeMetadata.cards.map((c: any) => {
+        if (!c || typeof c !== 'object') return c
+        const copy: any = { ...c }
+        if (copy.title) copy.title = DOMPurify.sanitize(String(copy.title))
+        if (copy.subtitle) copy.subtitle = DOMPurify.sanitize(String(copy.subtitle))
+        if (copy.content) copy.content = DOMPurify.sanitize(String(copy.content))
+        return copy
+      })
+    } else {
+      if (safeMetadata?.aboutCard?.content) safeMetadata.aboutCard.content = DOMPurify.sanitize(String(safeMetadata.aboutCard.content))
+      if (safeMetadata?.topologyCard?.content) safeMetadata.topologyCard.content = DOMPurify.sanitize(String(safeMetadata.topologyCard.content))
+      if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = DOMPurify.sanitize(String(safeMetadata.hamshackCard.content))
+    }
+  } catch (e) {
+    safeMetadata = metadata ? { ...metadata } : {}
+  }
+
+  await query('UPDATE pages SET slug = ?, title = ?, content = ?, metadata = ?, is_published = ? WHERE id = ?', [slug, title, sanitized || null, safeMetadata ? JSON.stringify(safeMetadata) : JSON.stringify({}), is_published ? 1 : 0, id])
   return NextResponse.json({ ok: true })
 }
 

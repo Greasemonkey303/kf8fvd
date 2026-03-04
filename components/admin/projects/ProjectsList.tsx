@@ -1,6 +1,5 @@
 "use client"
 
-import React from 'react'
 import styles from '../../../app/admin/admin.module.css'
 import { buildPublicUrl } from '@/lib/s3'
 
@@ -14,16 +13,16 @@ function IconList() {
   )
 }
 
-type ProjectItem = { id: number; slug: string; title: string; subtitle?: string; image_path?: string }
+type ProjectItem = { id: number | string; slug: string; title: string; subtitle?: string; image_path?: string; editLink?: string }
 
-export default function ProjectsList({ items, loading }: { items: ProjectItem[]; loading: boolean }) {
+export default function ProjectsList({ items, loading, title, editPathPrefix }: { items: ProjectItem[]; loading: boolean; title?: string; editPathPrefix?: string }) {
   return (
     <div className={styles.panel}>
-      <h2 style={{display:'flex', alignItems:'center', gap:8}}><IconList/>Projects</h2>
+      <h2 style={{display:'flex', alignItems:'center', gap:8}}><IconList/>{title || 'Projects'}</h2>
       {loading ? <p>Loading…</p> : (
         <ul className="stack">
           {items.map(i => (
-            <li key={i.id} className="row between">
+            <li key={String(i.id)} className="row between">
               <div style={{display:'flex', alignItems:'center', gap:8}}>
                 {i.image_path ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -34,7 +33,7 @@ export default function ProjectsList({ items, loading }: { items: ProjectItem[];
                         if (path.indexOf('X-Amz-Algorithm') !== -1 || path.indexOf('minio') !== -1 || path.indexOf('127.0.0.1') !== -1) {
                           try {
                             const u = new URL(path)
-                            let p = u.pathname.replace(/^\/+/,'')
+                            let p = u.pathname.replace(/^\/+/, '')
                             const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
                             if (bucket && p.startsWith(bucket + '/')) p = p.slice(bucket.length + 1)
                             return buildPublicUrl(p)
@@ -57,7 +56,7 @@ export default function ProjectsList({ items, loading }: { items: ProjectItem[];
                 </div>
               </div>
               <div className="flex gap-2">
-                <a className={styles.btnGhost} href={`/admin/projects/${i.id}`} style={{display:'inline-flex', alignItems:'center', gap:8}}>
+                <a className={styles.btnGhost} href={i.editLink || `${editPathPrefix || '/admin/projects'}/${i.id}`} style={{display:'inline-flex', alignItems:'center', gap:8}}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 21v-3.75L16.81 3.44a1.5 1.5 0 0 1 2.12 0l1.64 1.64a1.5 1.5 0 0 1 0 2.12L6.75 21H3z" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   Edit
                 </a>
@@ -69,3 +68,4 @@ export default function ProjectsList({ items, loading }: { items: ProjectItem[];
     </div>
   )
 }
+
