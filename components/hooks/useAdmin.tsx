@@ -16,7 +16,7 @@ export default function useAdmin() {
         if (!mounted) return
         setIsAdmin(!!j?.admin)
         setUser(j?.user?.name || j?.user?.email || null)
-      } catch (e) {
+      } catch {
         if (!mounted) return
         setIsAdmin(false)
         setUser(null)

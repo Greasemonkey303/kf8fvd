@@ -200,7 +200,7 @@ export default function Contact() {
         // @ts-ignore
         if ((window as any).turnstile && cfWidgetId != null) (window as any).turnstile.reset(cfWidgetId)
         setCfToken(null)
-      } catch (e) {}
+      } catch {}
       
       setSuccess(true)
       // clear form

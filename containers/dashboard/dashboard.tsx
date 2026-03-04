@@ -11,14 +11,12 @@ function getCssVar(name: string, fallback: string) {
 }
 
 function Clock() {
-  const [now, setNow] = useState<Date | null>(null);
-  const [width, setWidth] = useState<number | null>(null);
+  const [now, setNow] = useState<Date | null>(() => (typeof window === 'undefined' ? null : new Date()));
+  const [width, setWidth] = useState<number | null>(() => (typeof window === 'undefined' ? null : window.innerWidth));
 
   useEffect(() => {
-    setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000);
     const onResize = () => setWidth(window.innerWidth);
-    onResize();
     window.addEventListener('resize', onResize);
     return () => { clearInterval(id); window.removeEventListener('resize', onResize); };
   }, []);
@@ -114,10 +112,10 @@ export default function Dashboard() {
   useEffect(() => {
     let mounted = true;
     const readCache = (k: string) => {
-      try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e) { return null }
+      try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null }
     };
     const writeCache = (k: string, v: unknown) => {
-      try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) { /* ignore quota errors */ }
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore quota errors */ }
     };
 
     // hydrate from cache first for faster UI
@@ -141,7 +139,7 @@ export default function Dashboard() {
           setQsos([]);
         }
       }
-    } catch(e) { /* ignore cache errors */ }
+    } catch { /* ignore cache errors */ }
 
     fetch('/api/spaceweather')
       .then((r) => r.json())
@@ -151,7 +149,7 @@ export default function Dashboard() {
           const now = Date.now();
           setBandLastUpdated(now);
           setPropLastUpdated(now);
-          try { writeCache('kf8fvd-spaceweather-v1', { data: j, ts: now }); } catch(e) {}
+          try { writeCache('kf8fvd-spaceweather-v1', { data: j, ts: now }); } catch { }
           // derive band activity grid from space weather
           try {
             const bands = ['2m','70cm','20m','40m'];
@@ -169,9 +167,7 @@ export default function Dashboard() {
               });
             });
             setBandGrid(grid);
-          } catch (e) {
-            setBandGrid(null);
-          }
+            } catch { setBandGrid(null); }
         }
       })
       .catch(() => { if (mounted) setSpace({kIndex:3,f107:92,source:'fallback'}) });
@@ -180,7 +176,7 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((j) => {
         if (!mounted) return;
-        try { writeCache('kf8fvd-logbook-v1', { data: j, ts: Date.now() }); } catch(e) {}
+        try { writeCache('kf8fvd-logbook-v1', { data: j, ts: Date.now() }); } catch { }
         if (j.source === 'qrz' && j.raw) {
           // naive extract of some call signs from XML for display
           const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];

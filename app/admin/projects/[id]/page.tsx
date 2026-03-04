@@ -53,7 +53,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
           editorRef.current.innerHTML = form.details || ''
         }
       }
-    } catch (e) {}
+    } catch {}
   }, [form.details])
 
   // keep description editor content in sync only when not focused
@@ -64,7 +64,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
           descRef.current.innerHTML = form.description || ''
         }
       }
-    } catch (e) {}
+    } catch {}
   }, [form.description])
 
   // Ensure editors are populated after loading completes (refs available)
@@ -74,45 +74,45 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
       if (editorRef.current && document.activeElement !== editorRef.current) {
         if ((editorRef.current.innerHTML || '') !== (form.details || '')) editorRef.current.innerHTML = form.details || ''
       }
-    } catch (e) {}
+    } catch {}
     try {
       if (descRef.current && document.activeElement !== descRef.current) {
         if ((descRef.current.innerHTML || '') !== (form.description || '')) descRef.current.innerHTML = form.description || ''
       }
-    } catch (e) {}
+    } catch {}
   }, [loading])
 
   useEffect(()=>{
     (async ()=>{
-      try { console.log('[admin] loading project editor id=', id) } catch(e){}
+      try { console.log('[admin] loading project editor id=', id) } catch{}
       const res = await fetch('/api/admin/projects?page=1&limit=1000')
       const data = await res.json()
       const itemsArray = Array.isArray(data.items) ? (data.items as Array<Record<string, unknown>>) : []
       const found = itemsArray.find(p => String((p as Record<string, unknown>).id) === String(id))
-      try { console.log('[admin] list query returned', Array.isArray(data.items) ? data.items.length : data) } catch(e){}
+      try { console.log('[admin] list query returned', Array.isArray(data.items) ? data.items.length : data) } catch{}
       let projectFound = found
       // If not found in listing (pagination or permissions), try fetching the single record
       if (!projectFound) {
-        try { console.log('[admin] not in list; trying single fetch for id=', id) } catch(e){}
+        try { console.log('[admin] not in list; trying single fetch for id=', id) } catch{}
         try {
           const sres = await fetch(`/api/admin/projects?id=${encodeURIComponent(String(id))}`)
           if (sres.ok) {
             const sdata = await sres.json()
-            try { console.log('[admin] single fetch returned', sdata) } catch(e){}
+            try { console.log('[admin] single fetch returned', sdata) } catch{}
             if (sdata && Array.isArray(sdata.items) && sdata.items[0]) projectFound = sdata.items[0]
             else if (sdata && sdata.item) projectFound = sdata.item
             else if (sdata && sdata.id) projectFound = sdata
-          } else {
-            try { console.log('[admin] single fetch not ok', sres.status) } catch(e){}
+            } else {
+            try { console.log('[admin] single fetch not ok', sres.status) } catch{}
           }
-        } catch (e) {
+        } catch {
           // ignore
         }
       }
 
       if (projectFound) {
       let md: unknown = null
-      try { md = projectFound && (projectFound as Record<string, unknown>).metadata ? JSON.parse(String((projectFound as Record<string, unknown>).metadata)) : null } catch (e) { md = null }
+      try { md = projectFound && (projectFound as Record<string, unknown>).metadata ? JSON.parse(String((projectFound as Record<string, unknown>).metadata)) : null } catch { md = null }
       let initDetails = ''
       if (md && typeof md === 'object' && 'details' in (md as Record<string, unknown>)) {
         const d = (md as Record<string, unknown>).details
@@ -121,7 +121,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
       const initDesc = String((projectFound as Record<string, unknown>).description || '')
       // if details are empty but description exists, initialize details from description
       const fallbackDetails = initDetails && String(initDetails).trim() ? initDetails : (initDesc && String(initDesc).trim() ? initDesc : '')
-      try { console.log('[admin] initializing form from projectFound id=', projectFound.id, 'slug=', projectFound.slug, 'detailsLen=', String(fallbackDetails || '').length) } catch(e){}
+      try { console.log('[admin] initializing form from projectFound id=', projectFound.id, 'slug=', projectFound.slug, 'detailsLen=', String(fallbackDetails || '').length) } catch{}
       setForm({
         id: Number((projectFound as Record<string, unknown>).id) || 0,
         slug: String((projectFound as Record<string, unknown>).slug || ''),
@@ -137,8 +137,8 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
         // store raw fetched project for debug panel
         fetchedProjectRef.current = projectFound
         // populate editor refs once mounted — use RAF to avoid timing races
-        try { requestAnimationFrame(()=>{ try { if (editorRef.current) { editorRef.current.innerHTML = fallbackDetails; console.log('[admin] populated editorRef, len=', (editorRef.current.innerHTML||'').length) } } catch(e){} }) } catch (e) {}
-        try { requestAnimationFrame(()=>{ try { if (descRef.current) { descRef.current.innerHTML = initDesc; console.log('[admin] populated descRef, len=', (descRef.current.innerHTML||'').length) } } catch(e){} }) } catch (e) {}
+        try { requestAnimationFrame(()=>{ try { if (editorRef.current) { editorRef.current.innerHTML = fallbackDetails; console.log('[admin] populated editorRef, len=', (editorRef.current.innerHTML||'').length) } } catch{} }) } catch {}
+        try { requestAnimationFrame(()=>{ try { if (descRef.current) { descRef.current.innerHTML = initDesc; console.log('[admin] populated descRef, len=', (descRef.current.innerHTML||'').length) } } catch{} }) } catch {}
         // start with metadata images (no hard slice here; display can show all)
         setImages((md && typeof md === 'object' && Array.isArray((md as Record<string, unknown>).images)) ? (((md as Record<string, unknown>).images as unknown) as string[]).slice(0,6) : [])
         // fetch any stored objects for this slug and merge them so admin sees all linked images
@@ -159,7 +159,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                 })
               }
             }
-          } catch (e) {
+          } catch {
             // ignore listing errors; admin can still use metadata images
           }
         })()
@@ -187,12 +187,12 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
             // merge draft into current form but don't overwrite non-empty server values unless draft has them
             setForm(f => ({ ...f, ...((obj.form && typeof obj.form === 'object') ? obj.form : {}) }))
             setImages(prev=> Array.isArray(obj.images) ? obj.images : prev)
-            try { toast.showToast && toast.showToast('Restored local draft', 'info') } catch(e){}
+            try { toast.showToast && toast.showToast('Restored local draft', 'info') } catch{}
           }
-        } catch (e) {}
+        } catch {}
       }
       draftIdRef.current = key
-    } catch (e) {}
+    } catch {}
   }, [loading])
 
   // If details are empty after load, try fetching the public project page and extract `.story` HTML
@@ -227,19 +227,19 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
           } else {
             detailsHtml = story.innerHTML
           }
-        } catch (e) { detailsHtml = story.innerHTML }
+        } catch { detailsHtml = story.innerHTML }
         if (detailsHtml && detailsHtml.trim()) {
           // populate editor and form (local only)
           setForm(f=>({ ...f, details: detailsHtml }))
-          try { requestAnimationFrame(()=>{ if (editorRef.current && document.activeElement !== editorRef.current) editorRef.current.innerHTML = detailsHtml }) } catch(e){}
+          try { requestAnimationFrame(()=>{ if (editorRef.current && document.activeElement !== editorRef.current) editorRef.current.innerHTML = detailsHtml }) } catch{}
           // save draft immediately
           try {
             const key = draftKey()
             window.localStorage.setItem(key, JSON.stringify({ form: { ...form, details: detailsHtml }, images }))
-            try { toast.showToast && toast.showToast('Populated details from public page (local only)', 'info') } catch(e){}
-          } catch (e) {}
+            try { toast.showToast && toast.showToast('Populated details from public page (local only)', 'info') } catch{}
+          } catch {}
         }
-      } catch (e) {}
+      } catch {}
       didFetchPublicRef.current = true
     })()
   }, [form.slug, form.details, form.description, loading])
@@ -248,13 +248,13 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     if (initialLoadRef.current) return
     if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current)
     autosaveTimerRef.current = window.setTimeout(()=>{
-      try {
+        try {
         const key = draftKey()
         const payload = { form, images, savedAt: Date.now() }
         window.localStorage.setItem(key, JSON.stringify(payload))
-        try { toast.showToast && toast.showToast('Draft saved locally', 'success') } catch(e){}
-      } catch (e) {
-        try { toast.showToast && toast.showToast('Could not save draft locally', 'error') } catch(e){}
+        try { toast.showToast && toast.showToast('Draft saved locally', 'success') } catch{}
+      } catch {
+        try { toast.showToast && toast.showToast('Could not save draft locally', 'error') } catch{}
       }
     }, 800)
     return () => { if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current) }
@@ -265,7 +265,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     if (e?.preventDefault) e.preventDefault()
     const metadata = { ...(form.details ? { details: form.details } : {}), images }
     await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
-    try { toast.showToast && toast.showToast('Project saved', 'success') } catch (e) {}
+    try { toast.showToast && toast.showToast('Project saved', 'success') } catch {}
     router.push('/admin/projects')
   }
 
@@ -293,7 +293,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
       // persist changes to project
       try {
         await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newForm, metadata }) })
-      } catch (e) {
+      } catch {
         // ignore persistence errors for now
       }
 
@@ -314,7 +314,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     setForm(newForm)
     try {
       await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: val }) })
-    } catch (e) { /* ignore save error */ }
+    } catch { /* ignore save error */ }
   }
 
   async function uploadMainImage(file: File | null) {
@@ -330,14 +330,14 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
       const url = j.publicUrl || j.key
       const newForm = { ...form, image_path: url }
       setForm(newForm)
-      try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: url }) }) } catch (e) { /* ignore */ }
-      try { toast.showToast && toast.showToast('Main image uploaded', 'success') } catch(e){}
+      try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: url }) }) } catch { /* ignore */ }
+      try { toast.showToast && toast.showToast('Main image uploaded', 'success') } catch{}
     } catch (e: unknown) {
       let msg = 'Unknown error'
       if (e instanceof Error) msg = e.message
       else msg = String(e)
       alert('Upload failed: ' + msg)
-      try { toast.showToast && toast.showToast('Upload failed', 'error') } catch(e){}
+      try { toast.showToast && toast.showToast('Upload failed', 'error') } catch{}
     }
   }
 
@@ -346,10 +346,10 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     if (!confirm('Delete the main image from storage and clear Image path?')) return
     try {
       await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: form.image_path }) })
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
     const newForm = { ...form, image_path: '' }
     setForm(newForm)
-    try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: '' }) }) } catch (e) { /* ignore */ }
+    try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: '' }) }) } catch { /* ignore */ }
   }
 
   function moveImage(idx: number, dir: number) {
@@ -364,7 +364,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     try {
       const metadata = { ...(form.details ? { details: form.details } : {}), images: copy }
       fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }
 
   function editImage(idx: number) {
@@ -378,7 +378,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     try {
       const metadata = { ...(form.details ? { details: form.details } : {}), images: copy }
       fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }
 
   function uploadFiles(files: FileList | null | undefined) {
@@ -409,11 +409,11 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
               const next = [...prev.slice(0,5), url]
               setUploadProgress(0)
               ;(async ()=>{
-                try {
+                  try {
                   const metadata = { ...(form.details ? { details: form.details } : {}), images: next }
                   await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
-                    try { toast.showToast && toast.showToast('Image uploaded', 'success') } catch(e){}
-                } catch (e) { /* ignore autosave errors */ }
+                    try { toast.showToast && toast.showToast('Image uploaded', 'success') } catch{}
+                } catch { /* ignore autosave errors */ }
               })()
               return next
             })
@@ -539,7 +539,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                     contentEditable
                     suppressContentEditableWarning
                     onInput={(e: React.FormEvent<HTMLDivElement>)=>{ try { const v = (e.currentTarget as HTMLDivElement)?.innerHTML || ''; setForm(f=>({ ...f, details: v })); } catch (err) { /* ignore transient events */ } }}
-                    onFocus={() => { try { if (editorRef.current && !(editorRef.current.innerHTML || '').trim() && (form.details || '').trim()) { editorRef.current.innerHTML = form.details || '' } } catch (e) {} }}
+                    onFocus={() => { try { if (editorRef.current && !(editorRef.current.innerHTML || '').trim() && (form.details || '').trim()) { editorRef.current.innerHTML = form.details || '' } } catch {} }}
                     className={styles.formTextarea}
                     style={{minHeight: editorExpanded ? 600 : 400, maxHeight:1200, overflow:'auto', resize:'vertical'}}
                   />
@@ -603,7 +603,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                     contentEditable
                     suppressContentEditableWarning
                     onInput={(e: React.FormEvent<HTMLDivElement>)=>{ try { const v = (e.currentTarget as HTMLDivElement)?.innerHTML || ''; setForm(f=>({ ...f, description: v })); } catch (err) { /* ignore transient events */ } }}
-                    onFocus={() => { try { if (descRef.current && !(descRef.current.innerHTML || '').trim() && (form.description || '').trim()) { descRef.current.innerHTML = form.description || '' } } catch (e) {} }}
+                    onFocus={() => { try { if (descRef.current && !(descRef.current.innerHTML || '').trim() && (form.description || '').trim()) { descRef.current.innerHTML = form.description || '' } } catch {} }}
                     className={styles.formTextarea}
                     style={{minHeight: descExpanded ? 400 : 220, maxHeight:800, overflow:'auto', resize:'vertical'}}
                   />

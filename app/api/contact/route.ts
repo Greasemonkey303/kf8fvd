@@ -109,7 +109,7 @@ export async function POST(req: Request) {
 
     // Debug: log what attachments we will send
     if (attachments.length) {
-      try { console.log('[api/contact] attachments:', attachments.map(a => a.filename)) } catch (e) { /* ignore */ }
+      try { console.log('[api/contact] attachments:', attachments.map(a => a.filename)) } catch { /* ignore */ }
     }
 
     // server-side email validation (simple)

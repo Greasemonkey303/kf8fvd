@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     try {
       const getExpires = 24 * 60 * 60
       publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
-    } catch (e) {
+    } catch {
       publicUrl = buildPublicUrl(key)
     }
 

@@ -12,10 +12,11 @@ export async function GET(req: Request) {
   const offset = (page - 1) * limit
   const safeLimit = Number.isFinite(limit) ? limit : 20
   const safeOffset = Number.isFinite(offset) ? offset : 0
-  const rows = await query<any[]>(`SELECT u.id, u.name, u.email, u.is_active, u.created_at, GROUP_CONCAT(r.name) as roles FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id LEFT JOIN roles r ON r.id = ur.role_id GROUP BY u.id ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`)
-  const [{ total }]: any = await query('SELECT COUNT(*) as total FROM users') as any
+  const rows = await query<{ id: number; name: string; email: string; is_active: number; created_at: string; roles?: string | null }[]>(`SELECT u.id, u.name, u.email, u.is_active, u.created_at, GROUP_CONCAT(r.name) as roles FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id LEFT JOIN roles r ON r.id = ur.role_id GROUP BY u.id ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`)
+  const countRows = await query<{ total: number }[]>('SELECT COUNT(*) as total FROM users')
+  const total = countRows?.[0]?.total ?? 0
   // normalize roles into arrays
-  const items = (rows || []).map((r: any) => ({ ...r, roles: r.roles ? String(r.roles).split(',') : [] }))
+  const items = (rows || []).map(r => ({ ...r, roles: r.roles ? String(r.roles).split(',') : [] }))
   return NextResponse.json({ items, page, limit, total })
 }
 
@@ -26,13 +27,13 @@ export async function POST(req: Request) {
   const { name, email, password, roles } = body
   if (!email || !password) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   const hashed = bcrypt.hashSync(password, 12)
-  const res: any = await query('INSERT INTO users (name, email, hashed_password, is_active) VALUES (?, ?, ?, 1)', [name || null, email, hashed])
-  const userId = res.insertId
+  const insertRes = await query('INSERT INTO users (name, email, hashed_password, is_active) VALUES (?, ?, ?, 1)', [name || null, email, hashed])
+  const userId = (insertRes as unknown as { insertId?: number })?.insertId ?? null
   // assign roles if provided
   if (Array.isArray(roles)) {
     for (const roleName of roles) {
-      const r: any = await query('SELECT id FROM roles WHERE name = ? LIMIT 1', [roleName])
-      const rid = Array.isArray(r) && r.length ? r[0].id : null
+      const roleRows = await query<{ id: number }[]>('SELECT id FROM roles WHERE name = ? LIMIT 1', [roleName])
+      const rid = roleRows && roleRows.length ? roleRows[0].id : null
       if (rid) await query('INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)', [userId, rid])
     }
   }
@@ -54,8 +55,8 @@ export async function PUT(req: Request) {
   if (Array.isArray(roles)) {
     await query('DELETE FROM user_roles WHERE user_id = ?', [id])
     for (const roleName of roles) {
-      const r: any = await query('SELECT id FROM roles WHERE name = ? LIMIT 1', [roleName])
-      const rid = Array.isArray(r) && r.length ? r[0].id : null
+      const roleRows = await query<{ id: number }[]>('SELECT id FROM roles WHERE name = ? LIMIT 1', [roleName])
+      const rid = roleRows && roleRows.length ? roleRows[0].id : null
       if (rid) await query('INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)', [id, rid])
     }
   }

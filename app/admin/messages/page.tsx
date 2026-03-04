@@ -7,7 +7,7 @@ export default async function Page() {
   try {
     const text = await fs.readFile(out, 'utf8')
     lines = text.split('\n').filter(Boolean)
-  } catch (e) {
+  } catch {
     lines = []
   }
 

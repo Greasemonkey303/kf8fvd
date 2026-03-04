@@ -24,7 +24,7 @@ export default async function Page({ params }: Props){
 
   // parse metadata images
   let md: unknown = null
-  try { md = project.metadata ? JSON.parse(String(project.metadata)) : null } catch (e) { md = project.metadata }
+  try { md = project.metadata ? JSON.parse(String(project.metadata)) : null } catch { md = project.metadata }
 
   function normalizeImages(m: unknown): string[] {
     if (!m) return []
@@ -39,7 +39,7 @@ export default async function Page({ params }: Props){
         try {
           const p = JSON.parse(imgs)
           if (Array.isArray(p)) return p.filter(Boolean) as string[]
-        } catch (e) {
+        } catch {
           // not JSON, fallthrough to comma split
         }
         return imgs.split(',').map((s:string)=>s.trim()).filter(Boolean)
@@ -92,7 +92,7 @@ export default async function Page({ params }: Props){
         }
         if (objs.length) allImgs = objs.map(k => buildPublicUrl(k))
       }
-    } catch (e) {
+    } catch {
       // listing failed; fall back to metadata images (empty)
     }
   }
@@ -109,13 +109,13 @@ export default async function Page({ params }: Props){
           const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
           if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
           return buildPublicUrl(path)
-        } catch (e) {
+        } catch {
           return buildPublicUrl(mainImg)
         }
       }
       if (typeof mainImg === 'string' && (mainImg.startsWith('http') || mainImg.startsWith('/'))) return mainImg
       return buildPublicUrl(mainImg)
-    } catch (e) { return mainImg }
+    } catch { return mainImg }
   })()
 
   // sanitize metadata.details before rendering
@@ -127,7 +127,7 @@ export default async function Page({ params }: Props){
       const DOMPurify = createDOMPurify(windowForPurify)
       detailsHtml = DOMPurify.sanitize(String((md as Record<string, unknown>).details))
     }
-  } catch (e) {
+  } catch {
     detailsHtml = md && (md as Record<string, unknown>).details ? String((md as Record<string, unknown>).details) : null
   }
 
@@ -138,7 +138,7 @@ export default async function Page({ params }: Props){
     const windowForPurify = dom.window as unknown as Window & typeof globalThis
     const DOMPurify = createDOMPurify(windowForPurify)
     safeDescriptionHtml = DOMPurify.sanitize(String(project.description || ''))
-  } catch (e) {
+  } catch {
     safeDescriptionHtml = String(project.description || '')
   }
 

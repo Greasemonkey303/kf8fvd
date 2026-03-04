@@ -25,7 +25,7 @@ export async function GET(req: Request) {
       // `rawStream` has an event-emitter interface; narrow to any-compatible handlers safely
       const s = rawStream as unknown as { on: (ev: string, cb: (...args: unknown[]) => void) => void }
       s.on('data', (c: unknown) => {
-        try { chunks.push(Buffer.from(c as Buffer)) } catch (e) { /* ignore malformed chunk */ }
+        try { chunks.push(Buffer.from(c as Buffer)) } catch { /* ignore malformed chunk */ }
       })
       s.on('end', () => resolve(Buffer.concat(chunks)))
       s.on('error', (e: unknown) => reject(e))

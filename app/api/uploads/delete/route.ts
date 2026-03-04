@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     let body: unknown = null
-    try { body = await req.json() } catch (e) { body = null }
+    try { body = await req.json() } catch { body = null }
     const parsed = (typeof body === 'object' && body !== null) ? (body as Record<string, unknown>) : {}
     const key = typeof parsed.key === 'string' ? parsed.key : undefined
     const url = typeof parsed.url === 'string' ? parsed.url : undefined
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
           else objectKey = p
         }
       }
-    } catch (e) {
+    } catch {
       objectKey = url
     }
   }

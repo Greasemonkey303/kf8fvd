@@ -89,10 +89,10 @@ export default function AdminProjects() {
     autosaveTimer.current = window.setTimeout(() => {
       try {
         const payload = { form, detailImages, updated: Date.now() }
-        try { localStorage.setItem(draftKey(), JSON.stringify(payload)) } catch (e) {}
+        try { localStorage.setItem(draftKey(), JSON.stringify(payload)) } catch {}
         // lightweight toast for autosave
-        try { toast?.showToast && toast.showToast('Draft saved locally', 'info') } catch(e){}
-      } catch (e) {}
+        try { toast?.showToast && toast.showToast('Draft saved locally', 'info') } catch{}
+      } catch {}
     }, 800)
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
   }, [form, detailImages])
@@ -107,10 +107,10 @@ export default function AdminProjects() {
         if (p && p.form) {
           setForm(f=>({ ...f, ...p.form }))
           setDetailImages(p.detailImages || [])
-          try { toast?.showToast && toast.showToast('Restored unsaved draft', 'info') } catch(e){}
+          try { toast?.showToast && toast.showToast('Restored unsaved draft', 'info') } catch{}
         }
       }
-    } catch (e) {}
+    } catch {}
   }, [])
 
   // When slug becomes available, if there's a draft for that slug, load it
@@ -124,10 +124,10 @@ export default function AdminProjects() {
         if (p && p.form) {
           setForm(f=>({ ...f, ...p.form }))
           setDetailImages(p.detailImages || [])
-          try { toast?.showToast && toast.showToast('Loaded draft for slug', 'info') } catch(e){}
+          try { toast?.showToast && toast.showToast('Loaded draft for slug', 'info') } catch{}
         }
       }
-    } catch (e) {}
+    } catch {}
   }, [form.slug])
 
   // Keep the contentEditable DOM in sync only when the editor is not focused.
@@ -139,7 +139,7 @@ export default function AdminProjects() {
           descRef.current.innerHTML = form.description || ''
         }
       }
-    } catch (e) {}
+    } catch {}
   }, [form.description])
 
   useEffect(() => {
@@ -149,7 +149,7 @@ export default function AdminProjects() {
           detailsRef.current.innerHTML = form.details || ''
         }
       }
-    } catch (e) {}
+    } catch {}
   }, [form.details])
 
   // Derived filtered items for client-side search (debounced)
@@ -431,10 +431,10 @@ export default function AdminProjects() {
                     <button suppressHydrationWarning className={styles.btnGhost} type="submit">Create</button>
                     <button type="button" className={styles.btnGhost} onClick={()=>setPreviewOpen(true)}>Preview</button>
                     <button type="button" className={styles.btnDanger} onClick={()=>{
-                      try { localStorage.removeItem(`admin_project_draft:${form.slug || draftIdRef.current}`) } catch(e){}
+                      try { localStorage.removeItem(`admin_project_draft:${form.slug || draftIdRef.current}`) } catch{}
                       setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
                       setDetailImages([])
-                      try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch(e){}
+                      try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch{}
                     }}>Discard draft</button>
                 </div>
                 </form>

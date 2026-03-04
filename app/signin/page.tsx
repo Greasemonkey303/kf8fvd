@@ -1,23 +1,20 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Card } from '@/components';
 
 export default function SignInPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState<string>(() => {
+    try { return localStorage.getItem('kf8fvd_remember_email') || '' } catch { return '' }
+  })
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false)
+  const [remember, setRemember] = useState<boolean>(() => {
+    try { return Boolean(localStorage.getItem('kf8fvd_remember_email')) } catch { return false }
+  })
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(()=>{
-    try {
-      const saved = localStorage.getItem('kf8fvd_remember_email')
-      if (saved) { setEmail(saved); setRemember(true) }
-    } catch (e) {}
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +29,7 @@ export default function SignInPage() {
     try {
       if (remember) localStorage.setItem('kf8fvd_remember_email', email)
       else localStorage.removeItem('kf8fvd_remember_email')
-    } catch (e) {}
+    } catch { }
     router.push(callback)
   };
 

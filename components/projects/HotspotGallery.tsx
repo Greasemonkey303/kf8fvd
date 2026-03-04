@@ -9,7 +9,9 @@ type Props = { images?: string[] }
 
 export default function HotspotGallery({ images }: Props){
   const storageKey = 'kf8fvd-hotspot-images-v1'
-  const [stored, setStored] = useState<string[]>([])
+  const [stored, setStored] = useState<string[]>(() => {
+    try { const s = JSON.parse(localStorage.getItem(storageKey) || '[]'); return Array.isArray(s) ? s : [] } catch { return [] }
+  })
   const imgs = [ ...(images && images.length>0 ? images : [
     '/hotspot/hotspot-1.jpg',
     '/hotspot/hotspot-2.jpg',
@@ -17,9 +19,7 @@ export default function HotspotGallery({ images }: Props){
   ]), ...stored ]
   const [open, setOpen] = useState<string | null>(null)
 
-  useEffect(()=>{
-    try { const s = JSON.parse(localStorage.getItem(storageKey) || '[]'); setStored(Array.isArray(s)? s: []); } catch(e){ setStored([]) }
-  },[])
+  
 
   useEffect(()=>{
     function onKey(e: KeyboardEvent){ if (e.key === 'Escape') setOpen(null) }
@@ -40,7 +40,7 @@ export default function HotspotGallery({ images }: Props){
     }
     if (added.length===0) return;
     const merged = [...added, ...stored].slice(0, 12)
-    try { localStorage.setItem(storageKey, JSON.stringify(merged)); } catch(e) {}
+    try { localStorage.setItem(storageKey, JSON.stringify(merged)); } catch { }
     setStored(merged)
   }
 

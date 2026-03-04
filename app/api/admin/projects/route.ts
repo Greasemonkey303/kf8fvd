@@ -36,19 +36,24 @@ export async function POST(req: Request) {
   if (typeof title !== 'string' || title.length > 255) return NextResponse.json({ error: 'Invalid title' }, { status: 400 })
   if (image_path && image_path.length > 1024) return NextResponse.json({ error: 'Invalid image_path' }, { status: 400 })
   if (external_link) {
-    try { new URL(external_link, 'http://example.com') } catch (e) { return NextResponse.json({ error: 'Invalid external_link' }, { status: 400 }) }
+    try { new URL(external_link, 'http://example.com') } catch (_e) { return NextResponse.json({ error: 'Invalid external_link' }, { status: 400 }) }
   }
 
   // sanitize description server-side
-  const window = (new JSDOM('')).window as any
-  const DOMPurify = createDOMPurify(window)
+  const { window } = new JSDOM('')
+  const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   const safeDescription = description ? DOMPurify.sanitize(String(description)) : null
 
   // if createDetails is requested, set external_link to /projects/<slug> and initialize metadata.details
   let metadata = null
   let finalExternal = external_link || null
   // allow initial details to be provided in the body as `details` or `metadata.details`
-  const detailsInput = (body && body.metadata && body.metadata.details) || body.details || ''
+  const detailsInput = (() => {
+    if (body && body.metadata && typeof body.metadata === 'object' && body.metadata !== null && 'details' in body.metadata) {
+      return (body.metadata as Record<string, unknown>).details
+    }
+    return body?.details ?? ''
+  })()
   if (createDetails) {
     finalExternal = finalExternal || `/projects/${slug}`
     // sanitize details
@@ -60,16 +65,20 @@ export async function POST(req: Request) {
   if (!metadata && body && body.metadata) {
     try {
       const metaObj = typeof body.metadata === 'string' ? JSON.parse(body.metadata) : body.metadata
-      if (metaObj && metaObj.details) metaObj.details = DOMPurify.sanitize(String(metaObj.details))
+      if (metaObj && typeof metaObj === 'object' && 'details' in (metaObj as Record<string, unknown>)) {
+        const d = (metaObj as Record<string, unknown>).details
+        ;(metaObj as Record<string, unknown>).details = DOMPurify.sanitize(String(d))
+      }
       metadata = JSON.stringify(metaObj)
-    } catch (e) {
+    } catch (_e) {
       // fall back to stringified value
-      try { metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata) } catch (e) { metadata = null }
+      try { metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata) } catch (_err) { metadata = null }
     }
   }
 
-  const res = await query('INSERT INTO projects (slug, title, subtitle, image_path, description, external_link, metadata, is_published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [slug, title, subtitle || null, image_path || null, safeDescription, finalExternal, metadata, is_published ? 1 : 0, sort_order || 0]) as { insertId?: number }
-  return NextResponse.json({ id: res.insertId, ok: true })
+  const insertRes = await query('INSERT INTO projects (slug, title, subtitle, image_path, description, external_link, metadata, is_published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [slug, title, subtitle || null, image_path || null, safeDescription, finalExternal, metadata, is_published ? 1 : 0, sort_order || 0])
+  const id = (insertRes as unknown as { insertId?: number })?.insertId ?? null
+  return NextResponse.json({ id, ok: true })
 }
 
 export async function PUT(req: Request) {
@@ -83,11 +92,11 @@ export async function PUT(req: Request) {
   if (title && (typeof title !== 'string' || title.length > 255)) return NextResponse.json({ error: 'Invalid title' }, { status: 400 })
   if (image_path && image_path.length > 1024) return NextResponse.json({ error: 'Invalid image_path' }, { status: 400 })
   if (external_link) {
-    try { new URL(external_link, 'http://example.com') } catch (e) { return NextResponse.json({ error: 'Invalid external_link' }, { status: 400 }) }
+    try { new URL(external_link, 'http://example.com') } catch { return NextResponse.json({ error: 'Invalid external_link' }, { status: 400 }) }
   }
 
-  const window = (new JSDOM('')).window as any
-  const DOMPurify = createDOMPurify(window)
+  const { window } = new JSDOM('')
+  const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   const safeDescription = description ? DOMPurify.sanitize(String(description)) : null
 
   // preserve metadata JSON if provided
@@ -96,10 +105,13 @@ export async function PUT(req: Request) {
     let metaStr = null
     try {
       const metaObj = typeof metadata === 'string' ? JSON.parse(metadata) : metadata
-      if (metaObj && metaObj.details) metaObj.details = DOMPurify.sanitize(String(metaObj.details))
+      if (metaObj && typeof metaObj === 'object' && 'details' in (metaObj as Record<string, unknown>)) {
+        const d = (metaObj as Record<string, unknown>).details
+        ;(metaObj as Record<string, unknown>).details = DOMPurify.sanitize(String(d))
+      }
       metaStr = JSON.stringify(metaObj)
-    } catch (e) {
-      try { metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata) } catch (e) { metaStr = null }
+    } catch (_e) {
+      try { metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata) } catch (_err) { metaStr = null }
     }
     await query('UPDATE projects SET slug = ?, title = ?, subtitle = ?, image_path = ?, description = ?, external_link = ?, metadata = ?, is_published = ?, sort_order = ? WHERE id = ?', [slug, title, subtitle || null, image_path || null, safeDescription, external_link || null, metaStr, is_published ? 1 : 0, sort_order || 0, id])
   } else {
@@ -115,7 +127,7 @@ export async function DELETE(req: Request) {
   const id = url.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   // find the project to get its slug so we can delete related objects
-  const rows: any = await query('SELECT slug FROM projects WHERE id = ?', [id])
+  const rows = await query<{ slug: string }[]>('SELECT slug FROM projects WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const slug = rows[0].slug
 

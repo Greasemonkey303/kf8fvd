@@ -11,14 +11,14 @@ export default function LogoutPage() {
     (async () => {
       try {
         await signOut({ redirect: false });
-      } catch (e) {
+      } catch {
         // ignore
       }
       try {
         // clear any client-side auth flags used previously
         localStorage.removeItem('kf8fvd_auth')
         localStorage.removeItem('kf8fvd_user')
-      } catch (e) {}
+      } catch {}
       const t = setTimeout(() => router.push('/'), 600);
       return () => clearTimeout(t);
     })()

@@ -26,9 +26,9 @@ export async function POST(req: Request) {
     policy.setBucket(bucket)
     policy.setKey(key)
     // allow content types that start with image/
-    try { policy.setContentTypeStartsWith('image/') } catch (e) {}
+    try { policy.setContentTypeStartsWith('image/') } catch {}
     // expiry (seconds)
-    try { policy.setExpires(new Date(Date.now() + 300 * 1000)) } catch (e) {}
+    try { policy.setExpires(new Date(Date.now() + 300 * 1000)) } catch {}
 
     const presigned = await minioClient.presignedPostPolicy(policy)
 
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     try {
       const getExpires = 24 * 60 * 60
       publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
-    } catch (e) {
+    } catch {
       publicUrl = buildPublicUrl(key)
     }
 

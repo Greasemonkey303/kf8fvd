@@ -22,7 +22,7 @@ export default function AdminPage() {
         const m = await mRes.json().catch(()=>({ items:[] }))
         const u = await uRes.json().catch(()=>({ items:[] }))
         setCounts({ projects: (p.items||[]).length, messages: (m.items||[]).length, users: (u.items||[]).length })
-      } catch (e) {
+      } catch {
         // ignore
       }
     })()

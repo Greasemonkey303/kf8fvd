@@ -24,7 +24,7 @@ export default function About() {
     window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('keydown', onKey)
-      try { doc.style.overflow = prevOverflow || '' } catch (e) {}
+      try { doc.style.overflow = prevOverflow || '' } catch {}
       if (prev && typeof prev.focus === 'function') prev.focus()
     }
   }, [open])

@@ -9,7 +9,9 @@ import { signIn, signOut } from 'next-auth/react'
 
 const Navbar: React.FC = () => {
   const [open, setOpen] = useState(false);
-  const [isLight, setIsLight] = useState(false);
+  const [isLight, setIsLight] = useState<boolean>(() => {
+    try { return localStorage.getItem('kf8fvd-theme') === 'light' } catch { return false }
+  });
   const [isAuth, setIsAuth] = useState(false);
   const [user, setUser] = useState<string | null>(null);
   const { isAdmin, user: adminUser, loading: adminLoading } = useAdmin()
@@ -29,19 +31,18 @@ const Navbar: React.FC = () => {
     }
 
     readAuth();
-    // init theme from localStorage only — default to dark mode
-    try {
-      const stored = localStorage.getItem('kf8fvd-theme');
-      if (stored) {
-        const light = stored === 'light';
-        setIsLight(light);
-        if (light) document.documentElement.classList.add('theme-light');
-      }
-    } catch (e) {}
     const onStorage = () => readAuth();
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
+
+  useEffect(() => {
+    try {
+      if (isLight) document.documentElement.classList.add('theme-light')
+      else document.documentElement.classList.remove('theme-light')
+      localStorage.setItem('kf8fvd-theme', isLight ? 'light' : 'dark')
+    } catch { }
+  }, [isLight])
 
   return (
     <header className={styles.header}>
@@ -62,13 +63,8 @@ const Navbar: React.FC = () => {
             aria-checked={isLight}
             className={`${styles.themeToggle} ${isLight ? styles.light : ''}`}
             onClick={() => {
-              try {
-                const next = !isLight;
-                setIsLight(next);
-                if (next) document.documentElement.classList.add('theme-light');
-                else document.documentElement.classList.remove('theme-light');
-                localStorage.setItem('kf8fvd-theme', next ? 'light' : 'dark');
-              } catch (e) {}
+              const next = !isLight;
+              setIsLight(next);
             }}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.target as HTMLElement).click(); } }}
           >

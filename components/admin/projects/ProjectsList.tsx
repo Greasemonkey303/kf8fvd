@@ -38,13 +38,13 @@ export default function ProjectsList({ items, loading }: { items: ProjectItem[];
                             const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
                             if (bucket && p.startsWith(bucket + '/')) p = p.slice(bucket.length + 1)
                             return buildPublicUrl(p)
-                          } catch (e) {
+                          } catch {
                             return buildPublicUrl(path)
                           }
                         }
                         if (path.startsWith('http') || path.startsWith('/')) return path
                         return buildPublicUrl(path)
-                      } catch (e) { return '' }
+                      } catch { return '' }
                     })()}
                     alt={i.title}
                     style={{width:64, height:48, objectFit:'cover', borderRadius:6}}
