@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import styles from '../admin.module.css'
+import styles from '../../admin.module.css'
 
 export default function UserEditor({ params }: { params: { id: string } }) {
   // `params` may be a Promise in the App Router — unwrap with React.use when available

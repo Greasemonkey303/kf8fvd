@@ -1,13 +1,12 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Card } from '@/components';
 
 export default function SignInPage() {
   const router = useRouter();
-  const params = useSearchParams()
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false)
@@ -24,7 +23,7 @@ export default function SignInPage() {
     e.preventDefault();
     if (!email || !password) return;
     setError(null);
-    const callback = params?.get('callbackUrl') || '/admin'
+    const callback = (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('callbackUrl') : null) || '/admin'
     const res = await signIn('credentials', { redirect: false, email, password, callbackUrl: callback, remember: remember ? 'true' : 'false' });
     if (res?.error) {
       setError('Invalid credentials')

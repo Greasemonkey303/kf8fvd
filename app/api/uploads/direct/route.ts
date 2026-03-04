@@ -35,7 +35,8 @@ export async function POST(req: Request) {
     console.log('direct upload attempt', { bucket, key, filename, contentType })
     const buffer = Buffer.from(await file.arrayBuffer())
     await new Promise<void>((resolve, reject) => {
-      minioClient.putObject(bucket, key, buffer, contentType, (err) => {
+      // pass buffer length and annotate callback to satisfy typings
+      minioClient.putObject(bucket, key, buffer, buffer.length, (err: any) => {
         if (err) {
           console.error('minio.putObject error', err)
           return reject(err)
@@ -45,17 +46,13 @@ export async function POST(req: Request) {
       })
     })
 
-    const publicUrl = await new Promise<string>((resolve) => {
-      try {
-        const getExpires = 24 * 60 * 60
-        minioClient.presignedGetObject(bucket, key, getExpires, (err, presignedUrl) => {
-          if (err) return resolve(buildPublicUrl(key))
-          resolve(presignedUrl)
-        })
-      } catch (e) {
-        resolve(buildPublicUrl(key))
-      }
-    })
+    let publicUrl: string
+    try {
+      const getExpires = 24 * 60 * 60
+      publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
+    } catch (e) {
+      publicUrl = buildPublicUrl(key)
+    }
 
     return NextResponse.json({ key, publicUrl })
   } catch (err: any) {

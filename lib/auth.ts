@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../app/api/auth/[...nextauth]/route'
 import { query } from './db'
 
-export async function getSessionServer() {
+export async function getSessionServer(): Promise<any> {
   const session = await getServerSession(authOptions as any)
   return session
 }

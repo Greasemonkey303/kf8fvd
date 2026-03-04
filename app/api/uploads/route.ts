@@ -34,22 +34,17 @@ export async function POST(req: Request) {
     console.log('uploads.presign (minio): bucket=', bucket, 'key=', key, 'contentType=', body.contentType)
 
     // MinIO presigned PUT
-    const url = await new Promise<string>((resolve, reject) => {
-      const expires = 300
-      minioClient.presignedPutObject(bucket, key, expires, (err, presignedUrl) => {
-        if (err) return reject(err)
-        resolve(presignedUrl)
-      })
-    })
+    const expires = 300
+    const url = await minioClient.presignedPutObject(bucket, key, expires)
 
     // generate a presigned GET so clients can fetch the uploaded object
-    const publicUrl = await new Promise<string>((resolve, reject) => {
+    let publicUrl: string
+    try {
       const getExpires = 24 * 60 * 60
-      minioClient.presignedGetObject(bucket, key, getExpires, (err, presignedUrl) => {
-        if (err) return resolve(buildPublicUrl(key))
-        resolve(presignedUrl)
-      })
-    })
+      publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
+    } catch (e) {
+      publicUrl = buildPublicUrl(key)
+    }
 
     // parse signed url to surface signing hints in dev
     let debug: any = undefined

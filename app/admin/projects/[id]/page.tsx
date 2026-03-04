@@ -7,9 +7,10 @@ import projectStyles from '../../../projects/hotspot/hotspot.module.css'
 import Card from '../../../../components/card/card'
 import { useToast } from '../../../../components/toast/ToastProvider'
 import ProjectEditorSidebar from '../../../../components/admin/projects/ProjectEditorSidebar'
+import createDOMPurify from 'dompurify'
 
 export default function ProjectEditor({ params }: { params: any }) {
-  const paramsObj = use(params)
+  const paramsObj = use(params) as any
   const id = paramsObj?.id
   const router = useRouter()
   const [form, setForm] = useState({ id: 0, slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, details: '' })
@@ -22,6 +23,7 @@ export default function ProjectEditor({ params }: { params: any }) {
   const descRef = useRef<HTMLDivElement | null>(null)
   const [descExpanded, setDescExpanded] = useState(false)
   const toast = useToast()
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as any) : null
   const [previewOpen, setPreviewOpen] = useState(false)
   const autosaveTimerRef = useRef<number | null>(null)
   const initialLoadRef = useRef(true)
@@ -630,8 +632,8 @@ export default function ProjectEditor({ params }: { params: any }) {
                               ) : null}
                             </div>
                             <div className={projectStyles.story}>
-                              <div style={{color:'var(--white-95)'}} dangerouslySetInnerHTML={{ __html: form.description || '' }} />
-                              {form.details ? <div style={{marginTop:8}} dangerouslySetInnerHTML={{ __html: String(form.details).slice(0,400) + (String(form.details).length > 400 ? '…' : '') }} /> : null}
+                              <div style={{color:'var(--white-95)'}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />
+                              {form.details ? <div style={{marginTop:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.details).slice(0,400) + (String(form.details).length > 400 ? '…' : '')) : (String(form.details).slice(0,400) + (String(form.details).length > 400 ? '…' : '')) }} /> : null}
                             </div>
                           </div>
                         </Card>
@@ -647,7 +649,7 @@ export default function ProjectEditor({ params }: { params: any }) {
                           {form.image_path ? <img src={form.image_path} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}
                         </div>
                         <div style={{flex:1}}>
-                          <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: form.description || '' }} />
+                          <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />
                           {(() => {
                             const generated = (form.details || '').trim() ? `/projects/${form.slug}` : null
                             const linkUrl = form.external_link || generated

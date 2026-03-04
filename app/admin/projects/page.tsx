@@ -5,6 +5,7 @@ import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
+import createDOMPurify from 'dompurify'
 
 type ProjectItem = { id: number; slug: string; title: string; subtitle?: string; image_path?: string; description?: string; external_link?: string; is_published: number }
 
@@ -33,6 +34,7 @@ export default function AdminProjects() {
 
   useEffect(()=>{ load() }, [])
   const toast = useToast()
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as any) : null
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -474,7 +476,7 @@ export default function AdminProjects() {
                             {form.image_path ? <img src={form.image_path} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : (detailImages[0] ? <img src={detailImages[0]} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>)}
                           </div>
                           <div style={{flex:1}}>
-                            <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: form.description || '' }} />
+                            <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />
                             {(() => {
                               const generated = form.createDetails && form.slug ? `/projects/${form.slug}` : null
                               const linkUrl = form.external_link || generated

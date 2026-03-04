@@ -30,7 +30,7 @@ export const authOptions = {
   session: { strategy: 'jwt' },
   // custom JWT encode/decode so we can set per-login expiration when "remember" is used
   jwt: {
-    encode: async ({ token, secret, maxAge }) => {
+    encode: async ({ token, secret, maxAge }: any) => {
       try {
         const now = Math.floor(Date.now() / 1000)
         const ttl = token?.remember ? 30 * 24 * 60 * 60 : (maxAge ?? 24 * 60 * 60)
@@ -38,7 +38,7 @@ export const authOptions = {
         return jwt.sign(payload, secret, { algorithm: 'HS256' })
       } catch (e) { return '' }
     },
-    decode: async ({ token, secret }) => {
+    decode: async ({ token, secret }: any) => {
       try {
         const decoded = jwt.verify(token || '', secret, { algorithms: ['HS256'] })
         return typeof decoded === 'object' ? decoded as any : null
@@ -57,14 +57,14 @@ export const authOptions = {
     }
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.user = user
         if ((user as any).remember) token.remember = true
       }
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (token.user) session.user = token.user as any
       // expose remember flag to client if present
       if ((token as any).remember) (session as any).remember = true

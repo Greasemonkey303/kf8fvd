@@ -50,6 +50,18 @@ export async function POST(req: Request) {
     metadata = JSON.stringify({ details: safeDetails })
   }
 
+  // If metadata provided (non-create flow), ensure any details property is sanitized
+  if (!metadata && body && body.metadata) {
+    try {
+      const metaObj = typeof body.metadata === 'string' ? JSON.parse(body.metadata) : body.metadata
+      if (metaObj && metaObj.details) metaObj.details = DOMPurify.sanitize(String(metaObj.details))
+      metadata = JSON.stringify(metaObj)
+    } catch (e) {
+      // fall back to stringified value
+      try { metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata) } catch (e) { metadata = null }
+    }
+  }
+
   const res: any = await query('INSERT INTO projects (slug, title, subtitle, image_path, description, external_link, metadata, is_published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [slug, title, subtitle || null, image_path || null, safeDescription, finalExternal, metadata, is_published ? 1 : 0, sort_order || 0])
   return NextResponse.json({ id: res.insertId, ok: true })
 }
@@ -74,9 +86,15 @@ export async function PUT(req: Request) {
 
   // preserve metadata JSON if provided
   if (metadata !== undefined) {
-    // ensure metadata is a JSON string
+    // ensure metadata is a JSON string and sanitize details if present
     let metaStr = null
-    try { metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata) } catch (e) { metaStr = null }
+    try {
+      const metaObj = typeof metadata === 'string' ? JSON.parse(metadata) : metadata
+      if (metaObj && metaObj.details) metaObj.details = DOMPurify.sanitize(String(metaObj.details))
+      metaStr = JSON.stringify(metaObj)
+    } catch (e) {
+      try { metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata) } catch (e) { metaStr = null }
+    }
     await query('UPDATE projects SET slug = ?, title = ?, subtitle = ?, image_path = ?, description = ?, external_link = ?, metadata = ?, is_published = ?, sort_order = ? WHERE id = ?', [slug, title, subtitle || null, image_path || null, safeDescription, external_link || null, metaStr, is_published ? 1 : 0, sort_order || 0, id])
   } else {
     await query('UPDATE projects SET slug = ?, title = ?, subtitle = ?, image_path = ?, description = ?, external_link = ?, is_published = ?, sort_order = ? WHERE id = ?', [slug, title, subtitle || null, image_path || null, safeDescription, external_link || null, is_published ? 1 : 0, sort_order || 0, id])

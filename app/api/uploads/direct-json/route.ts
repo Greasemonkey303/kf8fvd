@@ -33,23 +33,20 @@ export async function POST(req: Request) {
     })
 
     await new Promise<void>((resolve, reject) => {
-      minioClient.putObject(bucket, key, buffer, contentType, (err) => {
+      // pass buffer length as the 4th argument (per Minio typings)
+      minioClient.putObject(bucket, key, buffer, buffer.length, (err: any) => {
         if (err) return reject(err)
         resolve()
       })
     })
 
-    const publicUrl = await new Promise<string>((resolve) => {
-      try {
-        const getExpires = 24 * 60 * 60
-        minioClient.presignedGetObject(bucket, key, getExpires, (err, presignedUrl) => {
-          if (err) return resolve(buildPublicUrl(key))
-          resolve(presignedUrl)
-        })
-      } catch (e) {
-        resolve(buildPublicUrl(key))
-      }
-    })
+    let publicUrl: string
+    try {
+      const getExpires = 24 * 60 * 60
+      publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
+    } catch (e) {
+      publicUrl = buildPublicUrl(key)
+    }
 
     return NextResponse.json({ key, publicUrl })
   } catch (err: any) {

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useRouter } from 'next/navigation'
-import styles from '../admin.module.css'
+import styles from '../../admin.module.css'
 
 export default function PageEditor({ params }: { params: { id: string } }) {
   const id = params.id

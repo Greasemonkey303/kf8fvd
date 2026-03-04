@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const offset = (page - 1) * limit
   const safeLimit = Number.isFinite(limit) ? limit : 20
   const safeOffset = Number.isFinite(offset) ? offset : 0
-  const rows = await query(`SELECT u.id, u.name, u.email, u.is_active, u.created_at, GROUP_CONCAT(r.name) as roles FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id LEFT JOIN roles r ON r.id = ur.role_id GROUP BY u.id ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`)
+  const rows = await query<any[]>(`SELECT u.id, u.name, u.email, u.is_active, u.created_at, GROUP_CONCAT(r.name) as roles FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id LEFT JOIN roles r ON r.id = ur.role_id GROUP BY u.id ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`)
   const [{ total }]: any = await query('SELECT COUNT(*) as total FROM users') as any
   // normalize roles into arrays
   const items = (rows || []).map((r: any) => ({ ...r, roles: r.roles ? String(r.roles).split(',') : [] }))

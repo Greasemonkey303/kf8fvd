@@ -30,28 +30,19 @@ export async function POST(req: Request) {
     // expiry (seconds)
     try { policy.setExpires(new Date(Date.now() + 300 * 1000)) } catch (e) {}
 
-    const presigned = await new Promise<any>((resolve, reject) => {
-      minioClient.presignedPostPolicy(policy, (err, data) => {
-        if (err) return reject(err)
-        resolve(data)
-      })
-    })
+    const presigned = await minioClient.presignedPostPolicy(policy)
 
     // MinIO returns { postURL, formData }
     // generate a presigned GET URL for clients to access the object
-    const publicUrl = await new Promise<string>((resolve) => {
-      try {
-        const getExpires = 24 * 60 * 60
-        minioClient.presignedGetObject(bucket, key, getExpires, (err, presignedUrl) => {
-          if (err) return resolve(buildPublicUrl(key))
-          resolve(presignedUrl)
-        })
-      } catch (e) {
-        resolve(buildPublicUrl(key))
-      }
-    })
+    let publicUrl: string
+    try {
+      const getExpires = 24 * 60 * 60
+      publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
+    } catch (e) {
+      publicUrl = buildPublicUrl(key)
+    }
 
-    return NextResponse.json({ url: presigned.postURL || presigned.url, fields: presigned.formData || presigned.fields || {}, key, publicUrl })
+    return NextResponse.json({ url: presigned.postURL || '', fields: presigned.formData || {}, key, publicUrl })
   } catch (err: any) {
     // eslint-disable-next-line no-console
     console.error('presign-post error', err)

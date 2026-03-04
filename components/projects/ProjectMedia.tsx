@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import ImageModal from '@/components/modal/ImageModal'
-import styles from '@/app/projects/hotspot/hotspot.module.css'
+import styles from '../../app/projects/hotspot/hotspot.module.css'
 
 type Props = {
   images: string[]
@@ -20,7 +20,7 @@ export default function ProjectMedia({ images, title }: Props) {
         <div className={styles.thumbs}>
           {images.slice(0,6).map((src, i) => (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={src} alt={`thumb-${i}`} className={styles.thumbImg} onClick={() => handleClick(src)} style={{cursor:'pointer'}} />
+            <img key={`${i}-${src}`} src={src} alt={`thumb-${i}`} className={styles.thumbImg} onClick={() => handleClick(src)} style={{cursor:'pointer'}} loading="lazy" />
           ))}
         </div>
       </div>

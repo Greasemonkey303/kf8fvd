@@ -127,6 +127,16 @@ export default async function Page({ params }: Props){
     detailsHtml = md && md.details ? String(md.details) : null
   }
 
+  // sanitize description as a safety measure (server-side)
+  let safeDescriptionHtml = ''
+  try {
+    const window = (new JSDOM('')).window as any
+    const DOMPurify = createDOMPurify(window)
+    safeDescriptionHtml = DOMPurify.sanitize(String(project.description || ''))
+  } catch (e) {
+    safeDescriptionHtml = String(project.description || '')
+  }
+
   return (
     <main className={styles.container}>
       <Card title={project.title} subtitle={project.subtitle}>
@@ -149,7 +159,7 @@ export default async function Page({ params }: Props){
           </div>
 
           <div className={styles.story}>
-            <div dangerouslySetInnerHTML={{ __html: project.description || '' }} />
+            <div dangerouslySetInnerHTML={{ __html: safeDescriptionHtml }} />
             {detailsHtml ? <div style={{marginTop:20}} dangerouslySetInnerHTML={{ __html: detailsHtml }} /> : null}
             <p className="muted-small">
               <a href="/projects">Back to Projects</a>

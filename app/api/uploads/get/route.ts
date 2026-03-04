@@ -18,14 +18,13 @@ export async function GET(req: Request) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
+    // getObject returns a promise in the current Minio typings
+    const stream: any = await minioClient.getObject(bucket, key)
     const buffer = await new Promise<Buffer>((resolve, reject) => {
-      minioClient.getObject(bucket, key, (err, stream) => {
-        if (err) return reject(err)
-        const chunks: Buffer[] = []
-        stream.on('data', (c: Buffer) => chunks.push(Buffer.from(c)))
-        stream.on('end', () => resolve(Buffer.concat(chunks)))
-        stream.on('error', (e: any) => reject(e))
-      })
+      const chunks: Buffer[] = []
+      stream.on('data', (c: Buffer) => chunks.push(Buffer.from(c)))
+      stream.on('end', () => resolve(Buffer.concat(chunks)))
+      stream.on('error', (e: any) => reject(e))
     })
 
     // rudimentary content-type by extension
@@ -36,7 +35,7 @@ export async function GET(req: Request) {
     if (ext === 'gif') contentType = 'image/gif'
     if (ext === 'webp') contentType = 'image/webp'
 
-    return new NextResponse(buffer, { status: 200, headers: { 'Content-Type': contentType } })
+    return new NextResponse(new Uint8Array(buffer), { status: 200, headers: { 'Content-Type': contentType } })
   } catch (err: any) {
     // eslint-disable-next-line no-console
     console.error('uploads.get error', err)
