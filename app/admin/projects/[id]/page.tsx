@@ -1,6 +1,6 @@
 "use client"
 
-import React, { use, useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from '../../admin.module.css'
 import projectStyles from '../../../projects/hotspot/hotspot.module.css'
@@ -9,11 +9,24 @@ import { useToast } from '../../../../components/toast/ToastProvider'
 import ProjectEditorSidebar from '../../../../components/admin/projects/ProjectEditorSidebar'
 import createDOMPurify from 'dompurify'
 
-export default function ProjectEditor({ params }: { params: any }) {
-  const paramsObj = use(params) as any
+type ProjectForm = {
+  id?: number
+  slug?: string
+  title?: string
+  subtitle?: string
+  image_path?: string
+  description?: string
+  external_link?: string
+  is_published?: boolean
+  sort_order?: number
+  details?: string
+}
+
+export default function ProjectEditor({ params }: { params: { id?: string } }) {
+  const paramsObj = params
   const id = paramsObj?.id
   const router = useRouter()
-  const [form, setForm] = useState({ id: 0, slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, details: '' })
+  const [form, setForm] = useState<ProjectForm>({ id: 0, slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, details: '' })
   const [images, setImages] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [loading, setLoading] = useState(true)
@@ -23,12 +36,12 @@ export default function ProjectEditor({ params }: { params: any }) {
   const descRef = useRef<HTMLDivElement | null>(null)
   const [descExpanded, setDescExpanded] = useState(false)
   const toast = useToast()
-  const purify = typeof window !== 'undefined' ? createDOMPurify(window as any) : null
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
   const [previewOpen, setPreviewOpen] = useState(false)
   const autosaveTimerRef = useRef<number | null>(null)
   const initialLoadRef = useRef(true)
   const draftIdRef = useRef<string | null>(null)
-  const fetchedProjectRef = useRef<any>(null)
+  const fetchedProjectRef = useRef<Record<string, unknown> | null>(null)
   const [showDebug, setShowDebug] = useState(false)
   const didFetchPublicRef = useRef(false)
 
@@ -74,7 +87,8 @@ export default function ProjectEditor({ params }: { params: any }) {
       try { console.log('[admin] loading project editor id=', id) } catch(e){}
       const res = await fetch('/api/admin/projects?page=1&limit=1000')
       const data = await res.json()
-      const found = (data.items || []).find((p: any)=> String(p.id) === String(id))
+      const itemsArray = Array.isArray(data.items) ? (data.items as Array<Record<string, unknown>>) : []
+      const found = itemsArray.find(p => String((p as Record<string, unknown>).id) === String(id))
       try { console.log('[admin] list query returned', Array.isArray(data.items) ? data.items.length : data) } catch(e){}
       let projectFound = found
       // If not found in listing (pagination or permissions), try fetching the single record
@@ -97,25 +111,40 @@ export default function ProjectEditor({ params }: { params: any }) {
       }
 
       if (projectFound) {
-      let md: any = null
-      try { md = projectFound.metadata ? JSON.parse(projectFound.metadata) : null } catch (e) { md = null }
-      const initDetails = (md && md.details) || ''
-      const initDesc = projectFound.description || ''
+      let md: unknown = null
+      try { md = projectFound && (projectFound as Record<string, unknown>).metadata ? JSON.parse(String((projectFound as Record<string, unknown>).metadata)) : null } catch (e) { md = null }
+      let initDetails = ''
+      if (md && typeof md === 'object' && 'details' in (md as Record<string, unknown>)) {
+        const d = (md as Record<string, unknown>).details
+        initDetails = d ? String(d) : ''
+      }
+      const initDesc = String((projectFound as Record<string, unknown>).description || '')
       // if details are empty but description exists, initialize details from description
       const fallbackDetails = initDetails && String(initDetails).trim() ? initDetails : (initDesc && String(initDesc).trim() ? initDesc : '')
       try { console.log('[admin] initializing form from projectFound id=', projectFound.id, 'slug=', projectFound.slug, 'detailsLen=', String(fallbackDetails || '').length) } catch(e){}
-      setForm({ id: projectFound.id, slug: projectFound.slug, title: projectFound.title, subtitle: projectFound.subtitle || '', image_path: projectFound.image_path || '', description: initDesc, external_link: projectFound.external_link || '', is_published: !!projectFound.is_published, sort_order: projectFound.sort_order || 0, details: fallbackDetails })
+      setForm({
+        id: Number((projectFound as Record<string, unknown>).id) || 0,
+        slug: String((projectFound as Record<string, unknown>).slug || ''),
+        title: String((projectFound as Record<string, unknown>).title || ''),
+        subtitle: String((projectFound as Record<string, unknown>).subtitle || ''),
+        image_path: String((projectFound as Record<string, unknown>).image_path || ''),
+        description: initDesc,
+        external_link: String((projectFound as Record<string, unknown>).external_link || ''),
+        is_published: !!((projectFound as Record<string, unknown>).is_published),
+        sort_order: Number((projectFound as Record<string, unknown>).sort_order) || 0,
+        details: fallbackDetails,
+      })
         // store raw fetched project for debug panel
         fetchedProjectRef.current = projectFound
         // populate editor refs once mounted — use RAF to avoid timing races
         try { requestAnimationFrame(()=>{ try { if (editorRef.current) { editorRef.current.innerHTML = fallbackDetails; console.log('[admin] populated editorRef, len=', (editorRef.current.innerHTML||'').length) } } catch(e){} }) } catch (e) {}
         try { requestAnimationFrame(()=>{ try { if (descRef.current) { descRef.current.innerHTML = initDesc; console.log('[admin] populated descRef, len=', (descRef.current.innerHTML||'').length) } } catch(e){} }) } catch (e) {}
         // start with metadata images (no hard slice here; display can show all)
-        setImages((md && Array.isArray(md.images) ? md.images.slice(0,6) : []))
+        setImages((md && typeof md === 'object' && Array.isArray((md as Record<string, unknown>).images)) ? (((md as Record<string, unknown>).images as unknown) as string[]).slice(0,6) : [])
         // fetch any stored objects for this slug and merge them so admin sees all linked images
         ;(async () => {
           try {
-            const mres = await fetch(`/api/admin/projects/migrate?slug=${encodeURIComponent(found.slug)}`)
+            const mres = await fetch(`/api/admin/projects/migrate?slug=${encodeURIComponent((projectFound as Record<string, unknown>).slug as string)}`)
             if (mres.ok) {
               const mdata = await mres.json()
               const urls: string[] = Array.isArray(mdata.urls) ? mdata.urls : []
@@ -124,7 +153,7 @@ export default function ProjectEditor({ params }: { params: any }) {
                   const combined = [...prev]
                   for (const u of urls) {
                     // don't include the main image_path here (avoid duplication)
-                    if (u && u !== found.image_path && !combined.includes(u)) combined.push(u)
+                      if (u && u !== (projectFound as Record<string, unknown>).image_path && !combined.includes(u)) combined.push(u)
                   }
                   return combined
                 })
@@ -175,7 +204,7 @@ export default function ProjectEditor({ params }: { params: any }) {
     // fetch the public page and extract .story
     (async ()=>{
       try {
-        const res = await fetch(`/projects/${encodeURIComponent(form.slug)}`)
+        const res = await fetch(`/projects/${encodeURIComponent(String(form.slug))}`)
         if (!res.ok) return
         const txt = await res.text()
         const parser = new DOMParser()
@@ -234,7 +263,7 @@ export default function ProjectEditor({ params }: { params: any }) {
 
   async function save(e?: React.FormEvent | any) {
     if (e?.preventDefault) e.preventDefault()
-    const metadata: any = { ...(form.details ? { details: form.details } : {}), images: images }
+    const metadata = { ...(form.details ? { details: form.details } : {}), images }
     await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
     try { toast.showToast && toast.showToast('Project saved', 'success') } catch (e) {}
     router.push('/admin/projects')
@@ -259,7 +288,7 @@ export default function ProjectEditor({ params }: { params: any }) {
       if (newForm.image_path === src) newForm.image_path = ''
 
       // build metadata
-      const metadata: any = { ...(newForm.details ? { details: newForm.details } : {}), images: copy }
+      const metadata = { ...(newForm.details ? { details: newForm.details } : {}), images: copy }
 
       // persist changes to project
       try {
@@ -270,8 +299,11 @@ export default function ProjectEditor({ params }: { params: any }) {
 
       setImages(copy)
       setForm(newForm)
-    } catch (e:any) {
-      alert('Could not delete image: ' + String(e?.message || e))
+    } catch (e: unknown) {
+      let msg = 'Unknown error'
+      if (e instanceof Error) msg = e.message
+      else msg = String(e)
+      alert('Could not delete image: ' + msg)
     }
   }
 
@@ -300,7 +332,13 @@ export default function ProjectEditor({ params }: { params: any }) {
       setForm(newForm)
       try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: url }) }) } catch (e) { /* ignore */ }
       try { toast.showToast && toast.showToast('Main image uploaded', 'success') } catch(e){}
-    } catch (e:any) { alert('Upload failed: ' + (e?.message || e)); try { toast.showToast && toast.showToast('Upload failed', 'error') } catch(e){} }
+    } catch (e: unknown) {
+      let msg = 'Unknown error'
+      if (e instanceof Error) msg = e.message
+      else msg = String(e)
+      alert('Upload failed: ' + msg)
+      try { toast.showToast && toast.showToast('Upload failed', 'error') } catch(e){}
+    }
   }
 
   async function deleteMainImage() {
@@ -324,7 +362,7 @@ export default function ProjectEditor({ params }: { params: any }) {
     setImages(copy)
     // persist new ordering
     try {
-      const metadata: any = { ...(form.details ? { details: form.details } : {}), images: copy }
+      const metadata = { ...(form.details ? { details: form.details } : {}), images: copy }
       fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
     } catch (e) { /* ignore */ }
   }
@@ -338,12 +376,12 @@ export default function ProjectEditor({ params }: { params: any }) {
     setImages(copy)
     // persist edited URL
     try {
-      const metadata: any = { ...(form.details ? { details: form.details } : {}), images: copy }
+      const metadata = { ...(form.details ? { details: form.details } : {}), images: copy }
       fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
     } catch (e) { /* ignore */ }
   }
 
-  function uploadFiles(files: FileList | null) {
+  function uploadFiles(files: FileList | null | undefined) {
     if (!files) return
     const maxAdd = Math.max(0, 6 - images.length)
     const toAdd = Array.from(files).slice(0, maxAdd)
@@ -391,7 +429,7 @@ export default function ProjectEditor({ params }: { params: any }) {
 
     ;(async ()=>{
       for (const f of toAdd) {
-        try { await uploadOne(f) } catch (e:any) { alert('Upload error: ' + String(e?.message || e)); break }
+        try { await uploadOne(f) } catch (e: unknown) { let msg = 'Unknown error'; if (e instanceof Error) msg = e.message; else msg = String(e); alert('Upload error: ' + String(msg)); break }
       }
     })()
   }
@@ -500,7 +538,7 @@ export default function ProjectEditor({ params }: { params: any }) {
                     ref={editorRef}
                     contentEditable
                     suppressContentEditableWarning
-                    onInput={(e:any)=>{ try { const v = e?.currentTarget?.innerHTML || ''; setForm(f=>({ ...f, details: v })); } catch (err) { /* ignore transient events */ } }}
+                    onInput={(e: React.FormEvent<HTMLDivElement>)=>{ try { const v = (e.currentTarget as HTMLDivElement)?.innerHTML || ''; setForm(f=>({ ...f, details: v })); } catch (err) { /* ignore transient events */ } }}
                     onFocus={() => { try { if (editorRef.current && !(editorRef.current.innerHTML || '').trim() && (form.details || '').trim()) { editorRef.current.innerHTML = form.details || '' } } catch (e) {} }}
                     className={styles.formTextarea}
                     style={{minHeight: editorExpanded ? 600 : 400, maxHeight:1200, overflow:'auto', resize:'vertical'}}
@@ -564,7 +602,7 @@ export default function ProjectEditor({ params }: { params: any }) {
                     ref={descRef}
                     contentEditable
                     suppressContentEditableWarning
-                    onInput={(e:any)=>{ try { const v = e?.currentTarget?.innerHTML || ''; setForm(f=>({ ...f, description: v })); } catch (err) { /* ignore transient events */ } }}
+                    onInput={(e: React.FormEvent<HTMLDivElement>)=>{ try { const v = (e.currentTarget as HTMLDivElement)?.innerHTML || ''; setForm(f=>({ ...f, description: v })); } catch (err) { /* ignore transient events */ } }}
                     onFocus={() => { try { if (descRef.current && !(descRef.current.innerHTML || '').trim() && (form.description || '').trim()) { descRef.current.innerHTML = form.description || '' } } catch (e) {} }}
                     className={styles.formTextarea}
                     style={{minHeight: descExpanded ? 400 : 220, maxHeight:800, overflow:'auto', resize:'vertical'}}

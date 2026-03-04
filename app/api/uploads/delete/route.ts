@@ -5,9 +5,11 @@ import * as Minio from 'minio'
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  let body: any = null
-  try { body = await req.json() } catch (e) { body = null }
-  const { key, url } = body || {}
+    let body: unknown = null
+    try { body = await req.json() } catch (e) { body = null }
+    const parsed = (typeof body === 'object' && body !== null) ? (body as Record<string, unknown>) : {}
+    const key = typeof parsed.key === 'string' ? parsed.key : undefined
+    const url = typeof parsed.url === 'string' ? parsed.url : undefined
   if (!key && !url) return NextResponse.json({ error: 'Missing key or url' }, { status: 400 })
 
   // resolve key from url if necessary
@@ -46,16 +48,13 @@ export async function POST(req: Request) {
   })
 
   try {
-    await new Promise<void>((resolve, reject) => {
-      // removeObject has a callback style
-      // @ts-ignore
-      minioClient.removeObject(bucket, objectKey, (err: any) => {
-        if (err) return reject(err)
-        resolve()
-      })
-    })
-    return NextResponse.json({ ok: true, key: objectKey })
-  } catch (e: any) {
-    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 })
+      // try batch removeObjects API which supports await in this client
+      await minioClient.removeObjects(bucket, [objectKey])
+      return NextResponse.json({ ok: true, key: objectKey })
+  } catch (e: unknown) {
+      let msg = 'Unknown error'
+      if (e instanceof Error) msg = e.message
+      else msg = String(e)
+      return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

@@ -5,6 +5,11 @@ import * as Minio from 'minio'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
 
+const getErrMsg = (err: unknown) => {
+  if (err instanceof Error) return err.message
+  try { return String(err) } catch { return 'Unknown error' }
+}
+
 export async function GET(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -15,7 +20,8 @@ export async function GET(req: Request) {
   const safeLimit = Number.isFinite(limit) ? limit : 50
   const safeOffset = Number.isFinite(offset) ? offset : 0
   const rows = await query(`SELECT id, slug, title, subtitle, image_path, description, external_link, metadata, is_published, sort_order, updated_at FROM projects ORDER BY sort_order ASC, updated_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`)
-  const [{ total }]: any = await query('SELECT COUNT(*) as total FROM projects') as any
+  const totalRows = (await query('SELECT COUNT(*) as total FROM projects')) as Array<Record<string, number>>
+  const total = totalRows?.[0]?.total || 0
   return NextResponse.json({ items: rows || [], page, limit, total })
 }
 
@@ -62,7 +68,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const res: any = await query('INSERT INTO projects (slug, title, subtitle, image_path, description, external_link, metadata, is_published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [slug, title, subtitle || null, image_path || null, safeDescription, finalExternal, metadata, is_published ? 1 : 0, sort_order || 0])
+  const res = await query('INSERT INTO projects (slug, title, subtitle, image_path, description, external_link, metadata, is_published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [slug, title, subtitle || null, image_path || null, safeDescription, finalExternal, metadata, is_published ? 1 : 0, sort_order || 0]) as { insertId?: number }
   return NextResponse.json({ id: res.insertId, ok: true })
 }
 
@@ -130,15 +136,15 @@ export async function DELETE(req: Request) {
       for await (const obj of stream) {
         if (obj && obj.name) objs.push(obj.name)
       }
-    } catch (e: any) {
-      return NextResponse.json({ error: String(e?.message || e) }, { status: 500 })
+    } catch (e: unknown) {
+      return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
     }
 
     if (objs.length > 0) {
       try {
         await minioClient.removeObjects(bucket, objs)
-      } catch (e: any) {
-        return NextResponse.json({ error: String(e?.message || e) }, { status: 500 })
+      } catch (e: unknown) {
+        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
       }
     }
   }

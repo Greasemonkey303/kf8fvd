@@ -36,17 +36,27 @@ export default function AdminProjects() {
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as any) : null
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
+  const getErrMsg = (err: unknown) => {
+    if (err instanceof Error) return err.message
+    try { return String(err) } catch { return 'Unknown error' }
+  }
+
+  async function submit(e?: React.FormEvent) {
+    if (e) e.preventDefault()
     if (!form.slug || !form.title) return
-    const metadata: any = form.createDetails ? { details: form.details, images: detailImages } : undefined
-    await fetch('/api/admin/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+    const metadata = form.createDetails ? { details: form.details, images: detailImages } : undefined
+    try {
+      await fetch('/api/admin/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+    } catch (err: unknown) {
+      console.error('project create error', getErrMsg(err))
+      return
+    }
     // clear any saved draft for this slug
-    try { localStorage.removeItem(`admin_project_draft:${form.slug}`) } catch (e) {}
+    try { localStorage.removeItem(`admin_project_draft:${form.slug}`) } catch (err: unknown) { console.error('localStorage remove error', getErrMsg(err)) }
     setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
     setDetailImages([])
     await load()
-    try { toast?.showToast && toast.showToast('Project created', 'success') } catch (e) {}
+    try { toast?.showToast && toast.showToast('Project created', 'success') } catch (err: unknown) { console.error('toast error', getErrMsg(err)) }
   }
 
   useEffect(() => {
@@ -60,8 +70,7 @@ export default function AdminProjects() {
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
         ev.preventDefault()
         // call submit handler (form submit)
-        const fakeEvent: any = { preventDefault: () => {} }
-        submit(fakeEvent)
+        submit()
       }
     }
     window.addEventListener('keydown', handler)
@@ -177,8 +186,8 @@ export default function AdminProjects() {
       }
       console.error('direct upload failed', direct.status, d)
       // fall through to presigned flows below
-    } catch (derr: any) {
-      console.error('direct upload error', derr)
+    } catch (derr: unknown) {
+      console.error('direct upload error', getErrMsg(derr))
     }
 
     // 2) Request presigned PUT URL
@@ -211,15 +220,15 @@ export default function AdminProjects() {
           const dtext = JSON.stringify(d)
           alert('Upload failed (presign + direct): ' + upload.status + ' - ' + dtext)
           return
-        } catch (derr: any) {
-          console.error('direct upload error', derr)
-          alert('Upload failed (presign + direct): ' + String(derr?.message || derr))
+        } catch (derr: unknown) {
+          console.error('direct upload error', getErrMsg(derr))
+          alert('Upload failed (presign + direct): ' + getErrMsg(derr))
           return
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // network/CORS error — try a safer retry without custom headers for debugging
-      console.error('upload error', err)
+      console.error('upload error', getErrMsg(err))
       try {
         const upload2 = await fetch(data.url, { method: 'PUT', body: file })
         if (!upload2.ok) {
@@ -239,14 +248,14 @@ export default function AdminProjects() {
             }
             alert('Upload failed (retry + direct): ' + upload2.status + ' - ' + JSON.stringify(d))
             return
-            } catch (derr: any) {
-            console.error('direct upload error', derr)
-            alert('Upload failed (retry + direct): ' + String(derr?.message || derr))
+            } catch (derr: unknown) {
+            console.error('direct upload error', getErrMsg(derr))
+            alert('Upload failed (retry + direct): ' + getErrMsg(derr))
           }
         }
-      } catch (err2: any) {
-        console.error('upload retry error', err2)
-        alert('Upload failed: ' + String(err2?.message || err2))
+      } catch (err2: unknown) {
+        console.error('upload retry error', getErrMsg(err2))
+        alert('Upload failed: ' + getErrMsg(err2))
         return
       }
     }
@@ -294,7 +303,7 @@ export default function AdminProjects() {
 
     ;(async ()=>{
       for (const f of toAdd) {
-        try { await uploadOne(f) } catch (e:any) { alert('Upload error: ' + String(e?.message || e)); break }
+        try { await uploadOne(f) } catch (e: unknown) { alert('Upload error: ' + getErrMsg(e)); break }
       }
     })()
   }
@@ -354,7 +363,7 @@ export default function AdminProjects() {
                     <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('redo'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Redo">↷</button>
                     <button type="button" className={styles.btnGhost} onClick={() => setDescExpanded(v=>!v)}>⤢</button>
                   </div>
-                  <div id="admin-desc-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e:any)=>{ try { const v = e?.currentTarget?.innerHTML || ''; setForm(f=>({...f, description: v})); } catch (err) {} }} style={{minHeight: descExpanded ? 400 : 220, maxHeight:800, overflow:'auto', resize:'vertical'}} />
+                  <div id="admin-desc-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e: React.FormEvent<HTMLDivElement>)=>{ const v = (e.currentTarget as HTMLDivElement).innerHTML || ''; setForm(f=>({...f, description: v})); }} style={{minHeight: descExpanded ? 400 : 220, maxHeight:800, overflow:'auto', resize:'vertical'}} />
                   <div style={{display:'flex', justifyContent:'space-between', marginTop:8}}>
                     <div className={styles.smallMuted}>{(form.description || '').replace(/<[^>]+>/g,'').length} chars</div>
                     <div className={styles.smallMuted}>{((form.description || '').replace(/<[^>]+>/g,'').trim().split(/\s+/).filter(Boolean)).length} words</div>
@@ -389,7 +398,7 @@ export default function AdminProjects() {
                       <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('redo'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Redo">↷</button>
                       <button type="button" className={styles.btnGhost} onClick={() => setDetailsExpanded(v=>!v)}>⤢</button>
                     </div>
-                    <div id="admin-details-editor" ref={detailsRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e:any)=>{ try { const v = e?.currentTarget?.innerHTML || ''; setForm(f=>({...f, details: v})); } catch (err) {} }} style={{minHeight: detailsExpanded ? 600 : 400, maxHeight:1200, overflow:'auto', resize:'vertical'}} />
+                    <div id="admin-details-editor" ref={detailsRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e: React.FormEvent<HTMLDivElement>)=>{ const v = (e.currentTarget as HTMLDivElement).innerHTML || ''; setForm(f=>({...f, details: v})); }} style={{minHeight: detailsExpanded ? 600 : 400, maxHeight:1200, overflow:'auto', resize:'vertical'}} />
                     <div style={{display:'flex', justifyContent:'space-between', marginTop:8}}>
                       <div className={styles.smallMuted}>{(form.details || '').replace(/<[^>]+>/g,'').length} chars</div>
                       <div className={styles.smallMuted}>{((form.details || '').replace(/<[^>]+>/g,'').trim().split(/\s+/).filter(Boolean)).length} words</div>

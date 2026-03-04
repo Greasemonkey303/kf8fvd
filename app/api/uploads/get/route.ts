@@ -18,13 +18,17 @@ export async function GET(req: Request) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
-    // getObject returns a promise in the current Minio typings
-    const stream: any = await minioClient.getObject(bucket, key)
+    // getObject returns a stream; use unknown and a small safe wrapper
+    const rawStream = await minioClient.getObject(bucket, key)
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = []
-      stream.on('data', (c: Buffer) => chunks.push(Buffer.from(c)))
-      stream.on('end', () => resolve(Buffer.concat(chunks)))
-      stream.on('error', (e: any) => reject(e))
+      // `rawStream` has an event-emitter interface; narrow to any-compatible handlers safely
+      const s = rawStream as unknown as { on: (ev: string, cb: (...args: unknown[]) => void) => void }
+      s.on('data', (c: unknown) => {
+        try { chunks.push(Buffer.from(c as Buffer)) } catch (e) { /* ignore malformed chunk */ }
+      })
+      s.on('end', () => resolve(Buffer.concat(chunks)))
+      s.on('error', (e: unknown) => reject(e))
     })
 
     // rudimentary content-type by extension
@@ -36,9 +40,12 @@ export async function GET(req: Request) {
     if (ext === 'webp') contentType = 'image/webp'
 
     return new NextResponse(new Uint8Array(buffer), { status: 200, headers: { 'Content-Type': contentType } })
-  } catch (err: any) {
+  } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error('uploads.get error', err)
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 })
+    let msg = 'Unknown error'
+    if (err instanceof Error) msg = err.message
+    else msg = String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

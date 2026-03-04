@@ -8,7 +8,8 @@ export async function GET(req: Request) {
   const offset = (page - 1) * limit
   const safeLimit = Number.isFinite(limit) ? limit : 20
   const safeOffset = Number.isFinite(offset) ? offset : 0
-  const rows = await query(`SELECT id, slug, title, subtitle, image_path, description, external_link, is_published, sort_order FROM projects WHERE is_published = 1 ORDER BY sort_order ASC, updated_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`)
-  const [{ total }]: any = await query('SELECT COUNT(*) as total FROM projects WHERE is_published = 1') as any
+  const rows = await query(`SELECT id, slug, title, subtitle, image_path, description, external_link, is_published, sort_order FROM projects WHERE is_published = 1 ORDER BY sort_order ASC, updated_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`) as Array<Record<string, any>>
+  const totalRows = await query('SELECT COUNT(*) as total FROM projects WHERE is_published = 1') as Array<{ total: number }>
+  const total = totalRows && totalRows[0] ? totalRows[0].total : 0
   return NextResponse.json({ items: rows || [], page, limit, total })
 }

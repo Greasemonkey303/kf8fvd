@@ -4,6 +4,11 @@ import { query } from '@/lib/db'
 import * as Minio from 'minio'
 import { buildPublicUrl } from '@/lib/s3'
 
+const getErrMsg = (err: unknown) => {
+  if (err instanceof Error) return err.message
+  try { return String(err) } catch { return 'Unknown error' }
+}
+
 export async function GET(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -29,8 +34,8 @@ export async function GET(req: Request) {
     for await (const obj of stream) {
       if (obj && obj.name) objs.push(obj.name)
     }
-  } catch (e: any) {
-    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 })
+  } catch (e: unknown) {
+    return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
   }
 
   const urls = objs.map(k => buildPublicUrl(k))
@@ -38,7 +43,7 @@ export async function GET(req: Request) {
   try {
     await query('UPDATE projects SET metadata = ? WHERE slug = ?', [meta, slug])
     return NextResponse.json({ ok: true, count: urls.length, urls })
-  } catch (e: any) {
-    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 })
+  } catch (e: unknown) {
+    return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
   }
 }

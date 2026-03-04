@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 type Geo = { lat: number; lon: number };
 
@@ -67,6 +67,90 @@ export default function ContactMap(){
   function getCssVar(name: string, fallback = '') {
     try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback; } catch(e) { return fallback; }
   }
+
+  // helper: parse ADIF/ISO-ish date strings (YYYYMMDD or YYYY-MM-DD)
+  function parseDateString(s?: string) {
+    if (!s) return null;
+    const t = s.trim();
+    if (/^\d{8}$/.test(t)) {
+      const y = +t.slice(0,4); const m = +t.slice(4,6); const d = +t.slice(6,8);
+      return new Date(Date.UTC(y,m-1,d));
+    }
+    if (/^\d{4}-\d{2}-\d{2}/.test(t)) return new Date(t);
+    return new Date(t);
+  }
+
+  function withinDays(entry:any, days:number) {
+    if (!days || days<=0) return true;
+    const dStr = entry.qso_date || entry.date || entry.qsoDate || entry.DATE || entry.QSO_DATE;
+    const dt = parseDateString(dStr);
+    if (!dt || isNaN(dt.getTime())) return false;
+    const cutoff = Date.now() - (days*24*3600*1000);
+    return dt.getTime() >= cutoff;
+  }
+
+  function entryModeCategory(mode?:string) {
+    if (!mode) return 'OTHER';
+    const m = mode.toString().toUpperCase();
+    if (m.includes('FM')) return 'FM';
+    if (m.includes('DSTAR')) return 'DSTAR';
+    if (m.includes('DMR')) return 'DMR';
+    return 'OTHER';
+  }
+
+  const renderMarkers = useCallback((daysFilter:number) => {
+    const L = LRef.current as any;
+    if (!L || !mapRef.current) return;
+
+    // clear old layers
+    try {
+      if (markersLayerRef.current) { (mapRef.current as any).removeLayer(markersLayerRef.current); markersLayerRef.current = null; }
+      if (heatLayerRef.current) { (mapRef.current as any).removeLayer(heatLayerRef.current); heatLayerRef.current = null; }
+    } catch(e){}
+
+    const locations = locationsRef.current || {};
+    const results = resultsRef.current || {};
+    const keys = Object.keys(locations);
+    const markers = (window as any).L.markerClusterGroup ? (window as any).L.markerClusterGroup() : null;
+    const heatPoints: Array<[number,number,number]> = [];
+
+    for (let i=0;i<keys.length;i++){
+      const k = keys[i]; const g = results[k]; if (!g) continue;
+      const groupEntries = locations[k] || [];
+      // apply days filter: include location if any entry at that location is within range
+      const include = groupEntries.some((en:any)=> {
+        if (!withinDays(en, daysFilter)) return false;
+        const cat = entryModeCategory(en.mode);
+        if (cat === 'DMR') return modeFilters.DMR;
+        if (cat === 'DSTAR') return modeFilters.DSTAR;
+        if (cat === 'FM') return modeFilters.FM;
+        return modeFilters.OTHER;
+      });
+      if (!include) continue;
+      const modes = Array.from(new Set(groupEntries.map((x:any)=> (x.mode||'').toString()))).filter(Boolean);
+      const fm = getCssVar('--color-success', '#16a34a');
+      const dstar = getCssVar('--color-accent-1', '#60a5fa');
+      const otherCol = getCssVar('--color-other', '#94a3b8');
+      const color = modes.map(m=>m.toUpperCase()).includes('FM') ? fm : (modes.map(m=>m.toUpperCase()).includes('DSTAR') ? dstar : otherCol);
+      const m = L.circleMarker([g.lat, g.lon], { radius:8, color: getCssVar('--white-100','#fff'), weight:1, fillColor: color, fillOpacity:0.95 });
+      const popup = `<div><strong>${k}</strong><br/>${groupEntries.slice(0,6).map((x:any)=>x.call||'').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
+      m.bindPopup(popup);
+      // tooltip on hover with callsign(s) and location
+      try {
+        const calls = groupEntries.map((x:any)=> x.call || '').filter(Boolean).slice(0,6).join(', ');
+        const tooltip = `${calls || 'Unknown'} — ${k}`;
+        m.bindTooltip(tooltip, { direction: 'top', offset: [0, -8] });
+      } catch(e) {}
+      if (markers) markers.addLayer(m); else m.addTo(mapRef.current);
+      heatPoints.push([g.lat, g.lon, Math.min(8, groupEntries.length || 1)]);
+    }
+
+    if (markers) { markersLayerRef.current = markers; (mapRef.current as any).addLayer(markers); }
+
+    if (heatPoints.length>0 && (window as any).L.heatLayer) {
+      try { heatLayerRef.current = (window as any).L.heatLayer(heatPoints, { radius:25, blur:15, maxZoom:9, max:10 }); (heatLayerRef.current as any).addTo(mapRef.current); } catch(e){}
+    }
+  }, [modeFilters]);
 
   useEffect(()=>{
     let mounted = true;
@@ -140,93 +224,9 @@ export default function ContactMap(){
     return ()=>{ mounted = false; window.removeEventListener('resize', onResize); }
   }, []);
 
-    // helper: parse ADIF/ISO-ish date strings (YYYYMMDD or YYYY-MM-DD)
-    function parseDateString(s?: string) {
-      if (!s) return null;
-      const t = s.trim();
-      if (/^\d{8}$/.test(t)) {
-        const y = +t.slice(0,4); const m = +t.slice(4,6); const d = +t.slice(6,8);
-        return new Date(Date.UTC(y,m-1,d));
-      }
-      if (/^\d{4}-\d{2}-\d{2}/.test(t)) return new Date(t);
-      return new Date(t);
-    }
-
-    function withinDays(entry:any, days:number) {
-      if (!days || days<=0) return true;
-      const dStr = entry.qso_date || entry.date || entry.qsoDate || entry.DATE || entry.QSO_DATE;
-      const dt = parseDateString(dStr);
-      if (!dt || isNaN(dt.getTime())) return false;
-      const cutoff = Date.now() - (days*24*3600*1000);
-      return dt.getTime() >= cutoff;
-    }
-
-    function entryModeCategory(mode?:string) {
-      if (!mode) return 'OTHER';
-      const m = mode.toString().toUpperCase();
-      if (m.includes('FM')) return 'FM';
-      if (m.includes('DSTAR')) return 'DSTAR';
-      if (m.includes('DMR')) return 'DMR';
-      return 'OTHER';
-    }
-
-    // renderMarkers reads from refs and updates marker & heat layers according to `days`
-    function renderMarkers(daysFilter:number) {
-      const L = LRef.current;
-      if (!L || !mapRef.current) return;
-
-      // clear old layers
-      try {
-        if (markersLayerRef.current) { mapRef.current.removeLayer(markersLayerRef.current); markersLayerRef.current = null; }
-        if (heatLayerRef.current) { mapRef.current.removeLayer(heatLayerRef.current); heatLayerRef.current = null; }
-      } catch(e){}
-
-      const locations = locationsRef.current || {};
-      const results = resultsRef.current || {};
-      const keys = Object.keys(locations);
-      const markers = (window as any).L.markerClusterGroup ? (window as any).L.markerClusterGroup() : null;
-      const heatPoints: Array<[number,number,number]> = [];
-
-      for (let i=0;i<keys.length;i++){
-        const k = keys[i]; const g = results[k]; if (!g) continue;
-        const groupEntries = locations[k] || [];
-        // apply days filter: include location if any entry at that location is within range
-        const include = groupEntries.some((en:any)=> {
-          if (!withinDays(en, daysFilter)) return false;
-          const cat = entryModeCategory(en.mode);
-          if (cat === 'DMR') return modeFilters.DMR;
-          if (cat === 'DSTAR') return modeFilters.DSTAR;
-          if (cat === 'FM') return modeFilters.FM;
-          return modeFilters.OTHER;
-        });
-        if (!include) continue;
-        const modes = Array.from(new Set(groupEntries.map((x:any)=> (x.mode||'').toString()))).filter(Boolean);
-        const fm = getCssVar('--color-success', '#16a34a');
-        const dstar = getCssVar('--color-accent-1', '#60a5fa');
-        const otherCol = getCssVar('--color-other', '#94a3b8');
-        const color = modes.map(m=>m.toUpperCase()).includes('FM') ? fm : (modes.map(m=>m.toUpperCase()).includes('DSTAR') ? dstar : otherCol);
-        const m = L.circleMarker([g.lat, g.lon], { radius:8, color: getCssVar('--white-100','#fff'), weight:1, fillColor: color, fillOpacity:0.95 });
-        const popup = `<div><strong>${k}</strong><br/>${groupEntries.slice(0,6).map((x:any)=>x.call||'').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
-        m.bindPopup(popup);
-        // tooltip on hover with callsign(s) and location
-        try {
-          const calls = groupEntries.map((x:any)=> x.call || '').filter(Boolean).slice(0,6).join(', ');
-          const tooltip = `${calls || 'Unknown'} — ${k}`;
-          m.bindTooltip(tooltip, { direction: 'top', offset: [0, -8] });
-        } catch(e) {}
-        if (markers) markers.addLayer(m); else m.addTo(mapRef.current);
-        heatPoints.push([g.lat, g.lon, Math.min(8, groupEntries.length || 1)]);
-      }
-
-      if (markers) { markersLayerRef.current = markers; mapRef.current.addLayer(markers); }
-
-      if (heatPoints.length>0 && (window as any).L.heatLayer) {
-        try { heatLayerRef.current = (window as any).L.heatLayer(heatPoints, { radius:25, blur:15, maxZoom:9, max:10 }); heatLayerRef.current.addTo(mapRef.current); } catch(e){}
-      }
-    }
-
+    // (helpers and renderMarkers are declared earlier via useCallback)
     // re-render markers when days or mode filters change
-    useEffect(()=>{ renderMarkers(days); }, [days, modeFilters]);
+    useEffect(()=>{ renderMarkers(days); }, [days, renderMarkers]);
 
   return (
     <div className="map-wrap">

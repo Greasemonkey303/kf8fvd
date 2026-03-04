@@ -9,10 +9,15 @@ export async function POST(req: Request) {
     if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
     const form = await req.formData()
-    const file = form.get('file') as any
+    const fileEntry = form.get('file')
+    function isFile(v: FormDataEntryValue | null | undefined): v is File {
+      return typeof v === 'object' && v !== null && 'arrayBuffer' in v
+    }
+    if (!isFile(fileEntry)) return NextResponse.json({ error: 'file, slug and filename required' }, { status: 400 })
+    const file = fileEntry
     const slug = form.get('slug')?.toString() || form.get('folder')?.toString()
-    const filename = form.get('filename')?.toString() || (file && file.name)
-    const contentType = (file && file.type) || 'application/octet-stream'
+    const filename = form.get('filename')?.toString() || (file && (file as File).name)
+    const contentType = (file && (file as File).type) || 'application/octet-stream'
 
     if (!file || !filename || !slug) return NextResponse.json({ error: 'file, slug and filename required' }, { status: 400 })
 
@@ -35,8 +40,8 @@ export async function POST(req: Request) {
     console.log('direct upload attempt', { bucket, key, filename, contentType })
     const buffer = Buffer.from(await file.arrayBuffer())
     await new Promise<void>((resolve, reject) => {
-      // pass buffer length and annotate callback to satisfy typings
-      minioClient.putObject(bucket, key, buffer, buffer.length, (err: any) => {
+      // pass buffer length and annotate callback with Error|null
+      minioClient.putObject(bucket, key, buffer, buffer.length, (err?: Error | null) => {
         if (err) {
           console.error('minio.putObject error', err)
           return reject(err)
@@ -55,11 +60,18 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ key, publicUrl })
-  } catch (err: any) {
+  } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error('direct upload error', err)
-    const payload: any = { error: String(err?.message || err) }
-    if (process.env.NODE_ENV !== 'production' && err?.stack) payload.stack = err.stack
+    let msg = 'Unknown error'
+    const payload: Record<string, unknown> = {}
+    if (err instanceof Error) {
+      msg = err.message
+      if (process.env.NODE_ENV !== 'production') payload.stack = err.stack || ''
+    } else {
+      msg = String(err)
+    }
+    payload.error = msg
     return NextResponse.json(payload, { status: 500 })
   }
 }

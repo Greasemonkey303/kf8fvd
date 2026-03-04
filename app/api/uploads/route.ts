@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     }
 
     // parse signed url to surface signing hints in dev
-    let debug: any = undefined
+    let debug: { maskedCred?: string | null; signedHeaders?: string | null } | undefined = undefined
     try {
       const u = new URL(url)
       const cred = u.searchParams.get('X-Amz-Credential')
@@ -58,14 +58,22 @@ export async function POST(req: Request) {
         // eslint-disable-next-line no-console
         console.log('uploads.presign debug', debug)
       }
-    } catch (e) {
+    } catch (_e: unknown) {
       // ignore
     }
 
     return NextResponse.json(Object.assign({ url, key, publicUrl }, debug ? { _debug: debug } : {}))
-  } catch (err: any) {
+  } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error('upload presign error', err)
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 })
+    let msg = 'Unknown error'
+    if (typeof err === 'object' && err !== null) {
+      const maybe = (err as { message?: unknown }).message
+      if (typeof maybe === 'string') msg = maybe
+      else msg = String(err)
+    } else {
+      msg = String(err)
+    }
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

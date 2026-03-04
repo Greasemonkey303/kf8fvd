@@ -1,5 +1,6 @@
 import React from 'react'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { Card } from '@/components'
 import ProjectMediaWrapper from '@/components/projects/ProjectMediaWrapper'
 import * as Minio from 'minio'
@@ -13,33 +14,35 @@ import { JSDOM } from 'jsdom'
 type Props = { params: { slug: string } }
 
 export default async function Page({ params }: Props){
-  const { slug } = (await params) as any
+  const { slug } = params
   if (!slug) return notFound()
-  const rows: any = await query('SELECT id, slug, title, subtitle, image_path, description, external_link, metadata, is_published FROM projects WHERE slug = ? LIMIT 1', [slug])
-  const project = Array.isArray(rows) && rows[0] ? rows[0] : null
+  const rows = (await query('SELECT id, slug, title, subtitle, image_path, description, external_link, metadata, is_published FROM projects WHERE slug = ? LIMIT 1', [slug])) as Array<Record<string, unknown>>
+  const project = Array.isArray(rows) && rows[0] ? (rows[0] as Record<string, unknown>) : null
   if (!project) return notFound()
-  if (!project.is_published) return notFound()
+  const isPublished = project.is_published === true || project.is_published === 1 || project.is_published === '1'
+  if (!isPublished) return notFound()
 
   // parse metadata images
-  let md: any = null
-  try { md = project.metadata ? JSON.parse(project.metadata) : null } catch (e) { md = project.metadata }
+  let md: unknown = null
+  try { md = project.metadata ? JSON.parse(String(project.metadata)) : null } catch (e) { md = project.metadata }
 
-  function normalizeImages(m: any): string[] {
+  function normalizeImages(m: unknown): string[] {
     if (!m) return []
     // Already an array
-    if (Array.isArray(m)) return m.filter(Boolean)
+    if (Array.isArray(m)) return m.filter(Boolean) as string[]
 
     // Object with images property
-    if (m.images) {
-      if (Array.isArray(m.images)) return m.images.filter(Boolean)
-      if (typeof m.images === 'string') {
+    if (typeof m === 'object' && m !== null && 'images' in m) {
+      const imgs = (m as Record<string, unknown>).images
+      if (Array.isArray(imgs)) return imgs.filter(Boolean) as string[]
+      if (typeof imgs === 'string') {
         try {
-          const p = JSON.parse(m.images)
-          if (Array.isArray(p)) return p.filter(Boolean)
+          const p = JSON.parse(imgs)
+          if (Array.isArray(p)) return p.filter(Boolean) as string[]
         } catch (e) {
           // not JSON, fallthrough to comma split
         }
-        return m.images.split(',').map((s:string)=>s.trim()).filter(Boolean)
+        return imgs.split(',').map((s:string)=>s.trim()).filter(Boolean)
       }
     }
 
@@ -48,8 +51,8 @@ export default async function Page({ params }: Props){
       // try to parse JSON string
       try {
         const p = JSON.parse(m)
-        if (Array.isArray(p)) return p.filter(Boolean)
-        if (p && p.images && Array.isArray(p.images)) return p.images.filter(Boolean)
+        if (Array.isArray(p)) return p.filter(Boolean) as string[]
+        if (p && 'images' in p && Array.isArray((p as Record<string, unknown>).images)) return ((p as Record<string, unknown>).images as string[]).filter(Boolean)
       } catch (e) {
         // not JSON
       }
@@ -93,7 +96,7 @@ export default async function Page({ params }: Props){
       // listing failed; fall back to metadata images (empty)
     }
   }
-  const mainImg = project.image_path
+  const mainImg = typeof project.image_path === 'string' ? project.image_path : undefined
   // If image_path is an object key (not an http(s) URL), proxy it through our uploads API
   const mainImgSrc = (() => {
     if (!mainImg) return mainImg
@@ -110,7 +113,7 @@ export default async function Page({ params }: Props){
           return buildPublicUrl(mainImg)
         }
       }
-      if (mainImg.startsWith('http') || mainImg.startsWith('/')) return mainImg
+      if (typeof mainImg === 'string' && (mainImg.startsWith('http') || mainImg.startsWith('/'))) return mainImg
       return buildPublicUrl(mainImg)
     } catch (e) { return mainImg }
   })()
@@ -118,20 +121,22 @@ export default async function Page({ params }: Props){
   // sanitize metadata.details before rendering
   let detailsHtml: string | null = null
   try {
-    if (md && md.details) {
-      const window = (new JSDOM('')).window as any
-      const DOMPurify = createDOMPurify(window)
-      detailsHtml = DOMPurify.sanitize(String(md.details))
+    if (md && (md as Record<string, unknown>).details) {
+      const dom = new JSDOM('')
+      const windowForPurify = dom.window as unknown as Window & typeof globalThis
+      const DOMPurify = createDOMPurify(windowForPurify)
+      detailsHtml = DOMPurify.sanitize(String((md as Record<string, unknown>).details))
     }
   } catch (e) {
-    detailsHtml = md && md.details ? String(md.details) : null
+    detailsHtml = md && (md as Record<string, unknown>).details ? String((md as Record<string, unknown>).details) : null
   }
 
   // sanitize description as a safety measure (server-side)
   let safeDescriptionHtml = ''
   try {
-    const window = (new JSDOM('')).window as any
-    const DOMPurify = createDOMPurify(window)
+    const dom = new JSDOM('')
+    const windowForPurify = dom.window as unknown as Window & typeof globalThis
+    const DOMPurify = createDOMPurify(windowForPurify)
     safeDescriptionHtml = DOMPurify.sanitize(String(project.description || ''))
   } catch (e) {
     safeDescriptionHtml = String(project.description || '')
@@ -139,30 +144,30 @@ export default async function Page({ params }: Props){
 
   return (
     <main className={styles.container}>
-      <Card title={project.title} subtitle={project.subtitle}>
+      <Card title={String(project.title || '')} subtitle={String(project.subtitle || '')}>
         <div className={styles.content}>
           <div className={styles.media}>
             {project.slug === 'hotspot' ? (
               <HotspotGallery images={[ '/hotspot/hotspot-1.jpg', '/hotspot/hotspot-2.jpg', '/hotspot/hotspot-3.jpg' ]} />
             ) : (
               <>
-                {mainImg ? <div className={styles.mainPhotoWrap}><img src={mainImgSrc} alt={project.title} className={styles.mainPhoto} /></div> : null}
-                <ProjectMediaWrapper images={allImgs.slice(0,6)} title={project.title} />
+                {mainImg ? <div className={styles.mainPhotoWrap}><img src={mainImgSrc} alt={String(project.title || '')} className={styles.mainPhoto} /></div> : null}
+                <ProjectMediaWrapper images={allImgs.slice(0,6)} title={String(project.title || '')} />
               </>
             )}
 
-            {project.external_link && (
+            {typeof project.external_link === 'string' && project.external_link ? (
               <div className={styles.callout}>
-                <a href={project.external_link}>{project.external_link}</a>
+                <a href={String(project.external_link)}>{String(project.external_link)}</a>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className={styles.story}>
             <div dangerouslySetInnerHTML={{ __html: safeDescriptionHtml }} />
             {detailsHtml ? <div style={{marginTop:20}} dangerouslySetInnerHTML={{ __html: detailsHtml }} /> : null}
             <p className="muted-small">
-              <a href="/projects">Back to Projects</a>
+              <Link href="/projects">Back to Projects</Link>
             </p>
           </div>
         </div>

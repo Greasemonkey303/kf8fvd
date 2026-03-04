@@ -3,6 +3,34 @@
 import React from 'react'
 import styles from '../../../app/admin/admin.module.css'
 
+type ProjectForm = {
+  id?: number
+  slug?: string
+  title?: string
+  subtitle?: string
+  image_path?: string
+  description?: string
+  external_link?: string
+  is_published?: boolean
+  sort_order?: number
+  details?: string
+}
+
+type Props = {
+  form: ProjectForm
+  setForm: React.Dispatch<React.SetStateAction<ProjectForm>>
+  images: string[]
+  uploadMainImage: (file: File | null) => void
+  editMainImage: () => void
+  deleteMainImage: () => void
+  uploadFiles: (files: FileList | null | undefined) => void
+  uploadProgress: number
+  moveImage: (index: number, delta: number) => void
+  editImage: (index: number) => void
+  deleteImage: (index: number) => void
+  onRemove: () => void
+}
+
 export default function ProjectEditorSidebar({
   form,
   setForm,
@@ -16,7 +44,7 @@ export default function ProjectEditorSidebar({
   editImage,
   deleteImage,
   onRemove,
-}: any) {
+}: Props) {
   return (
     <aside>
       <div style={{marginBottom:12}}>

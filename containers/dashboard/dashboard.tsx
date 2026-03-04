@@ -116,7 +116,7 @@ export default function Dashboard() {
     const readCache = (k: string) => {
       try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e) { return null }
     };
-    const writeCache = (k: string, v: any) => {
+    const writeCache = (k: string, v: unknown) => {
       try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) { /* ignore quota errors */ }
     };
 

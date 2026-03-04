@@ -49,9 +49,9 @@ void testConnection();
  * @param params Optional parameters for the query
  * @returns Promise resolving to query results
  */
-export async function query<T>(sql: string, params?: any[]): Promise<T> {
+export async function query<T>(sql: string, params?: unknown[]): Promise<T> {
   try {
-    const [rows] = await pool.execute(sql, params);
+    const [rows] = await pool.execute(sql, params as any);
     return rows as T;
   } catch (error) {
     // eslint-disable-next-line no-console

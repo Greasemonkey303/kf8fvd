@@ -10,6 +10,11 @@ type SGAttachment = {
 
 import fs from 'fs/promises'
 
+const getErrMsg = (err: unknown) => {
+  if (err instanceof Error) return err.message
+  try { return String(err) } catch { return 'Unknown error' }
+}
+
 // Simple rate limiter configuration (per IP)
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
 const RATE_LIMIT_MAX = 20 // max requests per window
@@ -79,8 +84,8 @@ export async function POST(req: Request) {
     for (const entry of form.entries()) {
       const [, value] = entry
       // Some runtimes present uploaded files as File, Blob, or file-like objects.
-      const maybeFile: any = value
-      if (maybeFile && typeof maybeFile.name === 'string' && typeof maybeFile.arrayBuffer === 'function') {
+      const maybeFile = value as unknown
+      if (maybeFile && typeof (maybeFile as { name?: unknown }).name === 'string' && typeof (maybeFile as { arrayBuffer?: unknown }).arrayBuffer === 'function') {
         const file = maybeFile as File
         const ab = await file.arrayBuffer()
         const uint8 = new Uint8Array(ab)
@@ -91,13 +96,13 @@ export async function POST(req: Request) {
         }
         const base64 = Buffer.from(uint8).toString('base64')
         const isImage = (file.type || '').startsWith('image/')
-        const attachment: any = {
+        const attachment: SGAttachment = {
           content: base64,
           filename: file.name,
           type: file.type || 'application/octet-stream',
           disposition: isImage ? 'inline' : 'attachment',
         }
-        if (isImage) attachment.content_id = file.name
+        if (isImage) (attachment as SGAttachment).content_id = file.name
         attachments.push(attachment)
       }
     }
@@ -143,7 +148,7 @@ export async function POST(req: Request) {
       </div>
     `
 
-    const body: any = {
+    const body: Record<string, unknown> = {
       personalizations: [
         {
           to: [{ email: TO_EMAIL }],
@@ -158,7 +163,7 @@ export async function POST(req: Request) {
       ],
     }
 
-    if (attachments.length) body.attachments = attachments
+    if (attachments.length) (body as Record<string, unknown>).attachments = attachments
 
     const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
@@ -206,7 +211,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true })
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrMsg(err) }, { status: 500 })
   }
 }

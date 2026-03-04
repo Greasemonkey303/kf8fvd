@@ -43,9 +43,12 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ url: presigned.postURL || '', fields: presigned.formData || {}, key, publicUrl })
-  } catch (err: any) {
+  } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error('presign-post error', err)
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 })
+    let msg = 'Unknown error'
+    if (err instanceof Error) msg = err.message
+    else msg = String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
