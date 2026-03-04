@@ -6,7 +6,7 @@
   --color-primary: #070707; /* near-black background */
 
   --color-bg: var(--color-primary);
-  --logo-green: #10b981; /* bright green (emerald-500) */
+  --logo-green: #34d399; /* brighter green (emerald-300) */
   --logo-blue: #1ea6ff; /* bright cyan-blue */
   --logo-silver: #cfcfcf; /* metallic/silver */
   --color-accent-1: var(--logo-blue);
@@ -23,7 +23,7 @@
   --text-dark: #041025; /* used on lighter buttons */
 
   /* semantic states */
-  --color-success: #10b981;
+  --color-success: var(--logo-green);
   --color-warning: #ffb020;
   --color-muted: rgba(255,255,255,0.65);
 
@@ -94,9 +94,9 @@
   --color-other: #94a3b8;
   /* card surface tokens (shared) */
   --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  --card-border: rgba(16,185,129,0.10); /* subtle green highlight */
-  --card-accent-top: linear-gradient(90deg, rgba(16,185,129,0.25), rgba(16,185,129,0.06));
-  --card-shadow: 0 12px 30px rgba(2,6,23,0.28), 0 6px 20px rgba(16,185,129,0.04);
+  --card-border: rgba(52,211,153,0.10); /* subtle green highlight */
+  --card-accent-top: linear-gradient(90deg, rgba(52,211,153,0.25), rgba(52,211,153,0.06));
+  --card-shadow: 0 12px 30px rgba(2,6,23,0.28), 0 6px 20px rgba(52,211,153,0.04);
   /* main logo backdrop to improve contrast against light backgrounds */
   --mainlogo-plate-bg: rgba(2,6,23,0.55);
   --mainlogo-plate-border: rgba(255,255,255,0.04);
@@ -163,8 +163,8 @@
   /* card surfaces adapt for light theme */
   --card-bg: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96));
   --card-border: rgba(7,18,24,0.06);
-  --card-accent-top: linear-gradient(90deg, rgba(16,185,129,0.22), rgba(16,185,129,0.06));
-  --card-shadow: 0 6px 20px rgba(7,18,24,0.06), 0 3px 10px rgba(16,185,129,0.02);
+  --card-accent-top: linear-gradient(90deg, rgba(52,211,153,0.22), rgba(52,211,153,0.06));
+  --card-shadow: 0 6px 20px rgba(7,18,24,0.06), 0 3px 10px rgba(52,211,153,0.02);
 
   /* main logo plate for light mode */
   --mainlogo-plate-bg: rgba(255,255,255,0.98);

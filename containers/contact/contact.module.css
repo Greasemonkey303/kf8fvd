@@ -5,16 +5,16 @@
 .form input, .form textarea { width: 100%; padding: .6rem; border-radius: 8px; border: 1px solid var(--border-06); background: var(--muted-bg); color: var(--color-text); font-size: .98rem }
 .form textarea { min-height: 140px; resize: vertical }
 .actions { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap }
-.actions button { background: var(--color-link); color: var(--text-dark); padding:.6rem 1rem; border-radius:8px; border:0; display:inline-flex; align-items:center; justify-content:center; text-align:center; min-width:120px }
-.actions a { color: var(--color-link); text-decoration: underline; padding: 0.45rem 0.6rem; border-radius:6px }
+.actions button { background: var(--logo-green); color: var(--white-100); padding:.6rem 1rem; border-radius:8px; border:0; display:inline-flex; align-items:center; justify-content:center; text-align:center; min-width:120px }
+.actions a { color: var(--logo-green); text-decoration: underline; padding: 0.45rem 0.6rem; border-radius:6px }
 .contactInfo { color: var(--white-90); display:flex; flex-direction:column; gap:6px }
 
 .mailto {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--card-accent-top);
-  color: var(--text-dark);
+  background: var(--logo-green);
+  color: var(--white-100);
   padding: 0.45rem 0.8rem;
   border-radius: 8px;
   text-decoration: none;
@@ -44,13 +44,13 @@
 .confirmActions { display:flex; gap:8px; margin-top:12px }
 .confirmActions button { padding: .55rem 0.9rem; border-radius:8px; min-width:120px; border:0; cursor:pointer; font-weight:700 }
 .confirmActions button:first-child { background: transparent; color: var(--white-95); border: 1px solid var(--border-06) }
-.confirmActions button:last-child { background: var(--card-accent-top); color: var(--text-dark) }
+.confirmActions button:last-child { background: var(--logo-green); color: var(--white-100) }
 .previewImg { max-width:100%; border-radius:8px; display:block }
 .fileList { display:flex; flex-direction:column; gap:8px; margin-top:8px }
 .fileItem { display:flex; gap:8px; align-items:center; background: var(--muted-bg); padding:6px; border-radius:8px }
 .fileThumb { width:64px; height:48px; object-fit:cover; border-radius:6px }
 .fileControls { display:flex; align-items:center; gap:8px; margin-top:8px }
-.chooseBtn { background: var(--card-accent-top); color: var(--text-dark); padding:0.55rem 0.9rem; border-radius:8px; border:0; font-weight:700; cursor:pointer }
+.chooseBtn { background: var(--logo-green); color: var(--white-100); padding:0.55rem 0.9rem; border-radius:8px; border:0; font-weight:700; cursor:pointer }
 .chooseBtn:hover, .chooseBtn:focus { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(2,6,23,0.35) }
 .fileHint { color: var(--white-65); font-size:0.9rem }
 .dropZone { border: 1px dashed rgba(255,255,255,0.08); padding: 8px; border-radius:8px }

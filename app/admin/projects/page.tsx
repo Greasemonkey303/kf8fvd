@@ -32,7 +32,7 @@ export default function AdminProjects() {
     setLoading(false)
   }
 
-  useEffect(()=>{ load() }, [])
+  useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t) }, [])
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as any) : null
 
@@ -80,8 +80,13 @@ export default function AdminProjects() {
   // Debounced autosave to server when slug exists
   const autosaveTimer = React.useRef<number | null>(null)
   // Draft autosave (localStorage). We avoid creating server records until user explicitly submits.
-  const draftIdRef = React.useRef<string>(`temp-${Date.now()}`)
+  const draftIdRef = React.useRef<string | null>(null)
   const draftKey = () => `admin_project_draft:${form.slug || draftIdRef.current}`
+
+  // Generate a stable temp draft id once (do not call Date.now() during render)
+  useEffect(() => {
+    if (!draftIdRef.current) draftIdRef.current = `temp-${Date.now()}`
+  }, [])
 
   useEffect(() => {
     // debounce localStorage writes
@@ -319,7 +324,7 @@ export default function AdminProjects() {
                 <form suppressHydrationWarning onSubmit={submit} className="form-grid">
               <label>
                 <div className="field-label">Slug</div>
-                <input suppressHydrationWarning value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} className={styles.formInput} />
+                <input suppressHydrationWarning value={form.slug} onChange={e=>{ setSlugEdited(true); setForm({...form, slug: e.target.value}) }} className={styles.formInput} />
               </label>
               <label>
                 <div className="field-label">Title</div>
@@ -419,7 +424,7 @@ export default function AdminProjects() {
                     <div style={{display:'flex', gap:8, marginTop:8, flexWrap:'wrap'}}>
                       {detailImages.map((src, idx)=> (
                         <div key={idx} style={{position:'relative'}}>
-                            <img src={src} style={{width:96, height:72, objectFit:'cover', borderRadius:6}} />
+                            <img src={src} alt="" style={{width:96, height:72, objectFit:'cover', borderRadius:6}} />
                               <button type="button" className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{position:'absolute', right:4, top:4}} onClick={()=>{ setDetailImages(prev=> prev.filter((_,i)=>i!==idx)) }}>×</button>
                         </div>
                       ))}
@@ -482,7 +487,7 @@ export default function AdminProjects() {
                       <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
                         <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
                           <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
-                            {form.image_path ? <img src={form.image_path} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : (detailImages[0] ? <img src={detailImages[0]} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>)}
+                            {form.image_path ? <img src={form.image_path} alt={form.title || ''} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : (detailImages[0] ? <img src={detailImages[0]} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>)}
                           </div>
                           <div style={{flex:1}}>
                             <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />
