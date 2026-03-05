@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
+import { buildPublicUrl } from '@/lib/s3'
 import styles from '../../admin.module.css'
 import projectStyles from '../../../projects/hotspot/hotspot.module.css'
 import Card from '../../../../components/card/card'
@@ -23,8 +24,8 @@ type ProjectForm = {
 }
 
 export default function ProjectEditor({ params }: { params: { id?: string } }) {
-  const paramsObj = params
-  const id = paramsObj?.id
+  const routeParams = useParams()
+  const id = routeParams?.id
   const router = useRouter()
   const [form, setForm] = useState<ProjectForm>({ id: 0, slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, details: '' })
   const [images, setImages] = useState<string[]>([])
@@ -38,6 +39,24 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
   const [previewOpen, setPreviewOpen] = useState(false)
+  const toPublicUrl = (p?: string) => {
+    if (!p) return undefined
+    const s = String(p)
+    if (s.indexOf('X-Amz-Algorithm') !== -1 || s.indexOf('minio') !== -1 || s.indexOf('127.0.0.1') !== -1) {
+      try {
+        const u = new URL(s)
+        let path = u.pathname.replace(/^\//, '')
+        const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
+        if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
+        return buildPublicUrl(path)
+      } catch (e) {
+        return buildPublicUrl(s)
+      }
+    }
+    if (s.startsWith('http') || s.startsWith('data:')) return s
+    if (s.startsWith('/')) return s
+    return buildPublicUrl(s)
+  }
   const autosaveTimerRef = useRef<number | null>(null)
   const initialLoadRef = useRef(true)
   const draftIdRef = useRef<string | null>(null)
@@ -508,7 +527,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                 <div className={styles.imgGallery} style={{marginTop:8}}>
                   {images.slice(0,4).map((src, idx)=> (
                     <div key={idx} style={{position:'relative', width:96}}>
-                      <img src={src} onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined, cursor:'pointer'}} />
+                      <img src={toPublicUrl(src)} onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined, cursor:'pointer'}} />
                       <div className={styles.controls}>
                         <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, -1)} disabled={idx===0} title="Move left">◀</button>
                         <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, 1)} disabled={idx===Math.min(images.length,4)-1} title="Move right">▶</button>
@@ -568,7 +587,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                   <div className={styles.smallMuted} style={{marginBottom:6}}>Main image (shown on list/cards)</div>
                   <div style={{display:'flex', gap:12, alignItems:'center'}}>
                     <div style={{position:'relative'}}>
-                      <img src={form.image_path || undefined} alt="Main" style={{width:320, height:200, objectFit:'cover', borderRadius:6, background:'#0b2430'}} />
+                      <img src={toPublicUrl(form.image_path) || undefined} alt="Main" style={{width:320, height:200, objectFit:'cover', borderRadius:6, background:'#0b2430'}} />
                       <div style={{position:'absolute', right:8, top:8, display:'flex', gap:6}}>
                         <button type="button" className={styles.btnGhost} onClick={editMainImage} title="Edit main image URL">✎</button>
                         <button type="button" className={styles.btnGhost} onClick={deleteMainImage} title="Delete main image">🗑</button>
@@ -665,7 +684,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                             <div className={projectStyles.media}>
                               {form.image_path ? (
                                 <div className={projectStyles.mainPhotoWrap} style={{maxWidth:320}}>
-                                  <img src={form.image_path} alt={form.title} className={projectStyles.mainPhoto} />
+                                  <img src={toPublicUrl(form.image_path)} alt={form.title} className={projectStyles.mainPhoto} />
                                 </div>
                               ) : null}
                             </div>
@@ -684,7 +703,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                     <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
                       <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
                         <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
-                          {form.image_path ? <img src={form.image_path} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}
+                          {form.image_path ? <img src={toPublicUrl(form.image_path)} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}
                         </div>
                         <div style={{flex:1}}>
                           <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />

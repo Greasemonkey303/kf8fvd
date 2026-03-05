@@ -2,6 +2,7 @@
 
 import React from 'react'
 import styles from '../../../app/admin/admin.module.css'
+import { buildPublicUrl } from '@/lib/s3'
 
 type ProjectForm = {
   id?: number
@@ -45,12 +46,31 @@ export default function ProjectEditorSidebar({
   deleteImage,
   onRemove,
 }: Props) {
+  const toPublicUrl = (p?: string) => {
+    if (!p) return undefined
+    const s = String(p)
+    // If it's a presigned or direct MinIO URL, proxy it via the API so we avoid CORS and bucket path issues
+    if (s.indexOf('X-Amz-Algorithm') !== -1 || s.indexOf('minio') !== -1 || s.indexOf('127.0.0.1') !== -1) {
+      try {
+        const u = new URL(s)
+        let path = u.pathname.replace(/^\//, '')
+        const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
+        if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
+        return buildPublicUrl(path)
+      } catch (e) {
+        return buildPublicUrl(s)
+      }
+    }
+    if (s.startsWith('http') || s.startsWith('data:')) return s
+    if (s.startsWith('/')) return s
+    return buildPublicUrl(s)
+  }
   return (
     <aside>
       <div style={{marginBottom:12}}>
         <div className={styles.fieldLabel}>Main image</div>
         <div className={styles.mainPreview} style={{width:'100%', borderRadius:8}}>
-          <img src={form.image_path || undefined} alt="Main" style={{width:'100%', height:220, objectFit:'cover', display:'block'}} />
+          <img src={toPublicUrl(form.image_path) || undefined} alt="Main" style={{width:'100%', height:220, objectFit:'cover', display:'block'}} />
         </div>
         <div style={{marginTop:10}} className={styles.smallMuted}>Select an image from the gallery to set as main, or upload/change below.</div>
         <div className={styles.controls} style={{marginTop:10}}>
@@ -86,7 +106,7 @@ export default function ProjectEditorSidebar({
         <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:8}}>
           {images.slice(0,6).map((src:string, idx:number)=> (
             <div key={idx} style={{position:'relative', width:96}}>
-              <img src={src} onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined, cursor:'pointer', width:96, height:72, objectFit:'cover'}} />
+              <img src={toPublicUrl(src)} onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined, cursor:'pointer', width:96, height:72, objectFit:'cover'}} />
               <div className={styles.controls} style={{marginTop:6}}>
                 <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, -1)} disabled={idx===0} title="Move left">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
