@@ -29,7 +29,7 @@
 }
 .thumbImg { width:100%; aspect-ratio: 16/9; object-fit:cover; border-radius:8px; border:1px solid var(--border-06); display:block }
 .mainPhotoWrap { display:flex; align-items:flex-start; flex: 1 }
-.mainPhoto { width:100%; max-width:420px; border-radius:12px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
+.mainPhoto { width:100%; max-width:360px; border-radius:12px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
 
 @media (min-width:900px) {
 	.thumbs { grid-template-columns: 1fr 1fr; max-width:360px; flex:0 0 360px }

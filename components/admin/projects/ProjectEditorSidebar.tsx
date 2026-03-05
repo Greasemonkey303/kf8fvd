@@ -15,6 +15,8 @@ type ProjectForm = {
   is_published?: boolean
   sort_order?: number
   details?: string
+  templateLarge?: string
+  templateSmall?: string
 }
 
 type Props = {
@@ -70,7 +72,7 @@ export default function ProjectEditorSidebar({
       <div style={{marginBottom:12}}>
         <div className={styles.fieldLabel}>Main image</div>
         <div className={styles.mainPreview} style={{width:'100%', borderRadius:8}}>
-          <img src={toPublicUrl(form.image_path) || undefined} alt="Main" style={{width:'100%', height:220, objectFit:'cover', display:'block'}} />
+          <img src={toPublicUrl(form.image_path) || undefined} alt="Main" style={{width:'100%', height:180, objectFit:'cover', display:'block'}} />
         </div>
         <div style={{marginTop:10}} className={styles.smallMuted}>Select an image from the gallery to set as main, or upload/change below.</div>
         <div className={styles.controls} style={{marginTop:10}}>
@@ -88,6 +90,29 @@ export default function ProjectEditorSidebar({
             Upload
           </label>
         </div>
+      </div>
+
+      <div style={{marginTop:18}}>
+        <div className={styles.fieldLabel}>Templates</div>
+        <label style={{display:'block', marginTop:8}}>
+          <div className="field-label">Large image template</div>
+          <select value={form.templateLarge || ''} onChange={e=>setForm({...form, templateLarge: e.target.value})} className={styles.formInput}>
+            <option value="">Default</option>
+            <option value="banner">Banner (full)</option>
+            <option value="right">Right (image on right)</option>
+            <option value="left">Left (image on left)</option>
+            <option value="top-right">Top right</option>
+          </select>
+        </label>
+        <label style={{display:'block', marginTop:8}}>
+          <div className="field-label">Small image template</div>
+          <select value={form.templateSmall || ''} onChange={e=>setForm({...form, templateSmall: e.target.value})} className={styles.formInput}>
+            <option value="">Default</option>
+            <option value="thumb">Thumbnail</option>
+            <option value="avatar">Avatar (round)</option>
+            <option value="badge">Badge (small)</option>
+          </select>
+        </label>
       </div>
 
       <div style={{marginTop:18}}>

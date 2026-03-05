@@ -17,6 +17,45 @@
   position: static;
   margin: 0 auto 0.75rem auto;
 }
+.avatarRound { border-radius: 9999px; }
+.avatarThumb { border-radius: 12px; }
+.avatarBadge { border-radius: 8px; border: 2px solid var(--logo-green); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+/* Variant sizes for templateSmall: avatar / thumb / badge */
+.avatarRound { width: 140px; height: 140px; }
+.avatarThumb { width: 140px; height: 100px; }
+.avatarBadge { width: 48px; height: 140px; }
+
+@media (min-width: 900px) {
+  .avatarRound { width: 180px; height: 180px; }
+  .avatarThumb { width: 160px; height: 100px; }
+  .avatarBadge { width: 56px; height: 180px; }
+}
+
+@media (min-width: 720px) and (max-width: 899px) {
+  .avatarRound { width: 140px; height: 140px; }
+  .avatarThumb { width: 140px; height: 100px; }
+  .avatarBadge { width: 48px; height: 160px; }
+}
+
+/* Narrow content column when small-template 'badge' is selected */
+.contentNarrow {
+  /* default single-column on small screens */
+}
+
+@media (min-width: 900px) {
+  .contentNarrow { grid-template-columns: 60px 1fr; }
+}
+
+@media (min-width: 720px) and (max-width: 899px) {
+  .contentNarrow { grid-template-columns: 56px 1fr; }
+}
+
+/* Slightly narrower column for 'thumb' selection */
+.contentMedium { }
+@media (min-width: 900px) {
+  .contentMedium { grid-template-columns: 120px 1fr; }
+}
 .copy {
   color: var(--white-92);
   font-family: var(--font-serif), var(--font-sans);

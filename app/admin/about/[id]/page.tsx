@@ -1,13 +1,16 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import styles from '../../admin.module.css'
+import projectStyles from '../../../projects/hotspot/hotspot.module.css'
 import Card from '../../../../components/card/card'
+import ProjectEditorSidebar from '../../../../components/admin/projects/ProjectEditorSidebar'
 import { useToast } from '../../../../components/toast/ToastProvider'
 import createDOMPurify from 'dompurify'
+import { buildPublicUrl } from '../../../../lib/s3'
 
-type CardData = { title?: string; subtitle?: string; content?: string; image?: string }
+type CardData = { title?: string; subtitle?: string; content?: string; image?: string; images?: string[]; templateLarge?: string; templateSmall?: string }
 type AboutMetadata = {
   summary?: { title?: string; text?: string; cta?: { label?: string; href?: string } }
   // legacy named cards supported for backward-compat; we prefer `cards` array
@@ -33,14 +36,23 @@ export default function AdminAboutEditor({ params }: { params: any }) {
   const [cards, setCards] = useState<CardData[]>([])
   const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
 
+  const searchParams = useSearchParams()
+  const [activeIdx, setActiveIdx] = useState<number>(0)
+
+  // single-card editor convenience state (gallery + form-like API used by ProjectEditorSidebar)
+  const [images, setImages] = useState<string[]>([])
+  const editorRef = useRef<HTMLDivElement | null>(null)
+  const [editorExpanded, setEditorExpanded] = useState(false)
+  const descRef = useRef<HTMLDivElement | null>(null)
+  const [descExpanded, setDescExpanded] = useState(false)
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+
   const [uploadProgress, setUploadProgress] = useState<Record<string | number, number>>({})
   const [previewOpen, setPreviewOpen] = useState(false)
   const toast = useToast()
+  const [savedPageJson, setSavedPageJson] = useState<any | null>(null)
 
-  const draftIdRef = useRef<string | null>(null)
-  const draftKey = () => `admin_about_draft:${draftIdRef.current}`
-
-  useEffect(() => { if (!draftIdRef.current) draftIdRef.current = `temp-${Date.now()}` }, [])
+  const draftKey = (idOrSlug?: string) => `admin_about_draft:${idOrSlug || slug || (id ? `about-${id}` : 'about')}`
 
   async function load() {
     setLoading(true)
@@ -59,18 +71,39 @@ export default function AdminAboutEditor({ params }: { params: any }) {
           // If cards array exists, prefer it. Otherwise convert legacy named cards to a cards array so editor works consistently.
           let loadedCards: CardData[] = []
           if (Array.isArray(md.cards) && md.cards.length) {
-            loadedCards = md.cards.map((c: any) => ({ title: c?.title || '', subtitle: c?.subtitle || '', content: c?.content || '', image: c?.image || '/headshot.jpg' }))
+            loadedCards = md.cards.map((c: any) => ({ title: c?.title || '', subtitle: c?.subtitle || '', content: c?.content || '', image: c?.image || '/headshot.jpg', images: Array.isArray(c?.images) ? (c.images as string[]) : (c?.image ? [c.image] : []), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '' }))
           } else {
             const about = md.aboutCard || {}
             const topo = md.topologyCard || {}
             const shack = md.hamshackCard || {}
             loadedCards = [
-              { title: about.title || found.title || 'About Me', subtitle: about.subtitle || '', content: about.content || found.content || '', image: about.image || '/headshot.jpg' },
-              { title: topo.title || 'Home Topology', subtitle: topo.subtitle || 'Hidden Lakes Apartments, Kentwood', content: topo.content || '', image: topo.image || '/apts.jpg' },
-              { title: shack.title || 'Ham Shack', subtitle: shack.subtitle || 'Home Radio & Workshop', content: shack.content || '', image: shack.image || '/hamshack.jpg' }
+              { title: about.title || found.title || 'About Me', subtitle: about.subtitle || '', content: about.content || found.content || '', image: about.image || '/headshot.jpg', images: about.image ? [about.image] : [], templateLarge: about.templateLarge || '', templateSmall: about.templateSmall || '' },
+              { title: topo.title || 'Home Topology', subtitle: topo.subtitle || 'Hidden Lakes Apartments, Kentwood', content: topo.content || '', image: topo.image || '/apts.jpg', images: topo.image ? [topo.image] : [], templateLarge: topo.templateLarge || '', templateSmall: topo.templateSmall || '' },
+              { title: shack.title || 'Ham Shack', subtitle: shack.subtitle || 'Home Radio & Workshop', content: shack.content || '', image: shack.image || '/hamshack.jpg', images: shack.image ? [shack.image] : [], templateLarge: shack.templateLarge || '', templateSmall: shack.templateSmall || '' }
             ]
           }
+          // determine which card index to open (from search param `card`)
+          let requestedIndex = 0
+          try {
+            const cp = searchParams?.get('card')
+            if (cp !== null && cp !== undefined) {
+              if (cp === 'about') requestedIndex = 0
+              else if (cp === 'topology') requestedIndex = 1
+              else if (cp === 'hamshack') requestedIndex = 2
+              else {
+                const parsed = parseInt(cp as any, 10)
+                if (!Number.isNaN(parsed)) requestedIndex = parsed
+              }
+            }
+          } catch {}
+          if (requestedIndex < 0) requestedIndex = 0
+          if (requestedIndex >= loadedCards.length) requestedIndex = Math.max(0, loadedCards.length - 1)
           setCards(loadedCards)
+          setActiveIdx(requestedIndex)
+          // populate gallery images from the active card's images (prefer card-local gallery), fall back to metadata.images or the card's image
+          const activeCard = loadedCards[requestedIndex] || ({} as CardData)
+          const cardImgs: string[] = (Array.isArray(activeCard.images) && activeCard.images.length) ? activeCard.images : (Array.isArray(md.images) ? md.images : (activeCard.image ? [activeCard.image] : []))
+          setImages(cardImgs.slice(0,6))
           setMetadata((prev) => ({ ...prev, ...md }))
         } catch {}
       }
@@ -95,22 +128,32 @@ export default function AdminAboutEditor({ params }: { params: any }) {
     return ()=>{ if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
   }, [slug, title, metadata, id])
 
-  // restore temp draft
+  // restore any draft available (try slug/id-specific, then generic)
   useEffect(()=>{
     try {
-      const key = `admin_about_draft:${draftIdRef.current}`
-      const raw = localStorage.getItem(key)
-      if (raw) {
-        const p = JSON.parse(raw)
-        if (p) { setTitle(p.title || title); if (p.id) setId(p.id); if (p.slug) setSlug(p.slug); if (p.metadata) setMetadata(p.metadata); try{ toast?.showToast && toast.showToast('Restored unsaved draft', 'info') }catch{} }
+      const keysToTry = [draftKey(), draftKey('about'), `admin_about_draft:about-${id}`]
+      for (const key of keysToTry) {
+        const raw = localStorage.getItem(key)
+        if (!raw) continue
+        try {
+          const p = JSON.parse(raw)
+          if (p) {
+            setTitle(p.title || title)
+            if (p.id) setId(p.id)
+            if (p.slug) setSlug(p.slug)
+            if (p.metadata) setMetadata(p.metadata)
+            try{ toast?.showToast && toast.showToast('Restored unsaved draft', 'info') }catch{}
+            break
+          }
+        } catch {}
       }
     } catch {}
   }, [])
 
   const loadDraft = ()=>{
     try {
-      const key = `admin_about_draft:about`
-      const raw = localStorage.getItem(key)
+      const key = draftKey()
+      const raw = localStorage.getItem(key) || localStorage.getItem('admin_about_draft:about')
       if (!raw) return
       const p = JSON.parse(raw)
       if (p) { setTitle(p.title || title); if (p.id) setId(p.id); if (p.slug) setSlug(p.slug); if (p.metadata) setMetadata(p.metadata); }
@@ -151,6 +194,140 @@ export default function AdminAboutEditor({ params }: { params: any }) {
     })
   }
 
+  // Project-like sidebar helpers (operate on the first/about card)
+  const setFormLike = (val: any) => {
+    // Accept updater function or plain object and operate on the active card index
+    const idx = Number.isInteger(activeIdx) ? activeIdx : 0
+    const cardAt = cards[idx] || {}
+    const current = {
+      id,
+      slug,
+      title,
+      subtitle: cardAt?.subtitle || '',
+      image_path: cardAt?.image || '',
+      templateLarge: cardAt?.templateLarge || '',
+      templateSmall: cardAt?.templateSmall || '',
+      description: metadata.summary?.text || '',
+      is_published: isPublished,
+      details: cardAt?.content || ''
+    }
+    const next = typeof val === 'function' ? val(current) : { ...current, ...val }
+    if (next.slug !== undefined) setSlug(next.slug)
+    if (next.title !== undefined) setTitle(next.title)
+    if (next.image_path !== undefined) updateCard(idx, 'image', next.image_path)
+    if (next.image_path !== undefined) {
+      // ensure card gallery includes this image and main image is set
+      setCards(prev => {
+        const copy = prev.slice()
+        const card = copy[idx] || { title:'', subtitle:'', content:'', image: next.image_path, images: [] as string[] }
+        const imgs = Array.isArray(card.images) ? card.images.slice() : []
+        if (next.image_path && !imgs.includes(next.image_path)) imgs.push(next.image_path)
+        card.images = imgs
+        card.image = next.image_path
+        copy[idx] = card
+        return copy
+      })
+      setImages(prev => { const nextImgs = prev.slice(); if (next.image_path && !nextImgs.includes(next.image_path)) nextImgs.push(next.image_path); return nextImgs })
+    }
+    if (next.subtitle !== undefined) updateCard(idx, 'subtitle', next.subtitle)
+    if (next.details !== undefined) updateCard(idx, 'content', next.details)
+    if (next.description !== undefined) updateMetadata(['summary','text'], next.description)
+    if (next.templateLarge !== undefined) updateCard(idx, 'templateLarge', next.templateLarge)
+    if (next.templateSmall !== undefined) updateCard(idx, 'templateSmall', next.templateSmall)
+    if (next.is_published !== undefined) setIsPublished(!!next.is_published)
+  }
+
+  
+
+  const editMainImage = async () => {
+    const cur = cards[activeIdx]?.image || ''
+    const val = prompt('Edit main image URL', cur)
+    if (val === null) return
+    updateCard(activeIdx, 'image', val)
+    try { await handleSave() } catch {}
+  }
+
+  const uploadMainImage = async (file: File | null) => {
+    if (!file) return
+    await uploadCardImageIndex(file, activeIdx)
+  }
+
+  const deleteMainImage = async () => {
+    const src = cards[activeIdx]?.image
+    if (!src) return
+    if (!confirm('Delete the main image from storage and clear Image path?')) return
+    try { await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ url: src }) }) } catch {}
+    updateCard(activeIdx, 'image', '')
+    try { await handleSave() } catch {}
+  }
+
+  const uploadFiles = (files: FileList | null | undefined) => {
+    if (!files) return
+    for (const f of Array.from(files)) { uploadCardImageIndex(f, activeIdx).catch(()=>{}) }
+  }
+
+  const moveImage = (idx: number, dir: number) => {
+    // reorder images for the current card (cards[0]) and update local images state
+    setCards(prev => {
+      const copy = prev.slice()
+      const card = copy[activeIdx] || { images: [] as string[] }
+      const imgs = Array.isArray(card.images) ? card.images.slice() : images.slice()
+      const to = idx + dir
+      if (to < 0 || to >= imgs.length) return prev
+      const tmp = imgs[to]
+      imgs[to] = imgs[idx]
+      imgs[idx] = tmp
+      card.images = imgs
+      copy[activeIdx] = card
+      return copy
+    })
+    setImages(prev => {
+      const copy = prev.slice()
+      const to = idx + dir
+      if (to < 0 || to >= copy.length) return copy
+      const tmp = copy[to]
+      copy[to] = copy[idx]
+      copy[idx] = tmp
+      return copy
+    })
+  }
+
+  const editImage = (idx: number) => {
+    const cur = images[idx]
+    const val = prompt('Edit image URL', cur)
+    if (val === null) return
+    setCards(prev => {
+      const copy = prev.slice()
+      const card = copy[activeIdx] || { images: [] as string[] }
+      const imgs = Array.isArray(card.images) ? card.images.slice() : images.slice()
+      imgs[idx] = val
+      card.images = imgs
+      copy[activeIdx] = card
+      return copy
+    })
+    setImages(prev => { const copy = prev.slice(); copy[idx] = val; return copy })
+  }
+
+  const deleteImage = async (idx: number) => {
+    const src = images[idx]
+    if (!src) return
+    if (!confirm('Delete this image from storage and remove from gallery?')) return
+    try { await fetch('/api/uploads/delete', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ url: src }) }) } catch {}
+    // remove from card images
+    setCards(prev => {
+      const copy = prev.slice()
+      const card = copy[activeIdx] || { images: [] as string[] }
+      const imgs = Array.isArray(card.images) ? card.images.slice() : images.slice()
+      const next = imgs.filter((_,i)=>i!==idx)
+      card.images = next
+      // clear main image if it matched
+      if (card.image === src) card.image = ''
+      copy[activeIdx] = card
+      return copy
+    })
+    setImages(prev => prev.filter((_,i)=>i!==idx))
+  }
+
   // keep contentEditable DOM in sync for dynamic cards when not focused
   useEffect(()=>{
     try{
@@ -163,6 +340,37 @@ export default function AdminAboutEditor({ params }: { params: any }) {
       }
     }catch{}
   }, [cards])
+
+  // keep main editorRef (alias to the active card's editor) in sync when cards or active index change
+  useEffect(()=>{
+    try{
+      if (editorRef.current && document.activeElement !== editorRef.current) {
+        const desired = cards[activeIdx]?.content || ''
+        if ((editorRef.current.innerHTML || '') !== desired) editorRef.current.innerHTML = desired
+      }
+    }catch{}
+  }, [cards, activeIdx])
+
+  // keep images state in sync with the active card's gallery
+  useEffect(()=>{
+    try{
+      const imgs = Array.isArray(cards[activeIdx]?.images) && cards[activeIdx]?.images.length ? (cards[activeIdx]?.images as string[]).slice(0,6) : (cards[activeIdx]?.image ? [cards[activeIdx].image] : [])
+      const prev = images || []
+      const a = JSON.stringify(prev)
+      const b = JSON.stringify(imgs)
+      if (a !== b) setImages(imgs)
+    }catch{}
+  }, [cards, activeIdx])
+
+  // keep summary editor in sync when metadata.summary.text changes
+  useEffect(()=>{
+    try{
+      if (descRef.current && document.activeElement !== descRef.current) {
+        const desired = metadata.summary?.text || ''
+        if ((descRef.current.innerHTML || '') !== desired) descRef.current.innerHTML = desired
+      }
+    }catch{}
+  }, [metadata.summary?.text])
 
   // Ctrl/Cmd+S save
   useEffect(()=>{
@@ -198,7 +406,22 @@ export default function AdminAboutEditor({ params }: { params: any }) {
       const fd = new FormData(); fd.append('file', file); fd.append('slug',String(slug||'about')); fd.append('filename', file.name)
       const direct = await fetch('/api/uploads/direct', { method: 'POST', body: fd })
       const d = await direct.json()
-      if (direct.ok && d.publicUrl) { updateCard(idx, 'image', d.publicUrl || d.key); setUploadProgress(p=>({ ...p, [idx]: 0 })); try{ toast?.showToast && toast.showToast('Image uploaded','success') }catch{}; return }
+      if (direct.ok && (d.publicUrl || d.key)) {
+        const url = d.key ? buildPublicUrl(d.key) : (d.publicUrl || d.key)
+        updateCard(idx, 'image', url)
+        // add to the card's gallery
+        setCards(prev => {
+          const copy = prev.slice()
+          const card = copy[idx] || { title: '', subtitle: '', content: '', image: url, images: [] as string[] }
+          const imgs = Array.isArray(card.images) ? card.images.slice() : []
+          if (!imgs.includes(url)) imgs.push(url)
+          card.images = imgs
+          copy[idx] = card
+          return copy
+        })
+        if (idx === activeIdx) setImages(prev => { const next = prev.slice(); if (!next.includes(url)) next.push(url); return next })
+        setUploadProgress(p=>({ ...p, [idx]: 0 })); try{ toast?.showToast && toast.showToast('Image uploaded','success') }catch{}; return
+      }
     } catch (err) { console.error('direct upload error', getErrMsg(err)) }
 
     // presign
@@ -212,12 +435,24 @@ export default function AdminAboutEditor({ params }: { params: any }) {
       if (!upload.ok) {
         // fallback to server direct
         const fd2 = new FormData(); fd2.append('file', file); fd2.append('slug',String(slug||'about')); fd2.append('filename', file.name)
-        try { const direct2 = await fetch('/api/uploads/direct', { method:'POST', body: fd2 }); const j = await direct2.json(); if (direct2.ok && j.publicUrl) { updateCard(idx, 'image', j.publicUrl || j.key); setUploadProgress(p=>({ ...p, [idx]: 0 })); try{ toast?.showToast && toast.showToast('Image uploaded','success') }catch{}; return } } catch(e){ console.error('direct fallback error', getErrMsg(e)) }
+        try { const direct2 = await fetch('/api/uploads/direct', { method:'POST', body: fd2 }); const j = await direct2.json(); if (direct2.ok && (j.publicUrl || j.key)) { const jurl = j.key ? buildPublicUrl(j.key) : (j.publicUrl || j.key); updateCard(idx, 'image', jurl); setUploadProgress(p=>({ ...p, [idx]: 0 })); try{ toast?.showToast && toast.showToast('Image uploaded','success') }catch{}; return } } catch(e){ console.error('direct fallback error', getErrMsg(e)) }
         alert('Upload failed')
         setUploadProgress(p=>({ ...p, [idx]: 0 })); return
       }
 
-      updateCard(idx, 'image', data.publicUrl || data.key)
+      const newUrl = data.key ? buildPublicUrl(data.key) : (data.publicUrl || data.key)
+      updateCard(idx, 'image', newUrl)
+      // add to the card's gallery
+      setCards(prev => {
+        const copy = prev.slice()
+        const card = copy[idx] || { title: '', subtitle: '', content: '', image: newUrl, images: [] as string[] }
+        const imgs = Array.isArray(card.images) ? card.images.slice() : []
+        if (newUrl && !imgs.includes(newUrl)) imgs.push(newUrl)
+        card.images = imgs
+        copy[idx] = card
+        return copy
+      })
+      if (idx === activeIdx && newUrl) setImages(prev => { if (prev.includes(newUrl)) return prev; return [...prev, newUrl] })
       setUploadProgress(p=>({ ...p, [idx]: 0 }))
       try{ toast?.showToast && toast.showToast('Image uploaded','success') }catch{}
     } catch (err) { console.error('upload error', getErrMsg(err)); setUploadProgress(p=>({ ...p, [idx]: 0 })); alert('Upload failed: ' + getErrMsg(err)) }
@@ -231,17 +466,33 @@ export default function AdminAboutEditor({ params }: { params: any }) {
     return uploadCardImageIndex(file, idx)
   }
 
-  if (loading) return <div className="page-pad" style={{padding:20}}>Loading…</div>
+  if (loading) return <div style={{padding:20}}>Loading…</div>
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
-          <h2>About Editor</h2>
-          <div className="stack">
-            <div className={styles.editorGrid}>
-              <div>
-                <form className="form-grid" onSubmit={(e)=>{ e.preventDefault(); handleSave() }}>
+    <div>
+      <div style={{marginBottom:12}} className={styles.topTitle}>Edit About — ID: {id ?? idParam} <span style={{marginLeft:8}} className={styles.kbd}>Ctrl/Cmd+S</span></div>
+      <div style={{marginBottom:12}}>
+        <button className={styles.btnGhost} onClick={load}>Refresh</button>
+        <button className={styles.btnGhost} onClick={async ()=>{
+          try {
+            const q = id ? `?id=${encodeURIComponent(String(id))}` : `?slug=${encodeURIComponent(slug || 'about')}`
+            const res = await fetch('/api/admin/pages' + q)
+            const j = await res.json()
+            setSavedPageJson(j)
+          } catch (e) {
+            alert('Could not fetch saved page')
+          }
+        }} style={{marginLeft:8}}>Show saved metadata</button>
+      </div>
+
+      {savedPageJson ? (
+        <div style={{marginBottom:12, background:'rgba(0,0,0,0.04)', padding:12, borderRadius:8}}>
+          <strong>Saved page JSON</strong>
+          <pre style={{whiteSpace:'pre-wrap', maxHeight:240, overflow:'auto', marginTop:8}}>{JSON.stringify(savedPageJson, null, 2)}</pre>
+        </div>
+      ) : null}
+      {loading ? <p>Loading…</p> : (
+        <form className={styles.editorGrid} onSubmit={(e)=>{ e.preventDefault(); handleSave() }}>
                   <label>
                     <div className="field-label">Slug</div>
                     <input value={slug} onChange={e=>setSlug(e.target.value)} className={styles.formInput} />
@@ -267,7 +518,18 @@ export default function AdminAboutEditor({ params }: { params: any }) {
                     </label>
                     <label>
                       <div className="field-label">Text</div>
-                      <textarea value={metadata.summary?.text || ''} onChange={e=>updateMetadata(['summary','text'], e.target.value)} rows={3} className={styles.formInput} />
+                      <div style={{marginBottom:8}} className={styles.smallMuted}>This is the summary text shown on the About page.</div>
+                      <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background:'var(--card-bg)'}}>
+                        <div style={{display:'flex', gap:8, marginBottom:8}}>
+                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('bold'); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); }} title="Bold">B</button>
+                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('italic'); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); }} title="Italic">I</button>
+                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); }} title="Bullet list">• List</button>
+                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); }} title="Numbered list">1. List</button>
+                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; const url = prompt('Insert link URL'); if (url) { descRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); } }} title="Insert link">🔗</button>
+                          <button type="button" className={styles.btnGhost} onClick={() => setDescExpanded(v => !v)} title="Expand editor">⤢</button>
+                        </div>
+                        <div id="about-summary-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateMetadata(['summary','text'], (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight: descExpanded ? 520 : 360, maxHeight:900, overflow:'auto', resize:'vertical'}} dangerouslySetInnerHTML={{ __html: metadata.summary?.text || '' }} />
+                      </div>
                     </label>
                     <label>
                       <div className="field-label">CTA Label</div>
@@ -280,84 +542,113 @@ export default function AdminAboutEditor({ params }: { params: any }) {
                   </section>
 
                   <section style={{marginTop:12}}>
-                    <h3>Cards</h3>
-                    <div style={{display:'flex', flexDirection:'column', gap:12}}>
-                      {cards.map((card, idx) => (
-                        <div key={idx} style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background:'var(--card-bg)'}}>
-                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                            <div style={{fontWeight:700}}>{card.title || `Card ${idx+1}`}</div>
-                            <div style={{display:'flex', gap:8}}>
-                              <button type="button" className={styles.btnGhost} onClick={()=>moveCard(idx, -1)} disabled={idx===0}>↑</button>
-                              <button type="button" className={styles.btnGhost} onClick={()=>moveCard(idx, 1)} disabled={idx===cards.length-1}>↓</button>
-                              <button type="button" className={styles.btnDanger} onClick={()=>removeCard(idx)}>Remove</button>
+                    <h3>About Card</h3>
+                    <div style={{display:'flex', gap:12}}>
+                      <div style={{flex:1}}>
+                        {cards[activeIdx] ? (
+                          <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background:'var(--card-bg)'}}>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                              <div style={{fontWeight:700}}>{cards[activeIdx].title || 'About Card'}</div>
                             </div>
-                          </div>
-                          <label>
-                            <div className="field-label">Title</div>
-                            <input value={card.title || ''} onChange={e=>updateCard(idx, 'title', e.target.value)} className={styles.formInput} />
-                          </label>
-                          <label>
-                            <div className="field-label">Subtitle</div>
-                            <input value={card.subtitle || ''} onChange={e=>updateCard(idx, 'subtitle', e.target.value)} className={styles.formInput} />
-                          </label>
-                          <label>
-                            <div className="field-label">Image path</div>
-                            <input value={card.image || ''} onChange={e=>updateCard(idx, 'image', e.target.value)} className={styles.formInput} />
-                            <div style={{marginTop:8}}>
-                              <label className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{display:'inline-flex',alignItems:'center',gap:8}}>
-                                <input type="file" accept="image/*" style={{display:'none'}} onChange={(e)=>{ const f = e.currentTarget.files?.[0]; if (f) uploadCardImageIndex(f, idx) }} />
-                                Upload image
-                              </label>
-                              {uploadProgress[idx] && uploadProgress[idx] < 0 ? <div style={{color:'#9fb7d6'}}>Uploading…</div> : uploadProgress[idx] ? <div className="progress-bar" style={{width:120}}><div className="progress-bar-inner" style={{width:`${uploadProgress[idx]}%`}}/></div> : null}
-                            </div>
-                          </label>
-                          <label>
-                            <div className="field-label">Content (HTML allowed)</div>
-                            <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background:'var(--card-bg)'}}>
-                              <div style={{display:'flex',gap:8,marginBottom:8}}>
-                                <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[idx]; if (!el) return; el.focus(); document.execCommand('bold'); setTimeout(()=>updateCard(idx,'content', el.innerHTML||''), 0) }}>B</button>
-                                <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[idx]; if (!el) return; el.focus(); document.execCommand('italic'); setTimeout(()=>updateCard(idx,'content', el.innerHTML||''), 0) }}>I</button>
-                                <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[idx]; if (!el) return; el.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>updateCard(idx,'content', el.innerHTML||''), 0) }}>• List</button>
-                                <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[idx]; if (!el) return; const url = prompt('Insert link URL'); if (url){ el.focus(); document.execCommand('createLink', false, url); setTimeout(()=>updateCard(idx,'content', el.innerHTML||''), 0) } }}>🔗</button>
-                                <button type="button" className={styles.btnGhost} onClick={()=>updateCard(idx,'content','')}>Clear</button>
+                            <label>
+                              <div className="field-label">Card Title</div>
+                              <input value={cards[activeIdx]?.title || ''} onChange={e=>updateCard(activeIdx, 'title', e.target.value)} className={styles.formInput} />
+                            </label>
+                            <label>
+                              <div className="field-label">Subtitle</div>
+                              <input value={cards[activeIdx]?.subtitle || ''} onChange={e=>updateCard(activeIdx, 'subtitle', e.target.value)} className={styles.formInput} />
+                            </label>
+                            <label>
+                              <div className="field-label">Content (HTML allowed)</div>
+                              <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background:'var(--card-bg)'}}>
+                                <div style={{display:'flex', gap:8, marginBottom:8}}>
+                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('bold'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>B</button>
+                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('italic'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>I</button>
+                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>• List</button>
+                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; const url = prompt('Insert link URL'); if (url){ el.focus(); document.execCommand('createLink', false, url); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) } }}>🔗</button>
+                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('undo'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>↶</button>
+                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('redo'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>↷</button>
+                                  <button type="button" className={styles.btnGhost} onClick={()=>setEditorExpanded(v=>!v)}>⤢</button>
+                                </div>
+                                <div ref={(el)=>{ cardRefs.current[activeIdx] = el }} id="about-card-editor" contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateCard(activeIdx,'content', (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight: editorExpanded ? 600 : 320, maxHeight:1200, overflow:'auto', resize:'vertical'}} dangerouslySetInnerHTML={{ __html: cards[activeIdx]?.content || '' }} />
                               </div>
-                              <div ref={(el)=>{ cardRefs.current[idx] = el }} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateCard(idx,'content', (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight:200, maxHeight:800, overflow:'auto'}} dangerouslySetInnerHTML={{ __html: card.content || '' }} />
-                            </div>
-                          </label>
-                        </div>
-                      ))}
-                      <div>
-                        <button type="button" className={styles.btnGhost} onClick={addCard}>Add Card</button>
+                            </label>
+                          </div>
+                        ) : null}
                       </div>
+
+                      <ProjectEditorSidebar
+                        form={{ id: id ?? undefined, slug, title, subtitle: cards[activeIdx]?.subtitle || '', image_path: cards[activeIdx]?.image || '', templateLarge: cards[activeIdx]?.templateLarge || '', templateSmall: cards[activeIdx]?.templateSmall || '', description: metadata.summary?.text || '', is_published: isPublished, details: cards[activeIdx]?.content || '' }}
+                        setForm={setFormLike}
+                        images={images}
+                        uploadMainImage={uploadMainImage}
+                        editMainImage={editMainImage}
+                        deleteMainImage={deleteMainImage}
+                        uploadFiles={uploadFiles}
+                        uploadProgress={uploadProgress[activeIdx] || 0}
+                        moveImage={moveImage}
+                        editImage={editImage}
+                        deleteImage={deleteImage}
+                        onRemove={async ()=>{ if (!confirm('Delete this page?')) return; try { await fetch(`/api/admin/pages?id=${id}`, { method: 'DELETE' }); router.push('/admin/about') } catch {} }}
+                      />
                     </div>
                   </section>
-
-                  <div style={{display:'flex',gap:8,marginTop:12}}>
-                    <button type="submit" className={styles.btnPrimary}>{saving ? 'Saving…' : 'Save'}</button>
-                    <button type="button" className={styles.btnGhost} onClick={()=>window.open('/aboutme','_blank')}>Preview</button>
-                    <button type="button" className={styles.btnGhost} onClick={loadDraft}>Load Draft</button>
-                    <button type="button" className={styles.btnDanger} onClick={discardDraft}>Discard Draft</button>
+                  <div style={{gridColumn: '1/-1'}}>
+                    <div className={styles.stickyBar}>
+                      <div style={{marginRight:'auto'}} className={styles.smallMuted}>
+                        {saving ? (
+                          'Saving…'
+                        ) : (
+                          <>
+                            Changes saved automatically; press <span className={styles.kbd}>Ctrl/Cmd+S</span> to save now.
+                          </>
+                        )}
+                      </div>
+                      <div>
+                        <button className={styles.btnGhost} type="submit">{saving ? 'Saving…' : 'Save'}</button>
+                        <button className={styles.btnGhost} type="button" onClick={()=>setPreviewOpen(true)}>Preview</button>
+                        <button className={styles.btnGhost} type="button" onClick={loadDraft}>Load Draft</button>
+                        <button className={styles.btnDanger} type="button" onClick={discardDraft}>Discard Draft</button>
+                      </div>
+                    </div>
                   </div>
                 </form>
-              </div>
-
-              <aside>
-                <div className={styles.panel} style={{padding:12}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <div>
-                      <div className={styles.fieldLabel}>About Page</div>
-                      <div className="muted">Edit the three cards and summary content</div>
-                    </div>
-                    <div>
-                      <button className={styles.btnGhost} onClick={load}>Refresh</button>
-                    </div>
+      )}
+      {previewOpen && (
+        <div className={styles.modalOverlay} onClick={()=>setPreviewOpen(false)}>
+          <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+              <div style={{fontWeight:700}}>Preview</div>
+              <button className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
+            </div>
+            <div style={{maxWidth:920}}>
+              <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{fontWeight:600}}>{slug ? `/aboutme` : 'About preview'}</div>
+                  <div>
+                    {slug ? <a className={styles.btnGhost} href={`/aboutme`} target="_blank" rel="noopener noreferrer">Open in new tab</a> : null}
                   </div>
                 </div>
-              </aside>
+                <Card title={cards[activeIdx]?.title || 'About'} subtitle={cards[activeIdx]?.subtitle || ''}>
+                  <div className={projectStyles.content} style={{gap:8}}>
+                    <div className={projectStyles.media}>
+                      {cards[activeIdx]?.image ? (
+                        <div className={projectStyles.mainPhotoWrap} style={{maxWidth:320}}>
+                          <img src={cards[activeIdx]?.image} alt={cards[activeIdx]?.title} className={projectStyles.mainPhoto} />
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className={projectStyles.story}>
+                      <div style={{color:'var(--white-95)'}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(metadata.summary?.text || '')) : (metadata.summary?.text || '') }} />
+                      {cards[activeIdx]?.content ? <div style={{marginTop:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(cards[activeIdx]?.content).slice(0,400) + (String(cards[activeIdx]?.content).length > 400 ? '…' : '')) : (String(cards[activeIdx]?.content).slice(0,400) + (String(cards[activeIdx]?.content).length > 400 ? '…' : '')) }} /> : null}
+                    </div>
+                  </div>
+                </Card>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </main>
+      )}
+    </div>
   )
 }

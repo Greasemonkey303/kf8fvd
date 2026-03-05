@@ -28,19 +28,19 @@ export default function AdminAboutList() {
       const data = await res.json()
       const rows: any[] = data.items || []
       const cards: any[] = []
-      rows.filter(r => String(r.slug || '').startsWith('about')).forEach(r => {
+          rows.filter(r => String(r.slug || '').startsWith('about')).forEach(r => {
         try {
           const md = r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata) : null
           if (md) {
             if (Array.isArray(md.cards) && md.cards.length > 0) {
               md.cards.forEach((c: any, idx: number) => {
-                cards.push({ id: `${r.id}-c-${idx}`, slug: `${r.slug}#${idx}`, title: c?.title || r.title, subtitle: c?.subtitle || '', image_path: c?.image || '', description: c?.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}` })
+                cards.push({ id: `${r.id}-c-${idx}`, slug: `${r.slug}#${idx}`, title: c?.title || r.title, subtitle: c?.subtitle || '', image_path: c?.image || '', description: c?.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=${idx}` })
               })
             } else {
               // fallback to legacy named cards
-              if (md.aboutCard) cards.push({ id: `${r.id}-about`, slug: `${r.slug}#about`, title: md.aboutCard.title || r.title, subtitle: md.aboutCard.subtitle || '', image_path: md.aboutCard.image || '', description: md.aboutCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}` })
-              if (md.topologyCard) cards.push({ id: `${r.id}-topology`, slug: `${r.slug}#topology`, title: md.topologyCard.title || '', subtitle: md.topologyCard.subtitle || '', image_path: md.topologyCard.image || '', description: md.topologyCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}` })
-              if (md.hamshackCard) cards.push({ id: `${r.id}-hamshack`, slug: `${r.slug}#hamshack`, title: md.hamshackCard.title || '', subtitle: md.hamshackCard.subtitle || '', image_path: md.hamshackCard.image || '', description: md.hamshackCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}` })
+              if (md.aboutCard) cards.push({ id: `${r.id}-about`, slug: `${r.slug}#about`, title: md.aboutCard.title || r.title, subtitle: md.aboutCard.subtitle || '', image_path: md.aboutCard.image || '', description: md.aboutCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=0` })
+              if (md.topologyCard) cards.push({ id: `${r.id}-topology`, slug: `${r.slug}#topology`, title: md.topologyCard.title || '', subtitle: md.topologyCard.subtitle || '', image_path: md.topologyCard.image || '', description: md.topologyCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=1` })
+              if (md.hamshackCard) cards.push({ id: `${r.id}-hamshack`, slug: `${r.slug}#hamshack`, title: md.hamshackCard.title || '', subtitle: md.hamshackCard.subtitle || '', image_path: md.hamshackCard.image || '', description: md.hamshackCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=2` })
             }
           }
         } catch (e) {
@@ -286,7 +286,7 @@ export default function AdminAboutList() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div className={styles.fieldLabel}>About Sections</div>
-                      <div className="muted">Total: {items.length}</div>
+                        <div className="muted">Total: {items.length} (published: {items.filter(i => i && Number(i.is_published) === 1).length})</div>
                     </div>
                     <div>
                       <button className={styles.btnGhost} type="button" onClick={load}>Refresh</button>

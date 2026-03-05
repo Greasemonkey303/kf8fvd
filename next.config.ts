@@ -5,7 +5,8 @@ const CSP = [
   "base-uri 'self'",
   "block-all-mixed-content",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "img-src 'self' data: https://*.gravatar.com https://www.google-analytics.com",
+  // allow local MinIO/dev hosts used for signed image URLs
+  "img-src 'self' data: http://127.0.0.1:9000 http://localhost:9000 https://*.gravatar.com https://www.google-analytics.com",
   "connect-src 'self' https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov",
   "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline' https://unpkg.com",
@@ -29,6 +30,17 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    // Also allow specific hostnames as image domains (fallback for dev)
+    domains: ['127.0.0.1', 'localhost', 'minio', 's3.amazonaws.com'],
+    remotePatterns: [
+      { protocol: 'http', hostname: '127.0.0.1', port: '9000', pathname: '/:path*' },
+      { protocol: 'http', hostname: 'localhost', port: '9000', pathname: '/:path*' },
+      { protocol: 'http', hostname: 'minio', port: '', pathname: '/:path*' },
+      { protocol: 'https', hostname: 's3.amazonaws.com', port: '', pathname: '/:path*' }
+    ]
   },
 };
 
