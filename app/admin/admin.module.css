@@ -124,3 +124,23 @@
   max-height: 92vh;
   overflow: auto;
 }
+
+/* Published / Draft status badges */
+.statusBadge {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,#164f2a,#0f6b37);
+  color: #dff7e6;
+  margin-left: 8px;
+  border: 1px solid rgba(22,163,74,0.12);
+}
+.statusBadgeDraft {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.02);
+  color: #9fb7d6;
+  margin-left: 8px;
+  border: 1px solid rgba(255,255,255,0.03);
+}

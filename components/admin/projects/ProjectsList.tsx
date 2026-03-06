@@ -13,7 +13,7 @@ function IconList() {
   )
 }
 
-type ProjectItem = { id: number | string; slug: string; title: string; subtitle?: string; image_path?: string; editLink?: string }
+type ProjectItem = { id: number | string; slug: string; title: string; subtitle?: string; image_path?: string; editLink?: string; is_published?: number }
 
 export default function ProjectsList({ items, loading, title, editPathPrefix, showReorder, onMoveUp, onMoveDown }: { items: ProjectItem[]; loading: boolean; title?: string; editPathPrefix?: string; showReorder?: boolean; onMoveUp?: (index: number) => void; onMoveDown?: (index: number) => void }) {
   return (
@@ -52,7 +52,11 @@ export default function ProjectsList({ items, loading, title, editPathPrefix, sh
                   <div style={{width:64, height:48, background:'rgba(255,255,255,0.03)', borderRadius:6}} />
                 )}
                 <div>
-                  <strong style={{display:'flex', alignItems:'center', gap:8}}>{i.title} <small className="muted-small">{i.subtitle}</small></strong>
+                  <strong style={{display:'flex', alignItems:'center', gap:8}}>
+                    {i.title}
+                    <small className="muted-small">{i.subtitle}</small>
+                    { (i as any).is_published === 1 ? <span className={styles.statusBadge}>Published</span> : <span className={styles.statusBadgeDraft}>Draft</span> }
+                  </strong>
                 </div>
               </div>
               <div className="flex gap-2">

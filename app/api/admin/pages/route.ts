@@ -75,12 +75,21 @@ export async function POST(req: Request) {
   }
 
   try {
+    // If a page with this slug already exists, update it instead of inserting to avoid accidental duplicates
+    const existing = await query<{ id: number }[]>('SELECT id FROM pages WHERE slug = ?', [slug])
+    if (existing && existing.length > 0) {
+      const existingId = existing[0].id
+      await query('UPDATE pages SET title = ?, content = ?, metadata = ?, is_published = ? WHERE id = ?', [title, sanitized || null, safeMetadata ? JSON.stringify(safeMetadata) : JSON.stringify({}), is_published ? 1 : 0, existingId])
+      return NextResponse.json({ id: existingId, ok: true, updated: true })
+    }
+
     const insertRes = await query('INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?)', [slug, title, sanitized || null, safeMetadata ? JSON.stringify(safeMetadata) : JSON.stringify({}), is_published ? 1 : 0])
     const insertId = (insertRes as unknown as { insertId?: number })?.insertId ?? null
     return NextResponse.json({ id: insertId, ok: true })
   } catch (e: unknown) {
     // handle duplicate-slug by merging metadata into existing page
     const err: any = e as any
+    // If concurrent insertion caused a duplicate entry, try to merge/patch existing page as a fallback
     if (err && (err.code === 'ER_DUP_ENTRY' || String(err).toLowerCase().includes('duplicate'))) {
       try {
         const rows = await query<{ id: number; metadata?: string }[]>('SELECT id, metadata FROM pages WHERE slug = ?', [slug])
@@ -89,7 +98,7 @@ export async function POST(req: Request) {
           let meta: any = {}
           try { meta = existing.metadata ? (typeof existing.metadata === 'string' ? JSON.parse(existing.metadata) : existing.metadata) : {} } catch { meta = {} }
 
-          // Append new cards if provided
+          // Fallback: append any new cards if safeMetadata contains them
           if (Array.isArray(safeMetadata?.cards) && safeMetadata.cards.length) {
             meta.cards = Array.isArray(meta.cards) ? meta.cards.concat(safeMetadata.cards) : safeMetadata.cards.slice()
           } else if (safeMetadata?.aboutCard) {
@@ -236,7 +245,8 @@ export async function DELETE(req: Request) {
         try {
           await minioClient.removeObjects(bucket, keysToDelete)
         } catch (e: unknown) {
-          return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
+          console.warn('Warning: removeObjects failed for card-level keys', getErrMsg(e))
+          // Do not fail the entire request if objects were already deleted or removal errors occur
         }
       }
 
@@ -279,7 +289,8 @@ export async function DELETE(req: Request) {
         try {
           await minioClient.removeObjects(bucket, keysToDelete)
         } catch (e: unknown) {
-          return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
+          console.warn('Warning: removeObjects failed for named card keys', getErrMsg(e))
+          // Swallow removal errors to avoid failing when objects are already gone
         }
       }
       // remove the named card and persist
@@ -326,7 +337,8 @@ export async function DELETE(req: Request) {
       try {
         await minioClient.removeObjects(bucket, objs)
       } catch (e: unknown) {
-        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
+        console.warn('Warning: removeObjects failed for page-level keys', getErrMsg(e))
+        // Continue — do not propagate S3 removal errors to the client
       }
     }
   }

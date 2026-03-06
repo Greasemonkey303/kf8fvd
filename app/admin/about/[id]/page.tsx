@@ -41,7 +41,6 @@ export default function AdminAboutEditor({ params }: { params: any }) {
 
   // single-card editor convenience state (gallery + form-like API used by ProjectEditorSidebar)
   const [images, setImages] = useState<string[]>([])
-  const editorRef = useRef<HTMLDivElement | null>(null)
   const [editorExpanded, setEditorExpanded] = useState(false)
   const descRef = useRef<HTMLDivElement | null>(null)
   const [descExpanded, setDescExpanded] = useState(false)
@@ -50,7 +49,9 @@ export default function AdminAboutEditor({ params }: { params: any }) {
   const [uploadProgress, setUploadProgress] = useState<Record<string | number, number>>({})
   const [previewOpen, setPreviewOpen] = useState(false)
   const toast = useToast()
-  const [savedPageJson, setSavedPageJson] = useState<any | null>(null)
+  const [deleteModal, setDeleteModal] = useState<any>({ open: false })
+  const savingRef = useRef(false)
+  
 
   const draftKey = (idOrSlug?: string) => `admin_about_draft:${idOrSlug || slug || (id ? `about-${id}` : 'about')}`
 
@@ -122,7 +123,7 @@ export default function AdminAboutEditor({ params }: { params: any }) {
       try {
         const payload = { slug, title, metadata: { ...metadata, cards }, id, updated: Date.now() }
         localStorage.setItem(draftKey(), JSON.stringify(payload))
-        try { toast?.showToast && toast.showToast('Draft saved locally', 'info') } catch{}
+        // autosave: store locally but avoid noisy toasts on every autosave
       } catch {}
     }, 800)
     return ()=>{ if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
@@ -255,10 +256,8 @@ export default function AdminAboutEditor({ params }: { params: any }) {
   const deleteMainImage = async () => {
     const src = cards[activeIdx]?.image
     if (!src) return
-    if (!confirm('Delete the main image from storage and clear Image path?')) return
-    try { await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ url: src }) }) } catch {}
-    updateCard(activeIdx, 'image', '')
-    try { await handleSave() } catch {}
+    // show modal confirmation instead of browser confirm
+    setDeleteModal({ open: true, mode: 'image', message: 'Delete the main image from storage and clear Image path?', imageUrl: src, imageIdx: undefined })
   }
 
   const uploadFiles = (files: FileList | null | undefined) => {
@@ -311,21 +310,61 @@ export default function AdminAboutEditor({ params }: { params: any }) {
   const deleteImage = async (idx: number) => {
     const src = images[idx]
     if (!src) return
-    if (!confirm('Delete this image from storage and remove from gallery?')) return
-    try { await fetch('/api/uploads/delete', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ url: src }) }) } catch {}
-    // remove from card images
-    setCards(prev => {
-      const copy = prev.slice()
-      const card = copy[activeIdx] || { images: [] as string[] }
-      const imgs = Array.isArray(card.images) ? card.images.slice() : images.slice()
-      const next = imgs.filter((_,i)=>i!==idx)
-      card.images = next
-      // clear main image if it matched
-      if (card.image === src) card.image = ''
-      copy[activeIdx] = card
-      return copy
-    })
-    setImages(prev => prev.filter((_,i)=>i!==idx))
+    // use modal confirmation instead of browser confirm
+    setDeleteModal({ open: true, mode: 'image', message: 'Delete this image from storage and remove from gallery?', imageUrl: src, imageIdx: idx })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteModal || !deleteModal.open) return
+    try {
+      if (deleteModal.mode === 'card') {
+        const idx = deleteModal.idx
+        const res = await fetch(`/api/admin/pages?id=${id}&card=${idx}`, { method: 'DELETE' })
+        if (!res.ok) { alert('Delete failed'); return }
+        setCards(prev => {
+          const copy = prev.slice()
+          copy.splice(idx, 1)
+          return copy
+        })
+        setActiveIdx(i => Math.max(0, Math.min(i, Math.max(0, cards.length - 2))))
+        // sync images for new active card
+        setImages(() => {
+          const nextCards = cards.slice(); nextCards.splice(deleteModal.idx, 1)
+          const newCard = nextCards[Math.max(0, Math.min(deleteModal.idx, Math.max(0, nextCards.length - 1)))]
+          if (!newCard) return []
+          return (Array.isArray(newCard.images) && newCard.images.length) ? (newCard.images as string[]).slice(0,6) : (newCard.image ? [newCard.image] : [])
+        })
+        try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
+      } else if (deleteModal.mode === 'named') {
+        const key = deleteModal.namedKey
+        const res = await fetch(`/api/admin/pages?id=${id}&card=${encodeURIComponent(key)}`, { method: 'DELETE' })
+        if (!res.ok) { alert('Delete failed'); return }
+        try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
+        await load()
+      } else if (deleteModal.mode === 'page') {
+        const res = await fetch(`/api/admin/pages?id=${id}`, { method: 'DELETE' })
+        if (res.ok) router.push('/admin/about')
+      } else if (deleteModal.mode === 'image') {
+        const url = deleteModal.imageUrl
+        const idx = deleteModal.imageIdx
+        try { await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ url }) }) } catch {}
+        setCards(prev => {
+          const copy = prev.slice()
+          const card = copy[activeIdx] || { images: [] as string[] }
+          const imgs = Array.isArray(card.images) ? card.images.slice() : images.slice()
+          const next = imgs.filter((_,i)=>i!==idx)
+          card.images = next
+          if (card.image === url) card.image = ''
+          copy[activeIdx] = card
+          return copy
+        })
+        setImages(prev => prev.filter((_,i)=>i!==idx))
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setDeleteModal({ open: false })
+    }
   }
 
   // keep contentEditable DOM in sync for dynamic cards when not focused
@@ -344,9 +383,10 @@ export default function AdminAboutEditor({ params }: { params: any }) {
   // keep main editorRef (alias to the active card's editor) in sync when cards or active index change
   useEffect(()=>{
     try{
-      if (editorRef.current && document.activeElement !== editorRef.current) {
+      const el = cardRefs.current[activeIdx]
+      if (el && document.activeElement !== el) {
         const desired = cards[activeIdx]?.content || ''
-        if ((editorRef.current.innerHTML || '') !== desired) editorRef.current.innerHTML = desired
+        if ((el.innerHTML || '') !== desired) el.innerHTML = desired
       }
     }catch{}
   }, [cards, activeIdx])
@@ -380,8 +420,9 @@ export default function AdminAboutEditor({ params }: { params: any }) {
   }, [slug, title, metadata, id, isPublished])
 
   const getErrMsg = (err: unknown) => { if (err instanceof Error) return err.message; try { return String(err) } catch { return 'Unknown error' } }
-
   async function handleSave() {
+    if (savingRef.current) return
+    savingRef.current = true
     setSaving(true)
     try{
       const safeMetadata = { ...metadata, cards }
@@ -393,7 +434,7 @@ export default function AdminAboutEditor({ params }: { params: any }) {
       if (!id && json?.id) setId(json.id)
       try { localStorage.removeItem(draftKey()); localStorage.removeItem('admin_about_draft:about') } catch{}
       try { toast?.showToast && toast.showToast('Saved', 'success') } catch{}
-    }catch(e){ alert('Save failed: ' + getErrMsg(e)) } finally { setSaving(false) }
+    }catch(e){ alert('Save failed: ' + getErrMsg(e)) } finally { setSaving(false); savingRef.current = false }
   }
 
   // upload card image for a specific card index (tries direct server upload then presign PUT, falls back)
@@ -473,24 +514,9 @@ export default function AdminAboutEditor({ params }: { params: any }) {
       <div style={{marginBottom:12}} className={styles.topTitle}>Edit About — ID: {id ?? idParam} <span style={{marginLeft:8}} className={styles.kbd}>Ctrl/Cmd+S</span></div>
       <div style={{marginBottom:12}}>
         <button className={styles.btnGhost} onClick={load}>Refresh</button>
-        <button className={styles.btnGhost} onClick={async ()=>{
-          try {
-            const q = id ? `?id=${encodeURIComponent(String(id))}` : `?slug=${encodeURIComponent(slug || 'about')}`
-            const res = await fetch('/api/admin/pages' + q)
-            const j = await res.json()
-            setSavedPageJson(j)
-          } catch (e) {
-            alert('Could not fetch saved page')
-          }
-        }} style={{marginLeft:8}}>Show saved metadata</button>
       </div>
 
-      {savedPageJson ? (
-        <div style={{marginBottom:12, background:'rgba(0,0,0,0.04)', padding:12, borderRadius:8}}>
-          <strong>Saved page JSON</strong>
-          <pre style={{whiteSpace:'pre-wrap', maxHeight:240, overflow:'auto', marginTop:8}}>{JSON.stringify(savedPageJson, null, 2)}</pre>
-        </div>
-      ) : null}
+      
       {loading ? <p>Loading…</p> : (
         <form className={styles.editorGrid} onSubmit={(e)=>{ e.preventDefault(); handleSave() }}>
                   <label>
@@ -528,7 +554,7 @@ export default function AdminAboutEditor({ params }: { params: any }) {
                           <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; const url = prompt('Insert link URL'); if (url) { descRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); } }} title="Insert link">🔗</button>
                           <button type="button" className={styles.btnGhost} onClick={() => setDescExpanded(v => !v)} title="Expand editor">⤢</button>
                         </div>
-                        <div id="about-summary-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateMetadata(['summary','text'], (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight: descExpanded ? 520 : 360, maxHeight:900, overflow:'auto', resize:'vertical'}} dangerouslySetInnerHTML={{ __html: metadata.summary?.text || '' }} />
+                        <div id="about-summary-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateMetadata(['summary','text'], (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight: descExpanded ? 520 : 360, maxHeight:900, overflow:'auto', resize:'vertical'}} />
                       </div>
                     </label>
                     <label>
@@ -570,7 +596,7 @@ export default function AdminAboutEditor({ params }: { params: any }) {
                                   <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('redo'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>↷</button>
                                   <button type="button" className={styles.btnGhost} onClick={()=>setEditorExpanded(v=>!v)}>⤢</button>
                                 </div>
-                                <div ref={(el)=>{ cardRefs.current[activeIdx] = el }} id="about-card-editor" contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateCard(activeIdx,'content', (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight: editorExpanded ? 600 : 320, maxHeight:1200, overflow:'auto', resize:'vertical'}} dangerouslySetInnerHTML={{ __html: cards[activeIdx]?.content || '' }} />
+                                <div ref={(el)=>{ cardRefs.current[activeIdx] = el }} id="about-card-editor" contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateCard(activeIdx,'content', (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight: editorExpanded ? 600 : 320, maxHeight:1200, overflow:'auto', resize:'vertical'}} />
                               </div>
                             </label>
                           </div>
@@ -589,54 +615,21 @@ export default function AdminAboutEditor({ params }: { params: any }) {
                         moveImage={moveImage}
                         editImage={editImage}
                         deleteImage={deleteImage}
-                        onRemove={async ()=>{
+                        onRemove={() => {
                           if (!id) return
-                          try {
-                            // If this page has multiple cards, delete just the active card
-                            const hasCardsArray = Array.isArray(metadata?.cards) && metadata?.cards.length > 0
-                            if (hasCardsArray && cards.length > 1) {
-                              if (!confirm('Delete this card?')) return
-                              const res = await fetch(`/api/admin/pages?id=${id}&card=${activeIdx}`, { method: 'DELETE' })
-                              if (!res.ok) { alert('Delete failed'); return }
-                              // remove locally
-                              setCards(prev => {
-                                const copy = prev.slice()
-                                copy.splice(activeIdx, 1)
-                                return copy
-                              })
-                              setActiveIdx(i => Math.max(0, Math.min(i, Math.max(0, cards.length - 2))))
-                              // sync images for new active card
-                              setImages(prev => {
-                                const nextCards = cards.slice(); nextCards.splice(activeIdx, 1)
-                                const newCard = nextCards[Math.max(0, Math.min(activeIdx, Math.max(0, nextCards.length - 1)))]
-                                if (!newCard) return []
-                                return (Array.isArray(newCard.images) && newCard.images.length) ? (newCard.images as string[]).slice(0,6) : (newCard.image ? [newCard.image] : [])
-                              })
-                              try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
-                              return
-                            }
-
-                            // Legacy named cards: map activeIdx to about/topology/hamshack
-                            const hasNamed = !!(metadata?.aboutCard || metadata?.topologyCard || metadata?.hamshackCard)
-                            if (hasNamed) {
-                              const map = ['about','topology','hamshack']
-                              const key = map[activeIdx] || 'about'
-                              if (!confirm('Delete this card?')) return
-                              const res = await fetch(`/api/admin/pages?id=${id}&card=${encodeURIComponent(key)}`, { method: 'DELETE' })
-                              if (!res.ok) { alert('Delete failed'); return }
-                              try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
-                              // refresh load to reflect metadata change
-                              await load()
-                              return
-                            }
-
-                            // otherwise, delete the full page
-                            if (!confirm('Delete this page?')) return
-                            const res = await fetch(`/api/admin/pages?id=${id}`, { method: 'DELETE' })
-                            if (res.ok) router.push('/admin/about')
-                          } catch (e) {
-                            // ignore
+                          const hasCardsArray = Array.isArray(metadata?.cards) && metadata?.cards.length > 0
+                          const hasNamed = !!(metadata?.aboutCard || metadata?.topologyCard || metadata?.hamshackCard)
+                          if (hasCardsArray && cards.length > 1) {
+                            setDeleteModal({ open: true, mode: 'card', idx: activeIdx, message: 'Delete this card?' })
+                            return
                           }
+                          if (hasNamed) {
+                            const map = ['about','topology','hamshack']
+                            const key = map[activeIdx] || 'about'
+                            setDeleteModal({ open: true, mode: 'named', namedKey: key, message: 'Delete this card?' })
+                            return
+                          }
+                          setDeleteModal({ open: true, mode: 'page', message: 'Delete this page?' })
                         }}
                       />
                     </div>
@@ -697,6 +690,21 @@ export default function AdminAboutEditor({ params }: { params: any }) {
           </div>
         </div>
       )}
+      {deleteModal && deleteModal.open ? (
+        <div className={styles.modalOverlay} onClick={()=>setDeleteModal({ open: false })}>
+          <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+              <div style={{fontWeight:700}}>Confirm Delete</div>
+              <button className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Close</button>
+            </div>
+            <div style={{marginBottom:12}}>{deleteModal.message || 'Are you sure?'}</div>
+            <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+              <button className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Cancel</button>
+              <button className={styles.btnDanger} onClick={confirmDelete}>Delete</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

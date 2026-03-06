@@ -20,6 +20,7 @@ export default function AdminAboutList() {
   const [descExpanded, setDescExpanded] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const toast = useToast()
+  const [creating, setCreating] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -74,12 +75,13 @@ export default function AdminAboutList() {
   async function submit(e?: React.FormEvent) {
     if (e) e.preventDefault()
     if (!form.slug || !form.title) return
+    setCreating(true)
     try {
       const metadata = { aboutCard: { title: form.title, subtitle: form.subtitle, content: form.description, image: form.image_path } }
       const res = await fetch('/api/admin/pages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, title: form.title, content: '', metadata, is_published: form.is_published ? 1 : 0 }) })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) { alert('Create failed: ' + (j?.error || res.status)); return }
-    } catch (err) { console.error(err); alert('Create failed'); return }
+    } catch (err) { console.error(err); alert('Create failed'); return } finally { setCreating(false) }
     try { localStorage.removeItem(`admin_about_draft:${form.slug}`) } catch {}
     setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true })
     await load()
@@ -115,7 +117,6 @@ export default function AdminAboutList() {
       try {
         const payload = { form, updated: Date.now() }
         try { localStorage.setItem(draftKey(), JSON.stringify(payload)) } catch {}
-        try { toast?.showToast && toast.showToast('Draft saved locally', 'info') } catch {}
       } catch {}
     }, 800)
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
@@ -328,7 +329,7 @@ export default function AdminAboutList() {
                   </label>
 
                   <div style={{ display: 'flex', gap: 2 }}>
-                    <button suppressHydrationWarning className={styles.btnGhost} type="submit">Create</button>
+                    <button suppressHydrationWarning className={styles.btnGhost} type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create'}</button>
                     <button type="button" className={styles.btnGhost} onClick={() => setPreviewOpen(true)}>Preview</button>
                     <button type="button" className={styles.btnDanger} onClick={() => { try { localStorage.removeItem(`admin_about_draft:${form.slug || draftIdRef.current}`) } catch {} ; setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true }); try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch {} }}>Discard draft</button>
                   </div>
