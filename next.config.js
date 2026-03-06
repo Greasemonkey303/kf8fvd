@@ -4,8 +4,7 @@ const nextConfig = {
   images: {
     // Allow Next.js to serve modern image formats when possible
     formats: ['image/avif', 'image/webp'],
-    // Also allow specific hostnames as image domains (fallback for dev)
-    domains: ['127.0.0.1', 'localhost', 'minio', 's3.amazonaws.com'],
+    // Use `remotePatterns` for allowed external image sources (preferred over `domains`)
     // Allow local MinIO / signed URLs used during development
     remotePatterns: [
       { protocol: 'http', hostname: '127.0.0.1', port: '9000', pathname: '/:path*' },
