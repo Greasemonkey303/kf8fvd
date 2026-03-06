@@ -12,6 +12,8 @@ type ProjectItem = { id: number; slug: string; title: string; subtitle?: string;
 export default function AdminProjects() {
   const [items, setItems] = useState<ProjectItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<(string|number)[]>([])
+  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<any | null>(null)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState(query)
   const [slugEdited, setSlugEdited] = useState(false)
@@ -270,6 +272,59 @@ export default function AdminProjects() {
     setUploadProgress(0)
   }
 
+  const performBulkAction = async (action: 'publish' | 'unpublish' | 'delete') => {
+    if (!selectedIds || selectedIds.length === 0) return
+    try {
+      if (action === 'delete') {
+        const deleted: any[] = []
+        // fetch full rows so we can offer undo
+        for (const id of selectedIds) {
+          try {
+            const sres = await fetch(`/api/admin/projects?id=${encodeURIComponent(String(id))}`)
+            const sdata = await sres.json().catch(()=>({}))
+            const row = (sdata && Array.isArray(sdata.items) && sdata.items[0]) ? sdata.items[0] : (sdata && sdata.item ? sdata.item : null)
+            if (row) deleted.push(row)
+          } catch {}
+        }
+        // delete each id
+        for (const id of selectedIds) {
+          try { await fetch(`/api/admin/projects?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' }) } catch {}
+        }
+        setDeletedUndoBuffer({ items: deleted })
+        setSelectedIds([])
+        await load()
+        try { toast?.showToast && toast.showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success') } catch{}
+        setTimeout(()=> setDeletedUndoBuffer(null), 10000)
+        return
+      }
+
+      // publish/unpublish
+      const val = (action === 'publish') ? 1 : 0
+      for (const id of selectedIds) {
+        try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_published: val }) }) } catch {}
+      }
+      await load()
+      setSelectedIds([])
+      try { toast?.showToast && toast.showToast('Bulk action complete', 'success') } catch{}
+    } catch (e) {
+      alert('Bulk action failed: ' + String(e))
+    }
+  }
+
+  const undoDelete = async () => {
+    if (!deletedUndoBuffer || !deletedUndoBuffer.items) return
+    const itemsToRestore = deletedUndoBuffer.items
+    for (const it of itemsToRestore) {
+      try {
+        const payload = { slug: it.slug, title: it.title, content: it.content || '', metadata: it.metadata || {}, is_published: it.is_published ? 1 : 0 }
+        await fetch('/api/admin/projects', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+      } catch (e) { console.error('undo create failed', e) }
+    }
+    setDeletedUndoBuffer(null)
+    await load()
+    try { toast?.showToast && toast.showToast('Undo complete', 'success') } catch{}
+  }
+
   // Upload multiple files for details images with progress and limits
   function uploadDetailFiles(files: FileList | null) {
     if (!files) return
@@ -474,7 +529,22 @@ export default function AdminProjects() {
 
               <div style={{gridColumn:'1/-1'}}>
                 <hr />
-                <ProjectsList items={filtered} loading={loading} />
+                {selectedIds && selectedIds.length > 0 ? (
+                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                    <div style={{fontWeight:700}}>{selectedIds.length} selected</div>
+                    <button className={styles.btnGhost} onClick={()=>performBulkAction('publish')}>Publish</button>
+                    <button className={styles.btnGhost} onClick={()=>performBulkAction('unpublish')}>Unpublish</button>
+                    <button className={styles.btnDanger} onClick={()=>performBulkAction('delete')}>Delete</button>
+                  </div>
+                ) : null}
+
+                <ProjectsList
+                  items={filtered}
+                  loading={loading}
+                  selectable={true}
+                  selectedIds={selectedIds}
+                  onSelectionChange={(ids: (string|number)[]) => setSelectedIds(ids)}
+                />
               </div>
               {previewOpen && (
                 <div className={styles.modalOverlay} onClick={()=>setPreviewOpen(false)}>

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { requireAdmin } from '../../lib/auth'
 import styles from './admin.module.css'
 import ToastProvider from '../../components/toast/ToastProvider'
+import AdminSidebar from '../../components/admin/AdminSidebar'
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const admin = await requireAdmin()
@@ -22,18 +23,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className={styles.adminRoot}>
-      <aside className={`${styles.sidebar} accent-scroll`}>
-        <a href="/admin" className={styles.brandButton} aria-label="Admin Home">kf8fvd — Admin</a>
-        <nav>
-          <a className={styles.navLink} href="/admin/projects">Projects</a>
-          <a className={styles.navLink} href="/admin/about">About</a>
-          <a className={styles.navLink} href="/admin/messages">Messages</a>
-          <a className={styles.navLink} href="/admin">Dashboard</a>
-          <a className={styles.navLink} href="/">View site</a>
-        </nav>
-        <div style={{marginTop:18}} className={styles.smallMuted}>Signed in as</div>
-        <div style={{marginTop:6, fontWeight:600}}>{admin.name || admin.email}</div>
-      </aside>
+      <AdminSidebar admin={admin} />
 
       <div className={styles.contentWrap}>
         <div className={styles.topbar}>

@@ -25,12 +25,12 @@
   gap:8px;
   padding:8px 12px;
   border-radius:8px;
-  background: var(--card-accent-top);
-  color: #071014;
+  background: linear-gradient(90deg,#a78bfa,#7c3aed);
+  color: #fff;
   text-decoration: none;
-  border: 1px solid rgba(22,163,74,0.12);
+  border: 1px solid rgba(167,139,250,0.12);
 }
-.brandButton:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(22,163,74,0.08); }
+.brandButton:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(124,58,237,0.12); }
 .navLink {
   display: block;
   padding: 10px 12px;
@@ -40,6 +40,30 @@
   margin-bottom: 6px;
 }
 .navLink:hover { background: rgba(255,255,255,0.02); }
+.navLink { transition: background .12s ease, box-shadow .12s ease, transform .08s ease, color .12s ease, padding-left .12s ease; position: relative; }
+.navLink:hover { transform: translateY(-1px); }
+
+.navLinkActive {
+  background: linear-gradient(90deg, rgba(22,163,74,0.12), rgba(22,163,74,0.04));
+  box-shadow: 0 10px 30px rgba(22,163,74,0.12);
+  border: 1px solid rgba(22,163,74,0.14);
+  color: #e6fff0;
+  padding-left: 18px; /* make room for the left accent */
+  transform: translateY(-1px);
+}
+.navLinkActive::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 60%;
+  background: linear-gradient(180deg,var(--logo-green),#16a34a);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(22,163,74,0.16);
+  pointer-events: none;
+}
 .contentWrap {
   flex: 1;
   padding: 28px;
@@ -144,3 +168,13 @@
   margin-left: 8px;
   border: 1px solid rgba(255,255,255,0.03);
 }
+
+/* Custom checkbox styles to match admin UI */
+.checkboxWrap { display:inline-flex; align-items:center; gap:8px; cursor:pointer }
+.checkboxInput { position:absolute; opacity:0; width:1px; height:1px; pointer-events:auto }
+.checkboxBox { width:18px; height:18px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.06); background:transparent; transition: all .12s ease; color: transparent }
+.checkboxBox svg { width:12px; height:12px; opacity:0; transition: opacity .12s ease; stroke-width:2 }
+.checkboxInput:focus + .checkboxBox { outline: 3px solid rgba(11,132,255,0.18); outline-offset: 2px }
+.checkboxInput:checked + .checkboxBox { background: linear-gradient(90deg,#164f2a,#0f6b37); border-color: rgba(22,163,74,0.12); color: #fff; box-shadow: 0 8px 20px rgba(22,163,74,0.08); transform: translateY(-1px) }
+.checkboxInput:checked + .checkboxBox svg { opacity:1 }
+

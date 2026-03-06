@@ -11,6 +11,8 @@ type AboutItem = { id: number | string; slug: string; title: string; subtitle?: 
 export default function AdminAboutList() {
   const [items, setItems] = useState<AboutItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<(string|number)[]>([])
+  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<any | null>(null)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState(query)
   const [slugEdited, setSlugEdited] = useState(false)
@@ -221,6 +223,46 @@ export default function AdminAboutList() {
     void saveOrder(next)
   }
 
+  const performBulkAction = async (action: 'publish' | 'unpublish' | 'delete') => {
+    if (!selectedIds || selectedIds.length === 0) return
+    try {
+      const res = await fetch('/api/admin/pages/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds, action }) })
+      const j = await res.json().catch(()=>({}))
+      if (!res.ok) { alert('Bulk action failed: ' + (j?.error || res.status)); return }
+      if (action === 'delete') {
+        // server returns deleted rows for undo
+        const deleted = j?.deleted || []
+        setDeletedUndoBuffer({ items: deleted })
+        // clear selection and refresh
+        setSelectedIds([])
+        await load()
+        try { toast?.showToast && toast.showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success') } catch{}
+        // auto-clear undo buffer after 10s
+        setTimeout(()=> setDeletedUndoBuffer(null), 10000)
+        return
+      }
+      await load()
+      setSelectedIds([])
+      try { toast?.showToast && toast.showToast('Bulk action complete', 'success') } catch{}
+    } catch (e) {
+      alert('Bulk action failed: ' + String(e))
+    }
+  }
+
+  const undoDelete = async () => {
+    if (!deletedUndoBuffer || !deletedUndoBuffer.items) return
+    const itemsToRestore = deletedUndoBuffer.items
+    for (const it of itemsToRestore) {
+      try {
+        const payload = { slug: it.slug, title: it.title, content: it.content || '', metadata: it.metadata || {}, is_published: it.is_published ? 1 : 0 }
+        await fetch('/api/admin/pages', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+      } catch (e) { console.error('undo create failed', e) }
+    }
+    setDeletedUndoBuffer(null)
+    await load()
+    try { toast?.showToast && toast.showToast('Undo complete', 'success') } catch{}
+  }
+
   const getErrMsg = (err: unknown) => { if (err instanceof Error) return err.message; try { return String(err) } catch { return 'Unknown error' } }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -366,7 +408,32 @@ export default function AdminAboutList() {
 
             <div style={{ gridColumn: '1/-1' }}>
               <hr />
-              <ProjectsList items={filtered} loading={loading} title="About" editPathPrefix="/admin/about" showReorder onMoveUp={handleMoveUp} onMoveDown={handleMoveDown} />
+              {selectedIds && selectedIds.length > 0 ? (
+                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                  <div style={{fontWeight:700}}>{selectedIds.length} selected</div>
+                  <button className={styles.btnGhost} onClick={()=>performBulkAction('publish')}>Publish</button>
+                  <button className={styles.btnGhost} onClick={()=>performBulkAction('unpublish')}>Unpublish</button>
+                  <button className={styles.btnDanger} onClick={()=>performBulkAction('delete')}>Delete</button>
+                </div>
+              ) : null}
+              <ProjectsList
+                items={filtered}
+                loading={loading}
+                title="About"
+                editPathPrefix="/admin/about"
+                showReorder
+                onMoveUp={handleMoveUp}
+                onMoveDown={handleMoveDown}
+                selectable={true}
+                selectedIds={selectedIds}
+                onSelectionChange={(ids: (string|number)[]) => setSelectedIds(ids)}
+              />
+              {deletedUndoBuffer ? (
+                <div style={{marginTop:12, display:'flex', gap:8, alignItems:'center'}}>
+                  <div className={styles.smallMuted}>Deleted {deletedUndoBuffer.items?.length || 0} item(s)</div>
+                  <button className={styles.btnGhost} onClick={undoDelete}>Undo</button>
+                </div>
+              ) : null}
             </div>
 
             {previewOpen && (

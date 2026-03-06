@@ -11,10 +11,11 @@ import { query } from '@/lib/db'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
 
-type Props = { params: { slug: string } }
+type Props = { params: { slug: string } | Promise<{ slug: string }> }
 
 export default async function Page({ params }: Props){
-  const { slug } = params
+  const resolvedParams = (await params) as { slug: string }
+  const { slug } = resolvedParams
   if (!slug) return notFound()
   const rows = (await query('SELECT id, slug, title, subtitle, image_path, description, external_link, metadata, is_published FROM projects WHERE slug = ? LIMIT 1', [slug])) as Array<Record<string, unknown>>
   const project = Array.isArray(rows) && rows[0] ? (rows[0] as Record<string, unknown>) : null

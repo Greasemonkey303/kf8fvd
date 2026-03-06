@@ -62,6 +62,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   const draftIdRef = useRef<string | null>(null)
   const fetchedProjectRef = useRef<Record<string, unknown> | null>(null)
   const [showDebug, setShowDebug] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'project' | 'image' | 'main'; idx?: number } | null>(null)
   const didFetchPublicRef = useRef(false)
 
   // keep details editor content in sync only when editor is not focused
@@ -291,39 +292,8 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   // removed local-only removeImage in favor of deleteImage which persists changes
 
   async function deleteImage(idx: number) {
-    const src = images[idx]
-    if (!src) return
-    if (!confirm('Delete this image from the project and storage?')) return
-    try {
-      const res = await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: src }) })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Delete failed')
-      // remove locally and persist metadata change
-      const copy = images.slice()
-      copy.splice(idx,1)
-
-      // if the deleted image was the main image_path, clear it
-      const newForm = { ...form }
-      if (newForm.image_path === src) newForm.image_path = ''
-
-      // build metadata
-      const metadata = { ...(newForm.details ? { details: newForm.details } : {}), images: copy }
-
-      // persist changes to project
-      try {
-        await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newForm, metadata }) })
-      } catch {
-        // ignore persistence errors for now
-      }
-
-      setImages(copy)
-      setForm(newForm)
-    } catch (e: unknown) {
-      let msg = 'Unknown error'
-      if (e instanceof Error) msg = e.message
-      else msg = String(e)
-      alert('Could not delete image: ' + msg)
-    }
+    // prompt via modal
+    setConfirmDelete({ type: 'image', idx })
   }
 
   async function editMainImage() {
@@ -362,13 +332,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
 
   async function deleteMainImage() {
     if (!form.image_path) return
-    if (!confirm('Delete the main image from storage and clear Image path?')) return
-    try {
-      await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: form.image_path }) })
-    } catch { /* ignore */ }
-    const newForm = { ...form, image_path: '' }
-    setForm(newForm)
-    try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: '' }) }) } catch { /* ignore */ }
+    setConfirmDelete({ type: 'main' })
   }
 
   function moveImage(idx: number, dir: number) {
@@ -454,9 +418,47 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   }
 
   async function remove() {
-    if (!confirm('Delete this project?')) return
-    await fetch(`/api/admin/projects?id=${form.id}`, { method: 'DELETE' })
-    router.push('/admin/projects')
+    setConfirmDelete({ type: 'project' })
+  }
+
+  async function doConfirmDelete(choice: { type: 'project' | 'image' | 'main'; idx?: number } | null) {
+    if (!choice) return
+    try {
+      if (choice.type === 'project') {
+        await fetch(`/api/admin/projects?id=${form.id}`, { method: 'DELETE' })
+        router.push('/admin/projects')
+        return
+      }
+      if (choice.type === 'image' && typeof choice.idx === 'number') {
+        const src = images[choice.idx]
+        if (!src) return
+        try {
+          const res = await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: src }) })
+          const data = await res.json().catch(()=>({}))
+          if (!res.ok) throw new Error(data?.error || 'Delete failed')
+        } catch (e) {
+          // ignore delete errors but continue to remove locally
+        }
+        const copy = images.slice()
+        copy.splice(choice.idx,1)
+        const newForm = { ...form }
+        if (newForm.image_path === src) newForm.image_path = ''
+        const metadata = { ...(newForm.details ? { details: newForm.details } : {}), images: copy }
+        try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) }) } catch {}
+        setImages(copy)
+        setForm(newForm)
+        return
+      }
+      if (choice.type === 'main') {
+        try { await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: form.image_path }) }) } catch {}
+        const newForm = { ...form, image_path: '' }
+        setForm(newForm)
+        try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: '' }) }) } catch {}
+        return
+      }
+    } catch (e) {
+      console.error('confirm delete error', e)
+    }
   }
 
   useEffect(()=>{
@@ -472,6 +474,20 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
 
   return (
     <div>
+      {confirmDelete ? (
+        <div className={styles.modalOverlay} onClick={()=>setConfirmDelete(null)}>
+          <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
+            <div style={{fontWeight:700, marginBottom:8}}>Confirm delete</div>
+            <div>
+              {confirmDelete.type === 'project' ? 'Delete this project and its associated data?' : (confirmDelete.type === 'image' ? 'Delete this image from the project and storage?' : 'Delete the main image from storage and clear Image path?')}
+            </div>
+            <div style={{display:'flex', gap:8, marginTop:12}}>
+              <button className={styles.btnGhost} onClick={()=>setConfirmDelete(null)}>Cancel</button>
+              <button className={styles.btnDanger} onClick={async ()=>{ await doConfirmDelete(confirmDelete); setConfirmDelete(null); }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div style={{marginBottom:12}} className={styles.topTitle}>Edit Project — ID: {id} <span style={{marginLeft:8}} className={styles.kbd}>Ctrl/Cmd+S</span></div>
       {showDebug ? (
         <div style={{background:'#071826', padding:12, borderRadius:8, marginBottom:12}}>
