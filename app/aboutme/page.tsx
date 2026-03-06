@@ -18,8 +18,19 @@ export default async function Page() {
     // admins create sub-pages like `about-me-server`). This mirrors how the
     // Projects list loads multiple records.
     // Only include published pages so toggling "Published" in admin hides sections from the public site.
-    const rows = await query<any[]>(`SELECT id, slug, title, content, metadata, is_published, updated_at FROM pages WHERE slug LIKE ? AND is_published = 1 ORDER BY updated_at DESC`, ['about%'])
-    if (!rows || rows.length === 0) return <About />
+    // Include all published pages (do not restrict by slug) so sections aren't filtered out
+    const rows = await query<any[]>(`SELECT id, slug, title, content, metadata, is_published, updated_at FROM pages WHERE is_published = 1 ORDER BY updated_at DESC`)
+    if (!rows || rows.length === 0) {
+      const data = {
+        summary: {
+          title: "Hi — I'm Zachary (KF8FVD)",
+          text: '',
+          cta: { label: 'Contact Me', href: '/contactme' }
+        },
+        cards: []
+      }
+      return <About data={data} />
+    }
 
     // prefer the canonical `about` page as the primary source
     const primary = rows.find(r => String(r.slug) === 'about') || rows[0]
@@ -27,6 +38,24 @@ export default async function Page() {
     const dom = new JSDOM('')
     const DOMPurify = createDOMPurify(dom.window as any)
     const sanitize = (s: any) => { if (!s) return ''; return DOMPurify.sanitize(String(s)) }
+    const isJsonString = (s: string) => {
+      if (!s) return false
+      try { JSON.parse(s); return true } catch { return false }
+    }
+
+    const removeDebugBlock = (s: string | undefined) => {
+      if (!s) return ''
+      let raw = String(s)
+      // Remove a known debug block that starts with an "About Me" <h3>
+      // and ends with the signature line "73, Zachary (KF8FVD)</p>"
+      try {
+        const re = /<h3[^>]*>\s*About\s*Me\s*<\/h3>[\s\S]*?73,\s*Zachary\s*\(KF8FVD\)\s*<\/p>/i
+        if (re.test(raw)) raw = raw.replace(re, '')
+      } catch {
+        // ignore regex issues
+      }
+      return raw
+    }
 
     // Parse primary metadata
     let primaryMeta: any = {}
@@ -53,19 +82,19 @@ export default async function Page() {
     // Start with any cards defined on the primary page (preferred)
     let mergedCards: any[] = []
     if (Array.isArray(primaryMeta?.cards) && primaryMeta.cards.length) {
-      mergedCards = primaryMeta.cards.map((c: any) => ({
-        title: c?.title || '', subtitle: c?.subtitle || '', content: sanitize(c?.content || ''), image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || ''
-      }))
-    } else {
-      // fallback to legacy named cards on the primary page
-      const aboutCard = primaryMeta?.aboutCard || {}
-      const topo = primaryMeta?.topologyCard || {}
-      const shack = primaryMeta?.hamshackCard || {}
-      mergedCards = [
-        { title: aboutCard.title || primary.title || 'About Me', subtitle: aboutCard.subtitle || 'KF8FVD', content: sanitize(aboutCard.content || primary.content || ''), image: toPublicUrl(aboutCard.image || '/headshot.jpg'), templateLarge: aboutCard.templateLarge || '', templateSmall: aboutCard.templateSmall || '' },
-        { title: topo.title || 'Home Topology', subtitle: topo.subtitle || 'Hidden Lakes Apartments, Kentwood', content: sanitize(topo.content || ''), image: toPublicUrl(topo.image || '/apts.jpg'), templateLarge: topo.templateLarge || '', templateSmall: topo.templateSmall || '' },
-        { title: shack.title || 'Ham Shack', subtitle: shack.subtitle || 'Home Radio & Workshop', content: sanitize(shack.content || ''), image: toPublicUrl(shack.image || '/hamshack.jpg'), templateLarge: shack.templateLarge || '', templateSmall: shack.templateSmall || '' }
-      ]
+      mergedCards = primaryMeta.cards.map((c: any) => {
+        const content = sanitize(c?.content || '')
+        const cleaned = removeDebugBlock(content)
+        const pos = (c && typeof c.position === 'number') ? c.position : undefined
+        return { title: c?.title || '', subtitle: c?.subtitle || '', content: cleaned, image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '', position: pos }
+      })
+    } else if (primaryMeta?.aboutCard) {
+      // Backwards-compatible: if primary page uses legacy aboutCard, include it
+      const c = primaryMeta.aboutCard
+      const content = sanitize(c?.content || '')
+      const cleaned = removeDebugBlock(content)
+      const pos = (c && typeof c.position === 'number') ? c.position : undefined
+      mergedCards.push({ title: c?.title || primary.title || '', subtitle: c?.subtitle || '', content: cleaned, image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '', position: pos })
     }
 
     // Merge in any additional about-* pages (append their aboutCard or cards)
@@ -73,18 +102,40 @@ export default async function Page() {
       if (!row || String(row.slug) === String(primary.slug)) continue
       let otherMeta: any = {}
       try { otherMeta = row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : {} } catch { otherMeta = {} }
-      if (Array.isArray(otherMeta?.cards) && otherMeta.cards.length) {
-        for (const c of otherMeta.cards) mergedCards.push({ title: c?.title || '', subtitle: c?.subtitle || '', content: sanitize(c?.content || ''), image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '' })
+      if (Array.isArray(otherMeta.cards) && otherMeta.cards.length) {
+        for (const c of otherMeta.cards) {
+          const content = sanitize(c?.content || '')
+          const cleaned = removeDebugBlock(content)
+          const pos = (c && typeof c.position === 'number') ? c.position : undefined
+          mergedCards.push({ title: c?.title || '', subtitle: c?.subtitle || '', content: cleaned, image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '', position: pos })
+        }
       } else if (otherMeta?.aboutCard) {
         const c = otherMeta.aboutCard
-        mergedCards.push({ title: c?.title || row.title || '', subtitle: c?.subtitle || '', content: sanitize(c?.content || ''), image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '' })
+        const content = sanitize(c?.content || '')
+        const cleaned = removeDebugBlock(content)
+        const pos = (c && typeof c.position === 'number') ? c.position : undefined
+        mergedCards.push({ title: c?.title || row.title || '', subtitle: c?.subtitle || '', content: cleaned, image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '', position: pos })
       }
     }
+
+    // If any cards have explicit positions, sort by them; otherwise preserve current merge order
+    mergedCards.sort((a: any, b: any) => {
+      const pa = (typeof a.position === 'number') ? a.position : null
+      const pb = (typeof b.position === 'number') ? b.position : null
+      if (pa !== null && pb !== null) return pa - pb
+      if (pa !== null) return -1
+      if (pb !== null) return 1
+      return 0
+    })
+
+    let summaryText = sanitize(primaryMeta?.summary?.text || '')
+    summaryText = removeDebugBlock(summaryText)
+    if (isJsonString(summaryText)) summaryText = ''
 
     const data = {
       summary: {
         title: primary.title || primaryMeta?.summary?.title || "Hi — I\'m Zachary (KF8FVD)",
-        text: sanitize(primaryMeta?.summary?.text || ''),
+        text: summaryText,
         cta: {
           label: primaryMeta?.summary?.cta?.label || 'Contact Me',
           href: primaryMeta?.summary?.cta?.href || '/contactme'

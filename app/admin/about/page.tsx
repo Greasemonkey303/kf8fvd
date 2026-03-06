@@ -28,33 +28,39 @@ export default function AdminAboutList() {
       const data = await res.json()
       const rows: any[] = data.items || []
       const cards: any[] = []
-          rows.filter(r => String(r.slug || '').startsWith('about')).forEach(r => {
+          // Do not filter by slug here — include all pages so admins can manage any created section
+          rows.forEach(r => {
         try {
           const md = r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata) : null
           if (md) {
             if (Array.isArray(md.cards) && md.cards.length > 0) {
               md.cards.forEach((c: any, idx: number) => {
-                cards.push({ id: `${r.id}-c-${idx}`, slug: `${r.slug}#${idx}`, title: c?.title || r.title, subtitle: c?.subtitle || '', image_path: c?.image || '', description: c?.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=${idx}` })
+                cards.push({ id: `${r.id}-c-${idx}`, slug: `${r.slug}#${idx}`, title: c?.title || r.title, subtitle: c?.subtitle || '', image_path: c?.image || '', description: c?.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=${idx}`, position: (c && typeof c.position === 'number') ? c.position : undefined })
               })
             } else {
               // fallback to legacy named cards
-              if (md.aboutCard) cards.push({ id: `${r.id}-about`, slug: `${r.slug}#about`, title: md.aboutCard.title || r.title, subtitle: md.aboutCard.subtitle || '', image_path: md.aboutCard.image || '', description: md.aboutCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=0` })
-              if (md.topologyCard) cards.push({ id: `${r.id}-topology`, slug: `${r.slug}#topology`, title: md.topologyCard.title || '', subtitle: md.topologyCard.subtitle || '', image_path: md.topologyCard.image || '', description: md.topologyCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=1` })
-              if (md.hamshackCard) cards.push({ id: `${r.id}-hamshack`, slug: `${r.slug}#hamshack`, title: md.hamshackCard.title || '', subtitle: md.hamshackCard.subtitle || '', image_path: md.hamshackCard.image || '', description: md.hamshackCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=2` })
+              if (md.aboutCard) cards.push({ id: `${r.id}-about`, slug: `${r.slug}#about`, title: md.aboutCard.title || r.title, subtitle: md.aboutCard.subtitle || '', image_path: md.aboutCard.image || '', description: md.aboutCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=0`, position: (md.aboutCard && typeof md.aboutCard.position === 'number') ? md.aboutCard.position : undefined })
+              if (md.topologyCard) cards.push({ id: `${r.id}-topology`, slug: `${r.slug}#topology`, title: md.topologyCard.title || '', subtitle: md.topologyCard.subtitle || '', image_path: md.topologyCard.image || '', description: md.topologyCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=1`, position: (md.topologyCard && typeof md.topologyCard.position === 'number') ? md.topologyCard.position : undefined })
+              if (md.hamshackCard) cards.push({ id: `${r.id}-hamshack`, slug: `${r.slug}#hamshack`, title: md.hamshackCard.title || '', subtitle: md.hamshackCard.subtitle || '', image_path: md.hamshackCard.image || '', description: md.hamshackCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=2`, position: (md.hamshackCard && typeof md.hamshackCard.position === 'number') ? md.hamshackCard.position : undefined })
             }
           }
         } catch (e) {
           // ignore malformed metadata
         }
       })
-      // If DB contains no about sections, show a fallback set so admin UI mirrors the public page.
+      // If any cards include a saved `position`, sort globally by it so admin list reflects saved order
+      const anyPosition = cards.some(c => typeof c.position === 'number')
+      if (anyPosition) {
+        cards.sort((a: any, b: any) => {
+          const pa = (typeof a.position === 'number') ? a.position : Number.POSITIVE_INFINITY
+          const pb = (typeof b.position === 'number') ? b.position : Number.POSITIVE_INFINITY
+          if (pa === pb) return 0
+          return pa - pb
+        })
+      }
+      // When there are no DB-driven sections, show an empty list so admin controls content.
       if (cards.length === 0) {
-        const fallback = [
-          { id: 'fallback-about-0', slug: 'about#about', title: 'About Me', subtitle: 'KF8FVD', image_path: '/headshot.jpg', description: '<p>73 from KF8FVD! Thanks for stopping by my QRZ page. My name is Zachary, and I operate out of Kentwood, Michigan.</p>', is_published: 1, editLink: '/admin/about' },
-          { id: 'fallback-about-1', slug: 'about#topology', title: 'Home Topology', subtitle: 'Hidden Lakes Apartments, Kentwood', image_path: '/apts.jpg', description: '', is_published: 1, editLink: '/admin/about' },
-          { id: 'fallback-about-2', slug: 'about#hamshack', title: 'Ham Shack', subtitle: 'Home Radio & Workshop', image_path: '/hamshack.jpg', description: '', is_published: 1, editLink: '/admin/about' }
-        ]
-        setItems(fallback)
+        setItems([])
       } else {
         setItems(cards)
       }
@@ -70,7 +76,9 @@ export default function AdminAboutList() {
     if (!form.slug || !form.title) return
     try {
       const metadata = { aboutCard: { title: form.title, subtitle: form.subtitle, content: form.description, image: form.image_path } }
-      await fetch('/api/admin/pages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, title: form.title, content: '', metadata, is_published: form.is_published ? 1 : 0 }) })
+      const res = await fetch('/api/admin/pages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, title: form.title, content: '', metadata, is_published: form.is_published ? 1 : 0 }) })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) { alert('Create failed: ' + (j?.error || res.status)); return }
     } catch (err) { console.error(err); alert('Create failed'); return }
     try { localStorage.removeItem(`admin_about_draft:${form.slug}`) } catch {}
     setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true })
@@ -165,6 +173,52 @@ export default function AdminAboutList() {
     const q = debouncedQuery.toLowerCase()
     return String(i.title || '').toLowerCase().includes(q) || String(i.slug || '').toLowerCase().includes(q) || String(i.subtitle || '').toLowerCase().includes(q)
   })
+
+  const [savingOrder, setSavingOrder] = useState(false)
+
+  const moveItemInArray = (arr: any[], from: number, to: number) => {
+    const copy = arr.slice()
+    const [item] = copy.splice(from, 1)
+    copy.splice(to, 0, item)
+    return copy
+  }
+
+  const saveOrder = async (newItems: any[]) => {
+    setSavingOrder(true)
+    try {
+      const order = newItems.map(i => String(i.id))
+      const res = await fetch('/api/admin/pages/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }) })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) { alert('Save order failed: ' + (j?.error || res.status)); return }
+      try { toast?.showToast && toast.showToast('Order saved', 'success') } catch{}
+    } catch (err) {
+      console.error('saveOrder error', err)
+      try { toast?.showToast && toast.showToast('Order save failed', 'error') } catch{}
+    } finally {
+      setSavingOrder(false)
+      await load()
+    }
+  }
+
+  const handleMoveUp = (filteredIndex: number) => {
+    const item = filtered[filteredIndex]
+    if (!item) return
+    const globalIndex = items.findIndex(i => String(i.id) === String(item.id))
+    if (globalIndex <= 0) return
+    const next = moveItemInArray(items, globalIndex, globalIndex - 1)
+    setItems(next)
+    void saveOrder(next)
+  }
+
+  const handleMoveDown = (filteredIndex: number) => {
+    const item = filtered[filteredIndex]
+    if (!item) return
+    const globalIndex = items.findIndex(i => String(i.id) === String(item.id))
+    if (globalIndex < 0 || globalIndex >= items.length - 1) return
+    const next = moveItemInArray(items, globalIndex, globalIndex + 1)
+    setItems(next)
+    void saveOrder(next)
+  }
 
   const getErrMsg = (err: unknown) => { if (err instanceof Error) return err.message; try { return String(err) } catch { return 'Unknown error' } }
 
@@ -311,7 +365,7 @@ export default function AdminAboutList() {
 
             <div style={{ gridColumn: '1/-1' }}>
               <hr />
-              <ProjectsList items={filtered} loading={loading} title="About" editPathPrefix="/admin/about" />
+              <ProjectsList items={filtered} loading={loading} title="About" editPathPrefix="/admin/about" showReorder onMoveUp={handleMoveUp} onMoveDown={handleMoveDown} />
             </div>
 
             {previewOpen && (

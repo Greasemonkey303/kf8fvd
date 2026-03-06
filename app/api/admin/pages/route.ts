@@ -11,6 +11,18 @@ const getErrMsg = (err: unknown) => {
   try { return String(err) } catch { return 'Unknown error' }
 }
 
+// Remove known debug HTML block inserted during earlier testing
+const removeDebugBlockFromHtml = (s: any) => {
+  if (!s) return s
+  try {
+    const raw = String(s)
+    const re = /<h3[^>]*>\s*About\s*Me\s*<\/h3>[\s\S]*?73,\s*Zachary\s*\(KF8FVD\)\s*<\/p>/gi
+    return raw.replace(re, '')
+  } catch {
+    return s
+  }
+}
+
 export async function GET(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -36,11 +48,12 @@ export async function POST(req: Request) {
   // Sanitize content server-side before saving
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
-  const sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
+  let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
+  if (sanitized) sanitized = removeDebugBlockFromHtml(sanitized)
   // sanitize known metadata HTML fields to avoid storing unsafe markup
   let safeMetadata = metadata ? { ...metadata } : {}
-  try {
-    if (safeMetadata?.summary?.text) safeMetadata.summary.text = DOMPurify.sanitize(String(safeMetadata.summary.text))
+    try {
+    if (safeMetadata?.summary?.text) safeMetadata.summary.text = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.summary.text)))
     // If authors are using a cards array, sanitize each card's title, subtitle, and content
     if (Array.isArray(safeMetadata?.cards)) {
       safeMetadata.cards = safeMetadata.cards.map((c: any) => {
@@ -48,22 +61,60 @@ export async function POST(req: Request) {
         const copy: any = { ...c }
         if (copy.title) copy.title = DOMPurify.sanitize(String(copy.title))
         if (copy.subtitle) copy.subtitle = DOMPurify.sanitize(String(copy.subtitle))
-        if (copy.content) copy.content = DOMPurify.sanitize(String(copy.content))
+        if (copy.content) copy.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(copy.content)))
         return copy
       })
     } else {
       // Backwards compatible: sanitize old-style named cards
-      if (safeMetadata?.aboutCard?.content) safeMetadata.aboutCard.content = DOMPurify.sanitize(String(safeMetadata.aboutCard.content))
-      if (safeMetadata?.topologyCard?.content) safeMetadata.topologyCard.content = DOMPurify.sanitize(String(safeMetadata.topologyCard.content))
-      if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = DOMPurify.sanitize(String(safeMetadata.hamshackCard.content))
+      if (safeMetadata?.aboutCard?.content) safeMetadata.aboutCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.aboutCard.content)))
+      if (safeMetadata?.topologyCard?.content) safeMetadata.topologyCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.topologyCard.content)))
+      if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.hamshackCard.content)))
     }
   } catch (e) {
     safeMetadata = metadata ? { ...metadata } : {}
   }
 
-  const insertRes = await query('INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?)', [slug, title, sanitized || null, safeMetadata ? JSON.stringify(safeMetadata) : JSON.stringify({}), is_published ? 1 : 0])
-  const insertId = (insertRes as unknown as { insertId?: number })?.insertId ?? null
-  return NextResponse.json({ id: insertId, ok: true })
+  try {
+    const insertRes = await query('INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?)', [slug, title, sanitized || null, safeMetadata ? JSON.stringify(safeMetadata) : JSON.stringify({}), is_published ? 1 : 0])
+    const insertId = (insertRes as unknown as { insertId?: number })?.insertId ?? null
+    return NextResponse.json({ id: insertId, ok: true })
+  } catch (e: unknown) {
+    // handle duplicate-slug by merging metadata into existing page
+    const err: any = e as any
+    if (err && (err.code === 'ER_DUP_ENTRY' || String(err).toLowerCase().includes('duplicate'))) {
+      try {
+        const rows = await query<{ id: number; metadata?: string }[]>('SELECT id, metadata FROM pages WHERE slug = ?', [slug])
+        if (rows && rows.length > 0) {
+          const existing = rows[0]
+          let meta: any = {}
+          try { meta = existing.metadata ? (typeof existing.metadata === 'string' ? JSON.parse(existing.metadata) : existing.metadata) : {} } catch { meta = {} }
+
+          // Append new cards if provided
+          if (Array.isArray(safeMetadata?.cards) && safeMetadata.cards.length) {
+            meta.cards = Array.isArray(meta.cards) ? meta.cards.concat(safeMetadata.cards) : safeMetadata.cards.slice()
+          } else if (safeMetadata?.aboutCard) {
+            const newCard = safeMetadata.aboutCard
+            if (!Array.isArray(meta.cards)) {
+              const converted: any[] = []
+              if (meta.aboutCard) converted.push(meta.aboutCard)
+              if (meta.topologyCard) converted.push(meta.topologyCard)
+              if (meta.hamshackCard) converted.push(meta.hamshackCard)
+              meta.cards = converted
+            }
+            meta.cards.push(newCard)
+            delete meta.aboutCard; delete meta.topologyCard; delete meta.hamshackCard
+          }
+
+          await query('UPDATE pages SET metadata = ? WHERE id = ?', [JSON.stringify(meta), existing.id])
+          return NextResponse.json({ id: existing.id, ok: true, merged: true })
+        }
+      } catch (ee) {
+        return NextResponse.json({ error: getErrMsg(ee) }, { status: 500 })
+      }
+    }
+    return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
+  }
+
 }
 
 export async function PUT(req: Request) {
@@ -75,11 +126,12 @@ export async function PUT(req: Request) {
   // Sanitize content server-side before saving
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
-  const sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
+  let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
+  if (sanitized) sanitized = removeDebugBlockFromHtml(sanitized)
   // sanitize known metadata HTML fields
   let safeMetadata = metadata ? { ...metadata } : {}
-  try {
-    if (safeMetadata?.summary?.text) safeMetadata.summary.text = DOMPurify.sanitize(String(safeMetadata.summary.text))
+    try {
+    if (safeMetadata?.summary?.text) safeMetadata.summary.text = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.summary.text)))
     // If a cards array is provided, sanitize each card entry
     if (Array.isArray(safeMetadata?.cards)) {
       safeMetadata.cards = safeMetadata.cards.map((c: any) => {
@@ -87,13 +139,13 @@ export async function PUT(req: Request) {
         const copy: any = { ...c }
         if (copy.title) copy.title = DOMPurify.sanitize(String(copy.title))
         if (copy.subtitle) copy.subtitle = DOMPurify.sanitize(String(copy.subtitle))
-        if (copy.content) copy.content = DOMPurify.sanitize(String(copy.content))
+        if (copy.content) copy.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(copy.content)))
         return copy
       })
     } else {
-      if (safeMetadata?.aboutCard?.content) safeMetadata.aboutCard.content = DOMPurify.sanitize(String(safeMetadata.aboutCard.content))
-      if (safeMetadata?.topologyCard?.content) safeMetadata.topologyCard.content = DOMPurify.sanitize(String(safeMetadata.topologyCard.content))
-      if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = DOMPurify.sanitize(String(safeMetadata.hamshackCard.content))
+      if (safeMetadata?.aboutCard?.content) safeMetadata.aboutCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.aboutCard.content)))
+      if (safeMetadata?.topologyCard?.content) safeMetadata.topologyCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.topologyCard.content)))
+      if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.hamshackCard.content)))
     }
   } catch (e) {
     safeMetadata = metadata ? { ...metadata } : {}
@@ -109,6 +161,141 @@ export async function DELETE(req: Request) {
   const url = new URL(req.url)
   const id = url.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const cardParam = url.searchParams.get('card')
+  // Helper to extract an S3 object key from various URL forms stored in metadata
+  const extractKey = (val: any): string | null => {
+    if (!val) return null
+    try {
+      const s = String(val)
+      // Our proxied path: /api/uploads/get/<encoded-key>
+      const proxyPrefix = '/api/uploads/get/'
+      if (s.startsWith(proxyPrefix)) {
+        const enc = s.slice(proxyPrefix.length)
+        try { return decodeURIComponent(enc) } catch { return enc }
+      }
+      // Full presigned or s3 URLs
+      if (s.indexOf('X-Amz-Algorithm') !== -1 || s.indexOf('minio') !== -1 || s.indexOf('127.0.0.1') !== -1 || s.indexOf('amazonaws.com') !== -1) {
+        try {
+          const u = new URL(s)
+          let path = u.pathname.replace(/^\//, '')
+          const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
+          if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
+          return path
+        } catch {
+          return null
+        }
+      }
+      // Leading slash path that may represent an object key
+      if (s.startsWith('/')) return s.replace(/^\//, '')
+      // Otherwise, if it's a plain-looking key, return it
+      if (!s.startsWith('http')) return s
+      return null
+    } catch {
+      return null
+    }
+  }
+  // If a card param was provided, attempt to remove only that card from the page metadata
+  if (cardParam !== null && cardParam !== undefined) {
+    // load metadata for the page
+    const rows = await query<{ metadata?: string | null, slug?: string }[]>('SELECT metadata, slug FROM pages WHERE id = ?', [id])
+    if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const row = rows[0]
+    let meta: any = {}
+    try { meta = row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : {} } catch { meta = {} }
+
+    // cardParam numeric -> treat as index in meta.cards
+    const numeric = parseInt(cardParam as any, 10)
+    if (!Number.isNaN(numeric)) {
+      const idx = numeric
+      if (!Array.isArray(meta.cards) || idx < 0 || idx >= meta.cards.length) return NextResponse.json({ error: 'Invalid card index' }, { status: 400 })
+      const card = meta.cards[idx]
+      // collect keys referenced by this card
+      const keysToDelete: string[] = []
+      if (card) {
+        if (card.image) {
+          const k = extractKey(card.image)
+          if (k) keysToDelete.push(k)
+        }
+        if (Array.isArray(card.images)) {
+          for (const im of card.images) {
+            const k = extractKey(im)
+            if (k) keysToDelete.push(k)
+          }
+        }
+      }
+
+      const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
+      if (bucket && keysToDelete.length) {
+        const minioClient = new Minio.Client({
+          endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
+          port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
+          useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
+          accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
+          secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
+        })
+        try {
+          await minioClient.removeObjects(bucket, keysToDelete)
+        } catch (e: unknown) {
+          return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
+        }
+      }
+
+      // remove the card from metadata and persist
+      meta.cards.splice(idx, 1)
+      try {
+        await query('UPDATE pages SET metadata = ? WHERE id = ?', [JSON.stringify(meta), id])
+        return NextResponse.json({ ok: true })
+      } catch (e: unknown) {
+        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
+      }
+    }
+
+    // handle legacy named cards (about, topology, hamshack)
+    const named = String(cardParam)
+    if (named && (named === 'about' || named === 'topology' || named === 'hamshack')) {
+      const keyName = named + 'Card'
+      const card = meta[keyName]
+      if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+      const keysToDelete: string[] = []
+      if (card.image) {
+        const k = extractKey(card.image)
+        if (k) keysToDelete.push(k)
+      }
+      if (Array.isArray(card.images)) {
+        for (const im of card.images) {
+          const k = extractKey(im)
+          if (k) keysToDelete.push(k)
+        }
+      }
+      const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
+      if (bucket && keysToDelete.length) {
+        const minioClient = new Minio.Client({
+          endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
+          port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
+          useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
+          accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
+          secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
+        })
+        try {
+          await minioClient.removeObjects(bucket, keysToDelete)
+        } catch (e: unknown) {
+          return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
+        }
+      }
+      // remove the named card and persist
+      delete meta[keyName]
+      try {
+        await query('UPDATE pages SET metadata = ? WHERE id = ?', [JSON.stringify(meta), id])
+        return NextResponse.json({ ok: true })
+      } catch (e: unknown) {
+        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
+      }
+    }
+
+    return NextResponse.json({ error: 'Invalid card parameter' }, { status: 400 })
+  }
+
+  // No card param: delete the whole page and its bucket prefix
   // Find the page to determine slug for S3 cleanup
   const rows = await query<{ slug: string }[]>('SELECT slug FROM pages WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -589,7 +589,55 @@ export default function AdminAboutEditor({ params }: { params: any }) {
                         moveImage={moveImage}
                         editImage={editImage}
                         deleteImage={deleteImage}
-                        onRemove={async ()=>{ if (!confirm('Delete this page?')) return; try { await fetch(`/api/admin/pages?id=${id}`, { method: 'DELETE' }); router.push('/admin/about') } catch {} }}
+                        onRemove={async ()=>{
+                          if (!id) return
+                          try {
+                            // If this page has multiple cards, delete just the active card
+                            const hasCardsArray = Array.isArray(metadata?.cards) && metadata?.cards.length > 0
+                            if (hasCardsArray && cards.length > 1) {
+                              if (!confirm('Delete this card?')) return
+                              const res = await fetch(`/api/admin/pages?id=${id}&card=${activeIdx}`, { method: 'DELETE' })
+                              if (!res.ok) { alert('Delete failed'); return }
+                              // remove locally
+                              setCards(prev => {
+                                const copy = prev.slice()
+                                copy.splice(activeIdx, 1)
+                                return copy
+                              })
+                              setActiveIdx(i => Math.max(0, Math.min(i, Math.max(0, cards.length - 2))))
+                              // sync images for new active card
+                              setImages(prev => {
+                                const nextCards = cards.slice(); nextCards.splice(activeIdx, 1)
+                                const newCard = nextCards[Math.max(0, Math.min(activeIdx, Math.max(0, nextCards.length - 1)))]
+                                if (!newCard) return []
+                                return (Array.isArray(newCard.images) && newCard.images.length) ? (newCard.images as string[]).slice(0,6) : (newCard.image ? [newCard.image] : [])
+                              })
+                              try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
+                              return
+                            }
+
+                            // Legacy named cards: map activeIdx to about/topology/hamshack
+                            const hasNamed = !!(metadata?.aboutCard || metadata?.topologyCard || metadata?.hamshackCard)
+                            if (hasNamed) {
+                              const map = ['about','topology','hamshack']
+                              const key = map[activeIdx] || 'about'
+                              if (!confirm('Delete this card?')) return
+                              const res = await fetch(`/api/admin/pages?id=${id}&card=${encodeURIComponent(key)}`, { method: 'DELETE' })
+                              if (!res.ok) { alert('Delete failed'); return }
+                              try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
+                              // refresh load to reflect metadata change
+                              await load()
+                              return
+                            }
+
+                            // otherwise, delete the full page
+                            if (!confirm('Delete this page?')) return
+                            const res = await fetch(`/api/admin/pages?id=${id}`, { method: 'DELETE' })
+                            if (res.ok) router.push('/admin/about')
+                          } catch (e) {
+                            // ignore
+                          }
+                        }}
                       />
                     </div>
                   </section>
