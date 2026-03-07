@@ -16,12 +16,14 @@ export async function POST(req: Request) {
     if (!isFile(fileEntry)) return NextResponse.json({ error: 'file, slug and filename required' }, { status: 400 })
     const file = fileEntry
     const slug = form.get('slug')?.toString() || form.get('folder')?.toString()
+    // optional prefix override (e.g. 'credentials/' or 'credentials/sections/')
+    const prefixOverride = form.get('prefix')?.toString() || form.get('prefixOverride')?.toString() || undefined
     const filename = form.get('filename')?.toString() || (file && (file as File).name)
     const contentType = (file && (file as File).type) || 'application/octet-stream'
 
     if (!file || !filename || !slug) return NextResponse.json({ error: 'file, slug and filename required' }, { status: 400 })
 
-    const key = await getUploadKey(slug, filename)
+    const key = await getUploadKey(slug, filename, prefixOverride)
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
     if (!bucket) {
       console.error('direct upload error: missing bucket env', { bucket: process.env.NEXT_PUBLIC_S3_BUCKET })

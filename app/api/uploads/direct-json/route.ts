@@ -19,7 +19,8 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(body.data, 'base64')
     const contentType = body.contentType || 'application/octet-stream'
-    const key = await getUploadKey(body.slug, body.filename)
+    const prefixOverride = (body as any).prefix || (body as any).prefixOverride || undefined
+    const key = await getUploadKey(body.slug, body.filename, prefixOverride)
 
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
     if (!bucket) return NextResponse.json({ error: 'MinIO bucket not configured (NEXT_PUBLIC_S3_BUCKET)' }, { status: 500 })

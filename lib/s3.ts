@@ -1,11 +1,20 @@
-export async function getUploadKey(slug: string, filename: string): Promise<string> {
-  const defaultPrefix = process.env.S3_UPLOAD_PREFIX || 'projects/'
-  let prefix = defaultPrefix
+export async function getUploadKey(slug: string, filename: string, prefixOverride?: string): Promise<string> {
+  const envPrefix = process.env.S3_UPLOAD_PREFIX || 'projects/'
+  let prefix = envPrefix
   try {
-    const s = String(slug || '')
-    // If slug looks like an About page (starts with "about"), store under about/
-    if (/^about($|[-_])/i.test(s) || s.toLowerCase() === 'about') {
-      prefix = 'about/'
+    // If caller provided an explicit prefix override, use it
+    if (prefixOverride && typeof prefixOverride === 'string') {
+      prefix = prefixOverride
+    } else {
+      const s = String(slug || '')
+      // If slug looks like an About page (starts with "about"), store under about/
+      if (/^about($|[-_])/i.test(s) || s.toLowerCase() === 'about') {
+        prefix = 'about/'
+      }
+      // If the slug appears to be credentials scoped, store under credentials/
+      if (/^credentials($|[\/\-_])/i.test(s) || s.toLowerCase().startsWith('credentials/')) {
+        prefix = 'credentials/'
+      }
     }
   } catch {
     // keep default

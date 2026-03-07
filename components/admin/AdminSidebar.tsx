@@ -13,6 +13,7 @@ export default function AdminSidebar({ admin }: { admin: { name?: string; email?
       <a href="/admin" className={styles.brandButton} aria-label="Admin Home">KF8FVD — Admin</a>
       <nav>
         <a className={`${styles.navLink} ${isActive('/admin/projects') ? styles.navLinkActive : ''}`} href="/admin/projects">Projects</a>
+        <a className={`${styles.navLink} ${isActive('/admin/credentials') ? styles.navLinkActive : ''}`} href="/admin/credentials">Credentials</a>
         <a className={`${styles.navLink} ${isActive('/admin/about') ? styles.navLinkActive : ''}`} href="/admin/about">About</a>
         <a className={`${styles.navLink} ${isActive('/admin/messages') ? styles.navLinkActive : ''}`} href="/admin/messages">Messages</a>
         <a className={`${styles.navLink} ${isActive('/admin') && pathname === '/admin' ? styles.navLinkActive : ''}`} href="/admin">Dashboard</a>

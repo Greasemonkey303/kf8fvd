@@ -9,14 +9,14 @@ viewBox="0 0 22860 22860"
   <style type="text/css">
    <![CDATA[
     .fil4 {fill:#008CFF}
-    .fil2 {fill:lime}
+    .fil2 {fill:#008CFF}
     .fil5 {fill:#FCFBFB}
     .fil3 {fill:#FCFCFC}
     .fil1 {fill:#FDFDFD}
     .fil6 {fill:#FDFDFE}
     .fil7 {fill:#FEFEFE}
     .fil8 {fill:white}
-    .fil9 {fill:lime;fill-rule:nonzero}
+    .fil9 {fill:#008CFF;fill-rule:nonzero}
     .fil0 {fill:url(#id0)}
    ]]>
   </style>

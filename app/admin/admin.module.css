@@ -94,6 +94,7 @@
 .formGrid { display:block; gap:16px; }
 .fieldLabel { font-size:13px; color:#c5d9ee; margin-bottom:8px }
 .formInput { width:100%; padding:12px 14px; border-radius:10px; background:#082033; border:1px solid rgba(255,255,255,0.035); color:#e6eef8 }
+.formInputSubtitle { width:100%; padding:8px 12px; border-radius:8px; background:#071627; border:1px solid rgba(255,255,255,0.02); color:#cfe8ff; text-align:center; font-size:0.95rem }
 .smallMuted { font-size:13px; color:#9fb7d6 }
 .thumb { width:112px; height:80px; object-fit:cover; border-radius:8px; box-shadow:0 6px 18px rgba(2,6,12,0.6) }
 .controls { display:flex; gap:8px; margin-top:8px }

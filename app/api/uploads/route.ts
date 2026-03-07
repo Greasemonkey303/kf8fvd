@@ -13,7 +13,9 @@ export async function POST(req: Request) {
     let key = body.key
     if (!key) {
       if (!body.slug || !body.filename) return NextResponse.json({ error: 'slug and filename required when key not provided' }, { status: 400 })
-      key = await getUploadKey(body.slug, body.filename)
+      // allow caller to request a specific prefix (e.g. credentials/)
+      const prefixOverride = (body as any).prefix || (body as any).prefixOverride || undefined
+      key = await getUploadKey(body.slug, body.filename, prefixOverride)
     }
 
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
