@@ -33,6 +33,7 @@ export default function AdminCredentials() {
   const [sectionForm, setSectionForm] = useState<any>({ id: null, name: '', slug: '', subtitle: '', image_path: '', sort_order: 0 })
   const [slugEdited, setSlugEdited] = useState(false)
   const [sectionSlugEdited, setSectionSlugEdited] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -164,6 +165,8 @@ export default function AdminCredentials() {
       }
     } catch {}
   }, [form.description])
+
+  useEffect(() => { setMounted(true) }, [])
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -516,7 +519,7 @@ export default function AdminCredentials() {
 
     // Build grouped map
     const grouped: Record<string, any[]> = {}
-    (sections || []).forEach(s => { grouped[s.slug] = [] })
+    for (const s of (sections || []) as any[]) { grouped[s.slug] = [] }
     // include any items that have no matching section
     const unsect: any[] = []
     items.forEach(it => {
@@ -587,7 +590,7 @@ export default function AdminCredentials() {
 
   const groupedItems = React.useMemo(() => {
     const groups: Record<string, any[]> = {};
-    (sections || []).forEach(s => { groups[s.slug] = [] })
+    for (const s of (sections || []) as any[]) { groups[s.slug] = [] }
     const others: any[] = [];
     (items || []).forEach(it => {
       if (it && it.section && groups[it.section]) groups[it.section].push(it)
@@ -601,11 +604,29 @@ export default function AdminCredentials() {
     <main className="page-pad">
       <div className="center-max">
         <div className={styles.panel}>
-          <h2>Credentials</h2>
+          <div className={styles.adminTop}>
+            <div>
+              <h2 className="title">Credentials</h2>
+              <div className={styles.smallMuted + ' ' + styles.mt6}>Manage credential sections and items</div>
+            </div>
+            {mounted ? (
+              <div className={styles.topActions}>
+                <div className={styles.topActionsInner}>
+                  <button className={styles.btnGhost} type="button" onClick={load}>Refresh</button>
+                  <button className={styles.btnGhost} type="button" onClick={()=>performBulkAction('publish')} disabled={selectedIds.length===0}>Publish selected</button>
+                  <button className={styles.btnGhost} type="button" onClick={()=>performBulkAction('unpublish')} disabled={selectedIds.length===0}>Unpublish selected</button>
+                  <button className={styles.btnDanger} type="button" onClick={()=>performBulkAction('delete')} disabled={selectedIds.length===0}>Delete selected</button>
+                </div>
+                <button className={styles.btnGhost} type="button" onClick={saveOrder} disabled={!needOrderSave}>Save order</button>
+              </div>
+            ) : (
+              <div className={styles.topActions} aria-hidden />
+            )}
+          </div>
           {deletedUndoBuffer && (
-            <div style={{marginBottom:12, padding:10, borderRadius:8, background:'var(--card-bg)', border:'1px solid var(--card-border)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
+            <div className={styles.adminSectionCard + ' ' + styles.undoBannerFull} suppressHydrationWarning>
               <div className={styles.smallMuted}>Item(s) deleted. You can undo this action for a short time.</div>
-              <div style={{display:'flex', gap:8}}>
+              <div className={styles.draftActions}>
                 <button className={styles.btnGhost} onClick={undoDelete}>Undo</button>
                 <button className={styles.btnGhost} onClick={()=>setDeletedUndoBuffer(null)}>Dismiss</button>
               </div>
@@ -810,16 +831,15 @@ export default function AdminCredentials() {
 
               <div style={{gridColumn:'1/-1'}}>
                 <hr />
-                <div style={{display:'grid', gap:12}}>
+                    <div className={styles.sectionsGrid}>
                   {(sections && sections.length > 0) ? sections.map((s: any, sIdx: number) => (
-                    <div key={s.id} style={{padding:8, borderRadius:8, background: 'var(--card-bg)'}}>
-                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}} draggable onDragStart={(e)=>handleSectionDragStart(e, sIdx)} onDragOver={(e)=>handleSectionDragOver(e, sIdx)} onDragLeave={handleSectionDragLeave} onDrop={(e)=>handleSectionDrop(e, sIdx)}>
-                        <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6}} aria-hidden>≡</div>
-                        <div>
-                          <strong>{s.name}</strong>
-                          <div className="muted" style={{fontSize:12}}>{s.slug}{s.subtitle ? ' — ' + s.subtitle : ''}</div>
+                    <Card key={s.id} className={styles.adminSectionCard} title={s.name} subtitle={s.subtitle ? s.subtitle : s.slug}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginBottom:8}}>
+                        <div draggable onDragStart={(e)=>handleSectionDragStart(e, sIdx)} onDragOver={(e)=>handleSectionDragOver(e, sIdx)} onDragLeave={handleSectionDragLeave} onDrop={(e)=>handleSectionDrop(e, sIdx)} style={{display:'flex', alignItems:'center', gap:8}}>
+                          <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6}} aria-hidden>≡</div>
+                          <div className="muted" style={{fontSize:12}}>{s.slug}</div>
                         </div>
-                        <div style={{marginLeft:'auto', display:'flex', gap:8}}>
+                        <div style={{display:'flex', gap:8}}>
                           <button className={styles.btnGhost} onClick={() => editSection(s)}>Edit</button>
                           <button className={styles.btnDanger} onClick={() => deleteSection(s.id)}>Delete</button>
                         </div>
@@ -827,24 +847,25 @@ export default function AdminCredentials() {
 
                       <div>
                         {(groupedItems.groups[s.slug] || []).map((it: any, idx: number) => (
-                          <div key={it.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, padding:'6px 4px', borderRadius:6}} draggable onDragStart={(e)=>handleCardDragStart(e, s.slug, idx)} onDragOver={(e)=>handleCardDragOver(e, s.slug, idx)} onDragLeave={handleCardDragLeave} onDrop={(e)=>handleCardDrop(e, s.slug, idx)}>
-                            <div style={{display:'flex', alignItems:'center', gap:8, flex:1}}>
+                          <div key={it.id} className={styles.credentialRow} draggable onDragStart={(e)=>handleCardDragStart(e, s.slug, idx)} onDragOver={(e)=>handleCardDragOver(e, s.slug, idx)} onDragLeave={handleCardDragLeave} onDrop={(e)=>handleCardDrop(e, s.slug, idx)}>
+                            <div className={styles.credentialRowInner}>
                               <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6}} aria-hidden>≡</div>
                               <input type="checkbox" checked={it.id != null && selectedIds.includes(Number(it.id))} onChange={()=>{ if (it.id != null) toggleSelect(Number(it.id)) }} />
                               <div>
-                                <strong>{it.title}</strong> <div className={styles.smallMuted}>{it.slug}</div>
+                                <strong>{it.title}</strong>
+                                <div className={styles.smallMuted} style={{fontSize:12}}>{it.slug}</div>
                               </div>
                             </div>
-                            <div style={{display:'flex', gap:8}}>
+                            <div className={styles.credentialActions}>
                               <button className={styles.btnGhost} onClick={()=>{ setForm({ id: it.id ?? null, section: it.section, slug: it.slug, title: it.title, tag: it.tag, authority: it.authority, image_path: it.image_path, description: it.description, is_published: it.is_published, sort_order: it.sort_order, s3_prefix: it.s3_prefix }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button>
-                              <button className={styles.btnGhost} onClick={()=>moveItemUp(it.id)}>Up</button>
-                              <button className={styles.btnGhost} onClick={()=>moveItemDown(it.id)}>Down</button>
-                              <button className={styles.btnDanger} onClick={()=>removeItem(it.id)}>Delete</button>
+                              <button className={styles.btnGhost} onClick={()=>moveItemUp(it.id == null ? undefined : Number(it.id))}>Up</button>
+                              <button className={styles.btnGhost} onClick={()=>moveItemDown(it.id == null ? undefined : Number(it.id))}>Down</button>
+                              <button className={styles.btnDanger} onClick={()=>removeItem(it.id == null ? undefined : Number(it.id))}>Delete</button>
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </Card>
                   )) : (
                     <div style={{display:'grid', gap:8}}>
                       {items.map((it, idx) => (
@@ -859,9 +880,9 @@ export default function AdminCredentials() {
                           </div>
                           <div style={{display:'flex', gap:8}}>
                             <button className={styles.btnGhost} onClick={()=>{ setForm({ id: it.id ?? null, section: it.section, slug: it.slug, title: it.title, tag: it.tag, authority: it.authority, image_path: it.image_path, description: it.description, is_published: it.is_published, sort_order: it.sort_order, s3_prefix: it.s3_prefix }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button>
-                            <button className={styles.btnGhost} onClick={()=>moveItemUp(it.id)}>Up</button>
-                            <button className={styles.btnGhost} onClick={()=>moveItemDown(it.id)}>Down</button>
-                            <button className={styles.btnDanger} onClick={()=>removeItem(it.id)}>Delete</button>
+                            <button className={styles.btnGhost} onClick={()=>moveItemUp(it.id == null ? undefined : Number(it.id))}>Up</button>
+                            <button className={styles.btnGhost} onClick={()=>moveItemDown(it.id == null ? undefined : Number(it.id))}>Down</button>
+                            <button className={styles.btnDanger} onClick={()=>removeItem(it.id == null ? undefined : Number(it.id))}>Delete</button>
                           </div>
                         </div>
                       ))}
@@ -882,9 +903,9 @@ export default function AdminCredentials() {
                           </div>
                           <div style={{display:'flex', gap:8}}>
                             <button className={styles.btnGhost} onClick={()=>{ setForm({ id: it.id ?? null, section: it.section, slug: it.slug, title: it.title, tag: it.tag, authority: it.authority, image_path: it.image_path, description: it.description, is_published: it.is_published, sort_order: it.sort_order, s3_prefix: it.s3_prefix }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button>
-                            <button className={styles.btnGhost} onClick={()=>moveItemUp(it.id)}>Up</button>
-                            <button className={styles.btnGhost} onClick={()=>moveItemDown(it.id)}>Down</button>
-                            <button className={styles.btnDanger} onClick={()=>removeItem(it.id)}>Delete</button>
+                            <button className={styles.btnGhost} onClick={()=>moveItemUp(it.id == null ? undefined : Number(it.id))}>Up</button>
+                            <button className={styles.btnGhost} onClick={()=>moveItemDown(it.id == null ? undefined : Number(it.id))}>Down</button>
+                            <button className={styles.btnDanger} onClick={()=>removeItem(it.id == null ? undefined : Number(it.id))}>Delete</button>
                           </div>
                         </div>
                       ))}
@@ -901,7 +922,7 @@ export default function AdminCredentials() {
                       <button className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
                     </div>
                     <div style={{maxWidth:520}}>
-                      <Card title={form.title || 'Untitled'} subtitle={form.section || ''}>
+                      <Card title={form.title || 'Untitled'} subtitle={(sections.find((s:any)=>s.slug===form.section)?.name) || form.section || ''}>
                         <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
                           <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
                             {form.image_path ? <img src={form.image_path} alt={form.title || ''} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}

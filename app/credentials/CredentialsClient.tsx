@@ -6,6 +6,7 @@ import SectionGrid from '@/components/credentials/SectionGrid'
 
 export default function CredentialsClient() {
   const [sections, setSections] = useState<Record<string, any[]>>({})
+  const [sectionMeta, setSectionMeta] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -16,6 +17,7 @@ export default function CredentialsClient() {
         const data = await res.json()
         if (!mounted) return
         setSections(data.sections || {})
+        setSectionMeta(data.section_meta || {})
       } catch (e) {
         console.error('fetch credentials error', e)
       } finally { if (mounted) setLoading(false) }
@@ -23,13 +25,19 @@ export default function CredentialsClient() {
     return () => { mounted = false }
   }, [])
 
+  const orderedSlugs = React.useMemo(() => {
+    const metaSlugs = Object.keys(sectionMeta || {})
+    const otherSlugs = Object.keys(sections || {}).filter(s => !sectionMeta || !sectionMeta[s])
+    return [...metaSlugs, ...otherSlugs]
+  }, [sectionMeta, sections])
+
   return (
     <main>
       <section className="page-pad">
         {loading ? <div className="center-max">Loading credentials…</div> : null}
-        {Object.keys(sections).map((sec) => (
+        {orderedSlugs.map((sec) => (
           <div key={sec} style={{ marginBottom: 18 }}>
-            <SectionGrid title={sec} items={sections[sec] || []} />
+            <SectionGrid title={sectionMeta[sec]?.name || sec} subtitle={sectionMeta[sec]?.subtitle || ''} items={sections[sec] || []} />
           </div>
         ))}
       </section>
