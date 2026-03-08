@@ -9,6 +9,7 @@ export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [counts, setCounts] = useState({ projects: 0, messages: 0, users: 0, aboutPosts: 0 })
+  const [featuredHero, setFeaturedHero] = useState<{ url?: string; title?: string } | null>(null)
 
   useEffect(()=>{
     ;(async ()=>{
@@ -46,6 +47,17 @@ export default function AdminPage() {
         // ignore
       }
     })()
+    // fetch featured hero for dashboard quick card
+    ;(async ()=>{
+      try {
+        const r = await fetch('/api/hero')
+        const j = await r.json()
+        const h = j?.hero || null
+        const imgs = Array.isArray(j?.images) ? j.images : []
+        const f = imgs.find((i:any) => Number(i.is_featured) === 1) || imgs[0] || null
+        if (f) setFeaturedHero({ url: f.url, title: h?.title || '' })
+      } catch {}
+    })()
   }, [])
 
   if (status === 'loading') return <main className="page-pad"><p>Loading…</p></main>
@@ -71,7 +83,26 @@ export default function AdminPage() {
       <div className="center-max">
         <div className={styles.panel}>
           <h2>Admin Console</h2>
-          <div className={styles.dashboardGrid} style={{marginTop:12}}>
+          {/* Featured hero preview — full width, centered image */}
+          {featuredHero && (
+            <div style={{marginBottom:12, display:'flex', justifyContent:'center'}}>
+              <div className="card-action" style={{width:'100%', maxWidth:980, display:'flex', justifyContent:'center', alignItems:'center', padding:12, boxSizing:'border-box', overflow:'hidden'}}>
+                <div style={{textAlign:'center', width:'100%'}}>
+                  <div style={{display:'block', margin:'0 auto 8px', width:'100%', maxWidth:520, height:220, overflow:'hidden', borderRadius:12, boxSizing:'border-box'}}>
+                    <img src={featuredHero.url} alt={featuredHero.title || 'Featured hero'} style={{width:'100%', height:'100%', objectFit:'cover', display:'block', maxWidth:'100%'}} />
+                  </div>
+                  <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:12}}>
+                    <div>
+                      <div className={styles.statNumber} style={{fontSize:18}}>Hero</div>
+                      <div className={styles.statLabel}>{featuredHero.title || 'Featured image'}</div>
+                    </div>
+                    <a href="/admin/home/hero">Edit Hero</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className={styles.dashboardGrid} style={{marginTop:12, gridTemplateColumns: 'repeat(3, 1fr)'}}>
             <div className="card-action">
               <div style={{display:'flex', alignItems:'center', gap:10}}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="4" rx="1" fill="#60a5fa"/><rect x="3" y="10" width="12" height="4" rx="1" fill="#a78bfa"/><rect x="3" y="16" width="6" height="4" rx="1" fill="var(--logo-green)"/></svg>

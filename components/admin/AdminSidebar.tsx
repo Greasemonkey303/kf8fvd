@@ -16,6 +16,10 @@ export default function AdminSidebar({ admin }: { admin: { name?: string; email?
         <a className={`${styles.navLink} ${isActive('/admin/credentials') ? styles.navLinkActive : ''}`} href="/admin/credentials">Credentials</a>
         <a className={`${styles.navLink} ${isActive('/admin/about') ? styles.navLinkActive : ''}`} href="/admin/about">About</a>
         <a className={`${styles.navLink} ${isActive('/admin/messages') ? styles.navLinkActive : ''}`} href="/admin/messages">Messages</a>
+        <a className={`${styles.navLink} ${isActive('/admin/home') ? styles.navLinkActive : ''}`} href="/admin/home">Home</a>
+        <div className={styles.navSubList}>
+          <a className={`${styles.navLink} ${styles.navSubLink} ${isActive('/admin/home/hero') ? styles.navLinkActive : ''}`} href="/admin/home/hero">Hero</a>
+        </div>
         <a className={`${styles.navLink} ${isActive('/admin') && pathname === '/admin' ? styles.navLinkActive : ''}`} href="/admin">Dashboard</a>
         <a className={styles.navLink} href="/">View site</a>
       </nav>

@@ -108,6 +108,7 @@ interface QsoEntry {
 }
 
 export default function Dashboard() {
+  const [featured, setFeatured] = useState<{ url?: string; title?: string } | null>(null)
   const [space, setSpace] = useState<{kIndex:number; f107:number; source:string} | null>(null);
   const [qsos, setQsos] = useState<Array<string | QsoEntry> | null>(null);
   const [bandGrid, setBandGrid] = useState<Record<string, number[]> | null>(null);
@@ -195,6 +196,19 @@ export default function Dashboard() {
       })
       .catch(() => { if (mounted) setQsos([]) });
 
+    // fetch featured hero for dashboard
+    fetch('/api/hero')
+      .then(r => r.json())
+      .then(j => {
+        if (!mounted) return
+        const h = j?.hero || null
+        const imgs = Array.isArray(j?.images) ? j.images : []
+        const f = imgs.find((i:any) => Number(i.is_featured) === 1) || imgs[0] || null
+        if (f) setFeatured({ url: f.url, title: h?.title || '' })
+        else setFeatured(null)
+      })
+      .catch(()=>{})
+
     return () => { mounted = false };
   }, []);
 
@@ -217,6 +231,13 @@ export default function Dashboard() {
             <OnAirBadge />
           </div>
         </Card>
+        {featured && (
+          <Card className={`${styles.largeCard}`} title="Featured Hero" subtitle={featured.title || 'Home spotlight'}>
+            <div style={{width:320, height:160, overflow:'hidden', borderRadius:10}}>
+              <img src={featured.url} alt={featured.title || 'Featured hero image'} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
+            </div>
+          </Card>
+        )}
       </div>
       <div className={`${styles.row} ${styles.rowShiftLeft}`}>
         <Card className={styles.smallCard} title="Propagation" subtitle="Solar / K-index">

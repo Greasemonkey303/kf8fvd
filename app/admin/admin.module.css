@@ -64,6 +64,8 @@
   box-shadow: 0 6px 18px rgba(22,163,74,0.16);
   pointer-events: none;
 }
+.navSubList { padding-left: 6px; margin-bottom: 6px }
+.navSubLink { display:block; padding:8px 12px; border-radius:6px; color:#bfe7ff; text-decoration:none; font-size:0.95rem; margin-bottom:6px }
 .contentWrap {
   flex: 1;
   padding: 28px;
@@ -238,4 +240,8 @@
 .checkboxInput:focus + .checkboxBox { outline: 3px solid rgba(11,132,255,0.18); outline-offset: 2px }
 .checkboxInput:checked + .checkboxBox { background: linear-gradient(90deg,#164f2a,#0f6b37); border-color: rgba(22,163,74,0.12); color: #fff; box-shadow: 0 8px 20px rgba(22,163,74,0.08); transform: translateY(-1px) }
 .checkboxInput:checked + .checkboxBox svg { opacity:1 }
+
+/* small spinner used in admin save controls */
+.spinner { display:inline-block; border:2px solid rgba(255,255,255,0.16); border-top-color: currentColor; border-radius:50%; animation: spin .9s linear infinite }
+@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
 

@@ -9,6 +9,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'http', hostname: '127.0.0.1', port: '9000', pathname: '/:path*' },
       { protocol: 'http', hostname: 'localhost', port: '9000', pathname: '/:path*' },
+      { protocol: 'http', hostname: '192.168.1.240', port: '9000', pathname: '/:path*' },
       { protocol: 'http', hostname: 'minio', port: '', pathname: '/:path*' },
       { protocol: 'https', hostname: 's3.amazonaws.com', port: '', pathname: '/:path*' }
     ]
