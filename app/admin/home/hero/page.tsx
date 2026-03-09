@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import styles from '../../admin.module.css'
 import Card from '../../../../components/card/card'
+import { buildPublicUrl } from '@/lib/s3'
 
 export default function AdminHeroPage() {
   const [hero, setHero] = useState<any | null>(null)
@@ -17,6 +18,8 @@ export default function AdminHeroPage() {
   const autosaveTimer = useRef<number | null>(null)
   const draftKeyRef = useRef<string>('admin_hero_draft:new')
   const [hasDraft, setHasDraft] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingAlt, setEditingAlt] = useState<string>('')
 
   async function load() {
     setLoading(true)
@@ -92,9 +95,11 @@ export default function AdminHeroPage() {
       setUploading(true)
       setUploadProgress(0)
       setUploadSuccess(false)
-      const pres = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, contentType: file.type }) })
+      // include file size and contentType for server-side validation
+      const pres = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, contentType: file.type, size: file.size }) })
       const pd = await pres.json()
-      if (!pd?.url) throw new Error('Presign failed')
+      if (pd?.error) throw new Error(String(pd.error))
+      if (!pd?.url) throw new Error('Presign failed: no url returned')
 
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest()
@@ -114,12 +119,13 @@ export default function AdminHeroPage() {
         xhr.send(file)
       })
 
-      const publicUrl = pd.publicUrl || pd.key || key
-      // record in DB
+      const storedKey = pd.key || key
+      const publicUrl = pd.publicUrl || buildPublicUrl(storedKey)
+      // record in DB (store the object key, not a presigned URL)
       // auto-feature if no featured exists
       const currentlyHasFeatured = images.find((i: any) => Number(i.is_featured) === 1)
       const shouldFeature = !currentlyHasFeatured
-      await fetch('/api/admin/hero/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hero_id: hero.id, url: publicUrl, alt: file.name, is_featured: shouldFeature ? 1 : 0 }) })
+      await fetch('/api/admin/hero/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hero_id: hero.id, url: storedKey, alt: file.name, is_featured: shouldFeature ? 1 : 0 }) })
       setUploadSuccess(true)
       setTimeout(()=> setUploadSuccess(false), 2500)
       setUploadProgress(100)
@@ -131,6 +137,34 @@ export default function AdminHeroPage() {
       setUploading(false)
       setUploadProgress(null)
     }
+  }
+
+  // Build a preview src for stored image `url` values (storedKey or legacy urls)
+  function getPreviewSrc(urlVal: any) {
+    if (!urlVal) return ''
+    const u = String(urlVal)
+    if (u.startsWith('/')) return u
+    if (/^https?:\/\//i.test(u)) {
+      try {
+        const parsed = new URL(u)
+        const pclean = (parsed.pathname || '').replace(/^\//, '')
+        const bucket = (process.env.NEXT_PUBLIC_S3_BUCKET || '').trim() || pclean.split('/')[0] || ''
+        if (bucket && pclean.startsWith(bucket + '/')) {
+          const key = pclean.slice(bucket.length + 1)
+          return buildPublicUrl(key)
+        }
+        return u
+      } catch { return u }
+    }
+    // treat as stored key
+    return buildPublicUrl(u)
+  }
+
+  async function updateImageMeta(id: number, alt: string) {
+    try {
+      await fetch('/api/admin/hero/image', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, alt }) })
+      await load()
+    } catch (e) { console.error('updateImageMeta error', e) }
   }
 
   // Autosave hero draft to localStorage
@@ -227,10 +261,19 @@ export default function AdminHeroPage() {
                           <div style={{marginBottom:12}}>
                             <div className={styles.draftTitleBold}>Featured</div>
                             <div style={{marginTop:8, width:'100%', height:180, overflow:'hidden', borderRadius:10}}>
-                              <img src={featured.url} alt={featured.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
+                              <img src={getPreviewSrc(featured.url)} alt={featured.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
                             </div>
-                            <div style={{display:'flex', gap:8, marginTop:8}}>
+                            <div style={{display:'flex', gap:8, marginTop:8, alignItems:'center'}}>
                               <button className={styles.btnGhostSmall} onClick={()=>deleteImage(featured.id)}>Delete</button>
+                              {editingId === featured.id ? (
+                                <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                                  <input value={editingAlt} onChange={e=>setEditingAlt(e.target.value)} className={styles.formInput} style={{width:180}} />
+                                  <button className={styles.btnGhostSmall} onClick={() => { updateImageMeta(featured.id, editingAlt); setEditingId(null) }}>Save</button>
+                                  <button className={styles.btnGhostSmall} onClick={() => { setEditingId(null); setEditingAlt('') }}>Cancel</button>
+                                </div>
+                              ) : (
+                                <button className={styles.btnGhostSmall} onClick={() => { setEditingId(featured.id); setEditingAlt(featured.alt || '') }}>Edit alt</button>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -243,11 +286,20 @@ export default function AdminHeroPage() {
                             {others.map((img: any) => (
                               <div key={img.id} style={{width:120}}>
                                 <div style={{width:120, height:80, overflow:'hidden', borderRadius:8}}>
-                                  <img src={img.url} alt={img.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
+                                  <img src={getPreviewSrc(img.url)} alt={img.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
                                 </div>
-                                <div style={{display:'flex', gap:6, marginTop:6}}>
+                                <div style={{display:'flex', gap:6, marginTop:6, alignItems:'center'}}>
                                   <button className={styles.btnGhostSmall} onClick={()=>setFeaturedImage(img.id)}>Feature</button>
                                   <button className={styles.btnGhostSmall} onClick={()=>deleteImage(img.id)}>Delete</button>
+                                  {editingId === img.id ? (
+                                    <>
+                                      <input value={editingAlt} onChange={e=>setEditingAlt(e.target.value)} className={styles.formInput} style={{width:120}} />
+                                      <button className={styles.btnGhostSmall} onClick={() => { updateImageMeta(img.id, editingAlt); setEditingId(null) }}>Save</button>
+                                      <button className={styles.btnGhostSmall} onClick={() => { setEditingId(null); setEditingAlt('') }}>Cancel</button>
+                                    </>
+                                  ) : (
+                                    <button className={styles.btnGhostSmall} onClick={() => { setEditingId(img.id); setEditingAlt(img.alt || '') }}>Edit</button>
+                                  )}
                                 </div>
                               </div>
                             ))}

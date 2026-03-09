@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
+import crypto from 'crypto'
 
 export async function GET(req: Request, ctx: any) {
   try {
@@ -42,11 +43,26 @@ export async function GET(req: Request, ctx: any) {
     const ext = key.split('.').pop()?.toLowerCase()
     let contentType = 'application/octet-stream'
     if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg'
-    if (ext === 'png') contentType = 'image/png'
-    if (ext === 'gif') contentType = 'image/gif'
-    if (ext === 'webp') contentType = 'image/webp'
+    else if (ext === 'png') contentType = 'image/png'
+    else if (ext === 'gif') contentType = 'image/gif'
+    else if (ext === 'webp') contentType = 'image/webp'
+    else if (ext === 'avif') contentType = 'image/avif'
+    else if (ext === 'svg') contentType = 'image/svg+xml'
 
-    return new NextResponse(new Uint8Array(buffer), { status: 200, headers: { 'Content-Type': contentType } })
+    // ETag for caching
+    const etag = crypto.createHash('sha1').update(buffer).digest('hex')
+    const ifNone = req.headers.get('if-none-match')
+    if (ifNone && ifNone === etag) {
+      return new NextResponse(null, { status: 304 })
+    }
+
+    const headers = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'ETag': etag,
+    }
+
+    return new NextResponse(new Uint8Array(buffer), { status: 200, headers })
   } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error('uploads.get (catch) error', err)

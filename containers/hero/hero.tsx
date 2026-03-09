@@ -1,16 +1,29 @@
 import React from 'react'
-import Image from 'next/image'
 import styles from './hero.module.css'
 import { buildPublicUrl } from '@/lib/s3'
 import { query } from '@/lib/db'
+/* eslint-disable @typescript-eslint/no-var-requires */
+let DOMPurify: any = null
+try {
+  // require is synchronous and avoids static bundler resolution failures
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  DOMPurify = require('isomorphic-dompurify')
+} catch (e) {
+  DOMPurify = null
+}
 
 const sanitizeHtml = (input: string) => {
   if (!input) return ''
-  // Remove script tags
-  let s = input.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-  // Remove inline event handlers (onclick, onerror, etc.)
+  try {
+    if (DOMPurify && typeof DOMPurify.sanitize === 'function') {
+      return DOMPurify.sanitize(input, { USE_PROFILES: { html: true } })
+    }
+  } catch (e) {
+    // fall through to regex fallback
+  }
+  // fallback to a minimal regex sanitizer if DOMPurify isn't available
+  let s = String(input).replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
   s = s.replace(/\son\w+=["'][\s\S]*?["']/gi, '')
-  // Replace javascript: URIs
   s = s.replace(/javascript:[^"'\s>]+/gi, '#')
   return s
 }
@@ -72,9 +85,37 @@ export default async function Hero() {
   const altText = rawAlt ? rawAlt.replace(/\.[^.\/\\]+$/, '') : 'Hero image'
   const imageUnoptimized = /^https?:\/\//i.test(imageSrc) || imageSrc.startsWith('/api/uploads/get/')
 
+  // Build variant URLs if available
+  let avifUrl: string | null = null
+  let webpUrl: string | null = null
+  try {
+    let variants: any = featured?.variants
+    if (variants && typeof variants === 'string') {
+      try { variants = JSON.parse(variants) } catch { /* ignore */ }
+    }
+    if (variants && typeof variants === 'object') {
+      if (variants.avif) {
+        const v = String(variants.avif)
+        avifUrl = v.startsWith('/') || /^https?:\/\//i.test(v) ? v : buildPublicUrl(v)
+      }
+      if (variants.webp) {
+        const v = String(variants.webp)
+        webpUrl = v.startsWith('/') || /^https?:\/\//i.test(v) ? v : buildPublicUrl(v)
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  const fallbackSrc = imageSrc
+
   return (
     <section className={styles.hero} aria-labelledby="hero-title" role="region">
-      <Image src={imageSrc} alt={altText} fill className={styles.bg} priority sizes="(max-width: 900px) 100vw, 1400px" placeholder="blur" blurDataURL="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" unoptimized={imageUnoptimized} />
+      <picture className={styles.bg}>
+        {avifUrl && <source srcSet={avifUrl} type="image/avif" />}
+        {webpUrl && <source srcSet={webpUrl} type="image/webp" />}
+        <img src={fallbackSrc} alt={altText} className={styles.bgImg} />
+      </picture>
       <div className={styles.inner}>
         <h1 id="hero-title">{hero?.title || 'KF8FVD - Amateur Radio'}</h1>
         {hero && hero.content && String(hero.content).trim() ? (
@@ -83,7 +124,7 @@ export default async function Hero() {
           <p className={styles.lead}>{hero?.subtitle || 'Welcome to my ham radio site. Explore HF bands, equipment, and more.'}</p>
         )}
         <div className={styles.heroCtaWrap}>
-          <a href="/contactme" className={styles.heroBtn}>Contact Me</a>
+          <a href="/contactme" className={styles.heroBtn} aria-label="Contact Me">Contact Me</a>
           <div className={styles.heroNote}>Click to get in touch or schedule a QSO</div>
         </div>
       </div>

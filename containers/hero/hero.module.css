@@ -35,6 +35,20 @@
   filter: none;
 }
 
+/* Ensure <picture> + <img> fallback covers the hero area */
+.bg img,
+.bgImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1);
+  will-change: transform;
+  animation: bgZoom 18s ease-in-out infinite alternate;
+}
+
 .hero .inner {
   position: relative;
   z-index: 2;
@@ -65,6 +79,19 @@
   font-size: clamp(1rem, 2.2vw, 1.25rem);
   opacity: 0;
   animation: fadeUp 900ms ease-out 500ms forwards;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .hero { min-height: 45vh; padding: 0.5rem 0.75rem 2rem; }
+  .hero .inner { padding: 0 0.75rem; }
+  .hero .heroCtaWrap { gap: 6px; }
+}
+
+@media (min-width: 900px) {
+  .hero { min-height: 72vh; padding-top: 1rem; }
+  .hero .heroCtaWrap { flex-direction: row; gap: 12px; align-items: center; }
+  .hero .heroNote { font-size: 0.95rem; }
 }
 
 /* animations */

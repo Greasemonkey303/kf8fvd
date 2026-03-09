@@ -2,12 +2,45 @@ import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
 
-type ReqBody = { key?: string; contentType: string; slug?: string; filename?: string }
+type ReqBody = { key?: string; contentType?: string; slug?: string; filename?: string }
 
 export async function POST(req: Request) {
   try {
     const body: ReqBody = await req.json()
-    if (!body?.contentType) return NextResponse.json({ error: 'contentType required' }, { status: 400 })
+
+    // Allow client to omit contentType; infer from key/filename when possible
+    let contentTypeRaw = body?.contentType ? String(body.contentType).trim().toLowerCase() : ''
+    if (!contentTypeRaw) {
+      const maybe = String(body?.key || body?.filename || '')
+      const ext = maybe.split('.').pop()?.toLowerCase() || ''
+      const map: Record<string, string> = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        avif: 'image/avif',
+        svg: 'image/svg+xml',
+        ico: 'image/x-icon'
+      }
+      if (ext && map[ext]) contentTypeRaw = map[ext]
+    }
+
+    if (!contentTypeRaw) return NextResponse.json({ error: 'contentType required or could not be inferred from filename' }, { status: 400 })
+
+    // basic server-side validation
+    const allowed = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'image/x-icon'
+    ]
+    if (!allowed.includes(contentTypeRaw.toLowerCase())) {
+      return NextResponse.json({ error: `Unsupported contentType: ${contentTypeRaw}` }, { status: 400 })
+    }
+
+    const maxSize = Number(process.env.MAX_UPLOAD_BYTES || 10 * 1024 * 1024) // default 10MB
+    const providedSize = (body as any).size ? Number((body as any).size) : undefined
+    if (providedSize !== undefined && providedSize > maxSize) {
+      return NextResponse.json({ error: 'File too large' }, { status: 400 })
+    }
 
     // allow server to generate a key from slug+filename, or accept a provided key
     let key = body.key
@@ -39,14 +72,8 @@ export async function POST(req: Request) {
     const expires = 300
     const url = await minioClient.presignedPutObject(bucket, key, expires)
 
-    // generate a presigned GET so clients can fetch the uploaded object
-    let publicUrl: string
-    try {
-      const getExpires = 24 * 60 * 60
-      publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
-    } catch {
-      publicUrl = buildPublicUrl(key)
-    }
+    // For long-term public access prefer the proxied app URL (stable key) instead of a signed GET
+    const publicUrl = buildPublicUrl(key)
 
     // parse signed url to surface signing hints in dev
     let debug: { maskedCred?: string | null; signedHeaders?: string | null } | undefined = undefined

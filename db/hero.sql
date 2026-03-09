@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS `hero_image` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `hero_id` INT NOT NULL,
   `url` VARCHAR(1024) NOT NULL,
+  `variants` JSON DEFAULT NULL,
   `alt` VARCHAR(255) DEFAULT NULL,
   `is_featured` TINYINT(1) NOT NULL DEFAULT 0,
   `sort_order` INT NOT NULL DEFAULT 0,
