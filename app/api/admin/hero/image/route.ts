@@ -77,16 +77,15 @@ export async function POST(req: Request) {
               // upload webp variant
               await minioClient.putObject(bucket, webpKey, webpBuf)
 
-              // ensure variants column exists (best-effort, ignore errors)
+              // ensure `variants` column exists (best-effort, avoid ALTER syntax incompatible with older MySQL)
               try {
-                await query('ALTER TABLE hero_image ADD COLUMN IF NOT EXISTS variants JSON DEFAULT NULL')
-              } catch (e) {
-                // ignore; some MySQL versions may not support IF NOT EXISTS
-                try {
+                const info = await query<any[]>('SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['hero_image', 'variants'])
+                const cnt = Array.isArray(info) && info.length ? Number((info[0] as any).cnt || 0) : 0
+                if (!cnt) {
                   await query('ALTER TABLE hero_image ADD COLUMN variants JSON DEFAULT NULL')
-                } catch (e2) {
-                  // ignore
                 }
+              } catch (e) {
+                // ignore failures - schema migration may be handled separately
               }
 
               // update row with variants JSON

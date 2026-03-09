@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Unsupported contentType: ${contentTypeRaw}` }, { status: 400 })
     }
 
-    const maxSize = Number(process.env.MAX_UPLOAD_BYTES || 10 * 1024 * 1024) // default 10MB
+    const maxSize = Number(process.env.MAX_UPLOAD_BYTES || 50 * 1024 * 1024) // default 50MB
     const providedSize = (body as any).size ? Number((body as any).size) : undefined
     if (providedSize !== undefined && providedSize > maxSize) {
       return NextResponse.json({ error: 'File too large' }, { status: 400 })
