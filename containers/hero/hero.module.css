@@ -58,6 +58,15 @@
   font-size: clamp(1rem, 2.2vw, 1.25rem);
 }
 
+/* Rendered HTML content from admin (keeps same spacing/typography as subtitle) */
+.hero .inner .content {
+  max-width: 900px;
+  margin: 0.5rem auto 0;
+  font-size: clamp(1rem, 2.2vw, 1.25rem);
+  opacity: 0;
+  animation: fadeUp 900ms ease-out 500ms forwards;
+}
+
 /* animations */
 @keyframes bgZoom {
   0% { transform: scale(1); }
