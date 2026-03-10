@@ -231,13 +231,7 @@ export default function Dashboard() {
             <OnAirBadge />
           </div>
         </Card>
-        {featured && (
-          <Card className={`${styles.largeCard}`} title="Featured Hero" subtitle={featured.title || 'Home spotlight'}>
-            <div style={{width:320, height:160, overflow:'hidden', borderRadius:10}}>
-              <img src={featured.url} alt={featured.title || 'Featured hero image'} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
-            </div>
-          </Card>
-        )}
+        {/* Featured hero card removed */}
       </div>
       <div className={`${styles.row} ${styles.rowShiftLeft}`}>
         <Card className={styles.smallCard} title="Propagation" subtitle="Solar / K-index">
