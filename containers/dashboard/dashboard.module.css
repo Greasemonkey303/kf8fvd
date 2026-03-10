@@ -77,6 +77,9 @@
 .on { background: linear-gradient(90deg,var(--color-accent-3),var(--color-success)); color: var(--text-dark); }
 .off { background: linear-gradient(90deg,var(--white-78),var(--color-other)); color: var(--text-dark); }
 
+/* When the site is explicitly On Air, show a red badge */
+.onAirActive { background: linear-gradient(90deg,#ff3b30,#ff6b6b); color: #fff; }
+
 .prop { display:flex; flex-direction:column; gap:0.5rem; align-items:flex-start }
 .propValues { display:flex; gap:1rem; align-items:center }
 .propItem { display:flex; flex-direction:column; gap:4px; align-items:center }

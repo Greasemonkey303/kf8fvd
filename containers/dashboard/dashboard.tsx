@@ -75,17 +75,34 @@ function Clock() {
 }
 
 function OnAirBadge() {
-  // simple heuristic: on-air during UTC 18-20
+  // Read on-air state from the server; fallback to a local time heuristic
   const [onAir, setOnAir] = useState<boolean | null>(null);
   useEffect(() => {
-    const check = () => {
-      const h = new Date().getUTCHours();
-      setOnAir(h >= 18 && h <= 20);
-    };
-    check();
-    const id = setInterval(check, 60_000);
-    return () => clearInterval(id);
-  }, []);
+    let mounted = true
+    const fallbackCheck = () => {
+      const h = new Date().getUTCHours()
+      if (!mounted) return
+      setOnAir(h >= 18 && h <= 20)
+    }
+
+    const fetchState = async () => {
+      try {
+        const r = await fetch('/api/onair')
+        if (!r.ok) throw new Error('no onair')
+        const j = await r.json()
+        if (!mounted) return
+        const isOn = j?.item && (j.item.is_on === 1 || j.item.is_on === true)
+        setOnAir(Boolean(isOn))
+      } catch (e) {
+        // fallback to heuristic when API unavailable
+        fallbackCheck()
+      }
+    }
+
+    fetchState()
+    const id = setInterval(fetchState, 30_000)
+    return () => { mounted = false; clearInterval(id) }
+  }, [])
   const badgeRef = useRef<HTMLDivElement | null>(null);
 
   // Position the badge so its top aligns with the top of the `.time`
@@ -113,7 +130,7 @@ function OnAirBadge() {
     };
   }, []);
 
-  const stateClass = onAir === null ? '' : (onAir ? styles.on : styles.off)
+  const stateClass = onAir === null ? '' : (onAir ? styles.onAirActive : styles.off)
   const cls = `${styles.badge} ${stateClass} ${styles.onAirBadge}`.trim()
   return (
     <div ref={badgeRef} className={cls}>

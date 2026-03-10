@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Card } from '@/components';
@@ -15,13 +15,64 @@ export default function SignInPage() {
     try { return Boolean(localStorage.getItem('kf8fvd_remember_email')) } catch { return false }
   })
   const [error, setError] = useState<string | null>(null);
+  const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
+  const [cfToken, setCfToken] = useState<string | null>(null)
+  const cfIntervalRef = React.useRef<number | null>(null)
+
+  useEffect(()=>{
+    if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
+      const id = 'cf-turnstile-script'
+      if (!document.getElementById(id)) {
+        const s = document.createElement('script')
+        s.id = id
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+        s.async = true
+        s.defer = true
+        document.body.appendChild(s)
+      }
+    }
+  }, [])
+
+  useEffect(()=>{
+    const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
+    if (!sitekey) return
+
+    const tryRender = () => {
+      // @ts-ignore
+      if (typeof window === 'undefined' || !(window as any).turnstile) return
+      const container = document.getElementById('cf-turnstile-container')
+      if (!container) return
+      if ((container as HTMLElement).dataset?.turnstileRendered === '1') {
+        if (cfIntervalRef.current) { clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+        return
+      }
+      try {
+        // @ts-ignore
+        const id = (window as any).turnstile.render(container, {
+          sitekey,
+          callback: (token: string) => setCfToken(token),
+        })
+        setCfWidgetId(typeof id === 'number' ? id : null)
+        ;(container as HTMLElement).dataset.turnstileRendered = '1'
+        if (cfIntervalRef.current) { clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+      } catch (err) {
+        // ignore and retry
+      }
+    }
+
+    tryRender()
+    cfIntervalRef.current = window.setInterval(tryRender, 500)
+    return () => { if (cfIntervalRef.current) clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
     setError(null);
     const callback = (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('callbackUrl') : null) || '/admin'
-    const res = await signIn('credentials', { redirect: false, email, password, callbackUrl: callback, remember: remember ? 'true' : 'false' });
+    // include turnstile token if available
+    const cfTokenVal = cfToken || (typeof window !== 'undefined' ? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value : undefined)
+    const res = await signIn('credentials', { redirect: false, email, password, callbackUrl: callback, remember: remember ? 'true' : 'false', cf_turnstile_response: cfTokenVal });
     if (res?.error) {
       setError('Invalid credentials')
       return
@@ -61,6 +112,12 @@ export default function SignInPage() {
                 placeholder="Your password"
               />
             </label>
+
+            {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
+              <div style={{marginTop:12}}>
+                <div id="cf-turnstile-container"></div>
+              </div>
+            )}
 
             {error && <div className="text-red-600">{error}</div>}
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:16}}>

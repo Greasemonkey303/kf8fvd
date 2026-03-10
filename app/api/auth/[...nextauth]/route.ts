@@ -4,6 +4,28 @@ import { query } from '../../../../lib/db'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
+async function verifyTurnstileToken(token?: string) {
+  // allow bypass via env var for troubleshooting
+  const bypass = (process.env.CF_TURNSTILE_BYPASS || '').toLowerCase()
+  if (bypass === '1' || bypass === 'true') return true
+
+  const secret = process.env.CF_TURNSTILE_SECRET
+  // if no secret configured, skip verification (dev convenience)
+  if (!secret) return true
+  if (!token) return false
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret, response: token }) as any,
+    })
+    const j = await res.json()
+    return !!j?.success
+  } catch (e) {
+    return false
+  }
+}
+
 export const authOptions = {
   providers: [
     CredentialsProvider({
@@ -12,8 +34,20 @@ export const authOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
         remember: { label: 'Remember', type: 'text' },
+        cf_turnstile_response: { label: 'Turnstile', type: 'text' },
       },
       async authorize(credentials) {
+        // if server-side Turnstile secret is configured, require and verify the token
+        try {
+          const token = (credentials as any)?.cf_turnstile_response || (credentials as any)?.['cf-turnstile-response'] || null
+          if (process.env.CF_TURNSTILE_SECRET) {
+            const ok = await verifyTurnstileToken(String(token || ''))
+            if (!ok) return null
+          }
+        } catch (err) {
+          return null
+        }
+
         if (!credentials?.email || !credentials?.password) return null
         const rows = await query<{ id: number; name?: string; email: string; hashed_password?: string; is_active: number }[]>('SELECT id, name, email, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [credentials.email])
         const user = Array.isArray(rows) && rows.length ? rows[0] : null

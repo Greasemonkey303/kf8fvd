@@ -27,6 +27,7 @@ export default function Contact() {
   const [totalSize, setTotalSize] = useState(0)
   const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
   const [cfToken, setCfToken] = useState<string | null>(null)
+  const cfIntervalRef = useRef<number | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [previewName, setPreviewName] = useState<string | null>(null)
@@ -59,21 +60,34 @@ export default function Contact() {
   useEffect(()=>{
     const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
     if (!sitekey) return
-    function tryRender(){
+
+    const tryRender = () => {
       // @ts-ignore
-      if (typeof window !== 'undefined' && (window as any).turnstile && document.getElementById('cf-turnstile-container')) {
+      if (typeof window === 'undefined' || !(window as any).turnstile) return
+      const container = document.getElementById('cf-turnstile-container')
+      if (!container) return
+      // if already rendered, clear interval and skip
+      if ((container as HTMLElement).dataset?.turnstileRendered === '1') {
+        if (cfIntervalRef.current) { clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+        return
+      }
+      try {
         // @ts-ignore
-        const id = (window as any).turnstile.render(document.getElementById('cf-turnstile-container'), {
+        const id = (window as any).turnstile.render(container, {
           sitekey,
           callback: (token: string) => setCfToken(token),
         })
         setCfWidgetId(typeof id === 'number' ? id : null)
+        ;(container as HTMLElement).dataset.turnstileRendered = '1'
+        if (cfIntervalRef.current) { clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+      } catch (err) {
+        // ignore and retry
       }
     }
-    // Try immediately and also after a short delay in case script loads later
+
     tryRender()
-    const t = setInterval(tryRender, 500)
-    return ()=> clearInterval(t)
+    cfIntervalRef.current = window.setInterval(tryRender, 500)
+    return () => { if (cfIntervalRef.current) clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
   },[])
 
   function validate(){
@@ -290,7 +304,7 @@ export default function Contact() {
               {/* Cloudflare Turnstile widget (requires NEXT_PUBLIC_CF_TURNSTILE_SITEKEY in env) */}
               {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
                 <div className="mt-12">
-                  <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY}></div>
+                  <div id="cf-turnstile-container"></div>
                 </div>
               )}
 

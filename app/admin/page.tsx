@@ -1,15 +1,35 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import styles from './admin.module.css'
+import { buildPublicUrl } from '@/lib/s3'
 
 export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [counts, setCounts] = useState({ projects: 0, messages: 0, users: 0, aboutPosts: 0 })
   const [featuredHero, setFeaturedHero] = useState<{ url?: string; title?: string } | null>(null)
+  const [onAir, setOnAir] = useState<boolean | null>(null)
+  const [onairSaving, setOnairSaving] = useState(false)
+  const [onairError, setOnairError] = useState<string | null>(null)
+  const [onairUpdatedAt, setOnairUpdatedAt] = useState<string | null>(null)
+
+  const mountedRef = useRef(true)
+
+  const fetchOnAir = async () => {
+    try {
+      const r = await fetch('/api/admin/onair')
+      const j = await r.json()
+      if (!mountedRef.current) return
+      const isOn = j?.item && (j.item.is_on === 1 || j.item.is_on === true)
+      setOnAir(Boolean(isOn))
+      if (j?.item?.updated_at) setOnairUpdatedAt(String(j.item.updated_at))
+    } catch (e) {
+      // ignore
+    }
+  }
 
   useEffect(()=>{
     ;(async ()=>{
@@ -58,6 +78,50 @@ export default function AdminPage() {
         if (f) setFeaturedHero({ url: f.url, title: h?.title || '' })
       } catch {}
     })()
+
+    // fetch on-air status for admin control (initial)
+    fetchOnAir()
+  }, [])
+
+  function getPreviewSrc(urlVal: any) {
+    if (!urlVal) return ''
+    const u = String(urlVal)
+    if (u.startsWith('/')) return u
+    if (/^https?:\/\//i.test(u)) {
+      try {
+        const parsed = new URL(u)
+        const pclean = (parsed.pathname || '').replace(/^\//, '')
+        const bucket = (process.env.NEXT_PUBLIC_S3_BUCKET || '').trim() || pclean.split('/')[0] || ''
+        if (bucket && pclean.startsWith(bucket + '/')) {
+          const key = pclean.slice(bucket.length + 1)
+          return buildPublicUrl(key)
+        }
+        return u
+      } catch { return u }
+    }
+    return buildPublicUrl(u)
+  }
+
+  async function toggleOnAir() {
+    setOnairError(null)
+    setOnairSaving(true)
+    try {
+      const newState = !onAir
+      const res = await fetch('/api/admin/onair', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_on: newState ? 1 : 0, updated_by: session?.user?.email || null }) })
+      const j = await res.json()
+      if (res.ok && j?.item) setOnAir(Boolean(j.item.is_on))
+      else setOnairError(j?.error || 'Failed to update')
+    } catch (e) {
+      setOnairError(String(e))
+    }
+    setOnairSaving(false)
+  }
+
+  // Poll on-air state periodically so admin sees recent status (every 10 minutes)
+  useEffect(() => {
+    mountedRef.current = true
+    const id = setInterval(() => { if (!mountedRef.current) return; fetchOnAir() }, 10 * 60 * 1000)
+    return () => { mountedRef.current = false; clearInterval(id) }
   }, [])
 
   if (status === 'loading') return <main className="page-pad"><p>Loading…</p></main>
@@ -83,13 +147,50 @@ export default function AdminPage() {
       <div className="center-max">
         <div className={styles.panel}>
           <h2>Admin Console</h2>
+          <div style={{display:'flex', alignItems:'center', gap:12, marginTop:8, marginBottom:12}}>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700}}>On Air</div>
+              <div className={styles.smallMuted}>Toggle whether the public site shows "On Air".</div>
+            </div>
+            <div style={{display:'flex', alignItems:'center', gap:8}}>
+              <label className={styles.switch} style={{alignItems:'center'}}>
+                <input type="checkbox" checked={Boolean(onAir)} onChange={toggleOnAir} disabled={onairSaving} />
+                <div className={`${styles.slider} ${onAir ? styles.on : ''}`}></div>
+              </label>
+              <div style={{minWidth:140, textAlign:'center'}}>
+                <div style={{fontWeight:800}}>{onAir ? 'On Air' : 'Standby'}</div>
+                {onairError && <div className={styles.smallMuted} style={{color:'#ffd6d6', fontSize:12}}>{onairError}</div>}
+                {onairUpdatedAt && (
+                  <div className={styles.smallMuted} style={{fontSize:12, marginTop:6, display:'flex', alignItems:'center', gap:8, justifyContent:'center'}}>
+                    <div>
+                      Last updated: {(() => {
+                        try {
+                          const d = new Date(String(onairUpdatedAt))
+                          if (!isNaN(d.getTime())) return d.toLocaleString()
+                        } catch {}
+                        try { return String(onairUpdatedAt) } catch { return '' }
+                      })()}
+                    </div>
+                    <button
+                      className={`${styles.btnGhost} ${styles.btnGhostSmall}`}
+                      onClick={async () => { setOnairError(null); try { await fetchOnAir() } catch (e) { setOnairError(String(e)) } }}
+                      disabled={onairSaving}
+                      style={{fontSize:12}}
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           {/* Featured hero preview — full width, centered image */}
           {featuredHero && (
             <div style={{marginBottom:12, display:'flex', justifyContent:'center'}}>
               <div className="card-action" style={{width:'100%', maxWidth:980, display:'flex', justifyContent:'center', alignItems:'center', padding:12, boxSizing:'border-box', overflow:'hidden'}}>
                 <div style={{textAlign:'center', width:'100%'}}>
-                  <div style={{display:'block', margin:'0 auto 8px', width:'100%', maxWidth:520, height:220, overflow:'hidden', borderRadius:12, boxSizing:'border-box'}}>
-                    <img src={featuredHero.url} alt={featuredHero.title || 'Featured hero'} style={{width:'100%', height:'100%', objectFit:'cover', display:'block', maxWidth:'100%'}} />
+                    <div style={{display:'block', margin:'0 auto 8px', width:'100%', maxWidth:520, height:220, overflow:'hidden', borderRadius:12, boxSizing:'border-box'}}>
+                    <img src={getPreviewSrc(featuredHero.url)} alt={featuredHero.title || 'Featured hero'} style={{width:'100%', height:'100%', objectFit:'cover', display:'block', maxWidth:'100%'}} />
                   </div>
                   <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:12}}>
                     <div>
