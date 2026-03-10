@@ -24,6 +24,7 @@
   .largeCard .time { font-size: 1.4rem }
   .largeCard .callsign { font-size: 1rem }
   .largeCard .utc, .largeCard .tz { font-size: 0.9rem }
+  .onAirBadge { position: static; min-width: auto; padding: 8px 10px; box-shadow: none; }
 }
 
 .citiesGrid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top:10px; width:100%; align-items:stretch }
@@ -56,6 +57,23 @@
 .cityName { transition: color 160ms ease }
 .cityItem:hover .cityName { color: var(--white-100) }
 .badge { padding:6px 10px; border-radius:10px; font-weight:700; }
+.onAirBadge {
+  position: absolute;
+  top: 56px; /* place under the card title/subtitle */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  text-align: center;
+}
 .on { background: linear-gradient(90deg,var(--color-accent-3),var(--color-success)); color: var(--text-dark); }
 .off { background: linear-gradient(90deg,var(--white-78),var(--color-other)); color: var(--text-dark); }
 
@@ -108,7 +126,7 @@
 
 /* Large top Live card */
 .topLive { width:100%; display:block; margin: 0 auto 1rem auto; position:relative; z-index:40; padding: 8px }
-.largeCard { max-width: 1180px; margin: 0 auto; padding: 22px; box-shadow: 0 22px 48px var(--shadow-45); border-radius:14px }
+.largeCard { position: relative; max-width: 1180px; margin: 0 auto; padding: 22px; box-shadow: 0 22px 48px var(--shadow-45); border-radius:14px }
 .largeCard .time { font-size:2rem; }
 .largeCard .utc { font-size:1.05rem }
 .largeCard .callsign { font-size:1.25rem }

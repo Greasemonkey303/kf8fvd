@@ -212,6 +212,16 @@
   overflow: auto;
 }
 
+.modalError {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: linear-gradient(90deg, rgba(123,31,31,0.12), rgba(123,31,31,0.06));
+  color: #ffd6d6;
+  border: 1px solid rgba(123,31,31,0.12);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
 /* Published / Draft status badges */
 .statusBadge {
   font-size: 12px;
@@ -244,4 +254,58 @@
 /* small spinner used in admin save controls */
 .spinner { display:inline-block; border:2px solid rgba(255,255,255,0.16); border-top-color: currentColor; border-radius:50%; animation: spin .9s linear infinite }
 @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+/* Upload slider / progress styles for admin hero page */
+.uploadWrapper {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+.uploadProgress {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  overflow: visible;
+}
+.uploadFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: var(--color-gradient);
+  transition: width 180ms linear;
+}
+.uploadThumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%,-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(90deg,var(--logo-blue), var(--color-accent-2));
+  border: 2px solid rgba(255,255,255,0.92);
+  box-shadow: 0 8px 20px rgba(2,6,23,0.45);
+  pointer-events: none;
+}
+.uploadInfoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.uploadPercent {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--white-100);
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: linear-gradient(90deg,var(--logo-blue), var(--color-accent-2));
+  border: 1px solid rgba(255,255,255,0.04);
+}
 

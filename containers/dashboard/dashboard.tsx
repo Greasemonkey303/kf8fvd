@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import styles from './dashboard.module.css';
 import { Card } from '@/components';
 
@@ -86,9 +86,37 @@ function OnAirBadge() {
     const id = setInterval(check, 60_000);
     return () => clearInterval(id);
   }, []);
-  const cls = onAir === null ? styles.badge : `${styles.badge} ${onAir ? styles.on : styles.off}`;
+  const badgeRef = useRef<HTMLDivElement | null>(null);
+
+  // Position the badge so its top aligns with the top of the `.time`
+  useEffect(() => {
+    const updatePos = () => {
+      const el = badgeRef.current;
+      if (!el) return;
+      const parent = el.offsetParent as HTMLElement | null;
+      if (!parent) return;
+      const timeEl = parent.querySelector(`.${styles.time}`) as HTMLElement | null;
+      if (!timeEl) return;
+      // place badge top at the same offset as the top of the time element
+      const top = timeEl.offsetTop;
+      el.style.top = `${top}px`;
+      el.style.left = '50%';
+      el.style.transform = 'translateX(-50%)';
+    };
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    const ro = new MutationObserver(updatePos);
+    ro.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      ro.disconnect();
+    };
+  }, []);
+
+  const stateClass = onAir === null ? '' : (onAir ? styles.on : styles.off)
+  const cls = `${styles.badge} ${stateClass} ${styles.onAirBadge}`.trim()
   return (
-    <div className={cls}>
+    <div ref={badgeRef} className={cls}>
       {onAir === null ? '…' : onAir ? 'On Air' : 'Standby'}
     </div>
   );

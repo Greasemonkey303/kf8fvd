@@ -41,8 +41,11 @@ export default function AdminHeroPage() {
     setLoading(false)
   }
 
-  useEffect(()=>{ load() }, [])
-
+  // Ensure we fetch hero + images when the admin page mounts so reloads show current data
+  useEffect(() => {
+    load()
+  }, [])
+  
   // When hero changes (id becomes available), update draft key
   useEffect(()=>{
     if (hero && hero.id) {
@@ -189,10 +192,43 @@ export default function AdminHeroPage() {
   }
 
   async function deleteImage(id: number) {
+    const res = await fetch(`/api/admin/hero/image?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
+    if (!res.ok) {
+      let msg = `Delete failed: ${res.status} ${res.statusText}`
+      try {
+        const j = await res.json()
+        if (j?.error) msg = String(j.error)
+        else if (j?.message) msg = String(j.message)
+      } catch {}
+      throw new Error(msg)
+    }
+    await load()
+    return true
+  }
+
+  // state for delete confirmation modal
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; url?: any; alt?: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [ariaMessage, setAriaMessage] = useState<string>('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setAriaMessage('Deleting image…')
+    setDeleting(true)
+    setDeleteError(null)
     try {
-      await fetch(`/api/admin/hero/image?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
-      await load()
-    } catch (e) { console.error(e) }
+      await deleteImage(deleteTarget.id)
+      setAriaMessage('Image deleted')
+      setDeleteTarget(null)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('confirmDelete error', err)
+      setDeleteError(msg)
+      setAriaMessage('Delete failed')
+    }
+    setDeleting(false)
+    setTimeout(() => setAriaMessage(''), 2200)
   }
 
   return (
@@ -263,8 +299,8 @@ export default function AdminHeroPage() {
                             <div style={{marginTop:8, width:'100%', height:180, overflow:'hidden', borderRadius:10}}>
                               <img src={getPreviewSrc(featured.url)} alt={featured.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
                             </div>
-                            <div style={{display:'flex', gap:8, marginTop:8, alignItems:'center'}}>
-                              <button className={styles.btnGhostSmall} onClick={()=>deleteImage(featured.id)}>Delete</button>
+                              <div style={{display:'flex', gap:8, marginTop:8, alignItems:'center'}}>
+                              <button className={styles.btnGhostSmall} onClick={() => setDeleteTarget({ id: featured.id, url: featured.url, alt: featured.alt })}>Delete</button>
                               {editingId === featured.id ? (
                                 <div style={{display:'flex', gap:8, alignItems:'center'}}>
                                   <input value={editingAlt} onChange={e=>setEditingAlt(e.target.value)} className={styles.formInput} style={{width:180}} />
@@ -290,7 +326,7 @@ export default function AdminHeroPage() {
                                 </div>
                                 <div style={{display:'flex', gap:6, marginTop:6, alignItems:'center'}}>
                                   <button className={styles.btnGhostSmall} onClick={()=>setFeaturedImage(img.id)}>Feature</button>
-                                  <button className={styles.btnGhostSmall} onClick={()=>deleteImage(img.id)}>Delete</button>
+                                  <button className={styles.btnGhostSmall} onClick={()=>setDeleteTarget({ id: img.id, url: img.url, alt: img.alt })}>Delete</button>
                                   {editingId === img.id ? (
                                     <>
                                       <input value={editingAlt} onChange={e=>setEditingAlt(e.target.value)} className={styles.formInput} style={{width:120}} />
@@ -314,6 +350,51 @@ export default function AdminHeroPage() {
                       Upload image
                     </label>
                     <div className={styles.smallMuted} style={{marginTop:8}}>Uploaded images will be stored and can be featured.</div>
+
+                    {/* Gradient upload slider / progress indicator */}
+                    {(uploading || uploadProgress !== null) && (
+                      <div className={styles.uploadWrapper}>
+                        <div className={styles.uploadProgress} aria-hidden>
+                          <div className={styles.uploadFill} style={{ width: `${uploadProgress ?? 0}%` }} />
+                          <div className={styles.uploadThumb} style={{ left: `${uploadProgress ?? 0}%` }} />
+                        </div>
+                        <div className={styles.uploadInfoRow}>
+                          <div className={styles.uploadPercent}>{uploadProgress != null ? `${uploadProgress}%` : 'Uploading…'}</div>
+                          <div className={styles.smallMuted} style={{fontSize:12}}>{uploadSuccess ? 'Ready' : 'Uploading...'}</div>
+                        </div>
+                      </div>
+                    )}
+                          {/* Delete confirmation modal */}
+                          {deleteTarget && (
+                            <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="delete-image-title">
+                              <div className={styles.modalContent}>
+                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
+                                  <h4 id="delete-image-title" style={{margin:0}}>Delete image</h4>
+                                  <div>
+                                    <button className={styles.btnGhostSmall} onClick={() => { setDeleteTarget(null); setDeleteError(null); }} aria-label="Close">Close</button>
+                                  </div>
+                                </div>
+                                <p className={styles.smallMuted}>Are you sure you want to delete this image? This action cannot be undone.</p>
+                                <div style={{display:'flex', gap:12, marginTop:12, alignItems:'center'}}>
+                                  <div style={{width:120,height:80,overflow:'hidden',borderRadius:8,background:'#021022'}}>
+                                    <img src={getPreviewSrc(deleteTarget.url)} alt={deleteTarget.alt || ''} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+                                  </div>
+                                  <div style={{flex:1}}>
+                                    <div style={{fontWeight:700}}>{deleteTarget.alt || 'Untitled image'}</div>
+                                    <div className={styles.smallMuted} style={{marginTop:6}}>This will remove the image from the hero images list and delete the object from storage.</div>
+                                    {deleteError && <div role="alert" className={styles.modalError} style={{marginTop:8}}>{deleteError}</div>}
+                                  </div>
+                                </div>
+                                <div style={{display:'flex', gap:8, justifyContent:'flex-end', marginTop:16}}>
+                                  <button className={styles.btnGhost} onClick={() => { setDeleteTarget(null); setDeleteError(null); }} disabled={deleting}>Cancel</button>
+                                  <button className={styles.btnDanger} onClick={confirmDelete} disabled={deleting}>{deleting ? (<span style={{display:'inline-flex', alignItems:'center', gap:8}}><span className={styles.spinner} style={{width:14, height:14}} />Deleting…</span>) : 'Delete'}</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* ARIA live region for announcements */}
+                          <div role="status" aria-live="polite" aria-atomic="true" className="sr-offscreen">{ariaMessage}</div>
                   </div>
                 </div>
               </Card>
