@@ -1,9 +1,11 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Card } from '@/components';
+import styles from '../../styles/login.module.css'
+import SegmentedOtp from '../../components/auth/SegmentedOtp'
 
 export default function SignInPage() {
   const router = useRouter();
@@ -18,6 +20,13 @@ export default function SignInPage() {
   const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
   const [cfToken, setCfToken] = useState<string | null>(null)
   const cfIntervalRef = React.useRef<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
+  const emailRef = useRef<HTMLInputElement | null>(null)
+  const [codeRequested, setCodeRequested] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   useEffect(()=>{
     if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
@@ -65,68 +74,191 @@ export default function SignInPage() {
     return () => { if (cfIntervalRef.current) clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
   }, [])
 
+  // autofocus email input on mount
+  useEffect(()=>{
+    try { emailRef.current?.focus() } catch {}
+  }, [])
+
+  // countdown for resend cooldown
+  useEffect(()=>{
+    if (!resendCooldown) return
+    const t = window.setInterval(()=>{
+      setResendCooldown(c=> {
+        if (c <= 1) { window.clearInterval(t); return 0 }
+        return c - 1
+      })
+    }, 1000)
+    return ()=> window.clearInterval(t)
+  }, [resendCooldown])
+
+  const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) return;
-    setError(null);
-    const callback = (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('callbackUrl') : null) || '/admin'
-    // include turnstile token if available
-    const cfTokenVal = cfToken || (typeof window !== 'undefined' ? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value : undefined)
-    const res = await signIn('credentials', { redirect: false, email, password, callbackUrl: callback, remember: remember ? 'true' : 'false', cf_turnstile_response: cfTokenVal });
-    if (res?.error) {
-      setError('Invalid credentials')
+    e.preventDefault()
+    setError(null)
+    setFieldErrors({})
+    // client-side validation
+    if (!email || !isValidEmail(email)) {
+      setFieldErrors({ email: 'Please enter a valid email address.' })
+      try { emailRef.current?.focus() } catch {}
       return
     }
+    if (!password) {
+      setFieldErrors({ password: 'Please enter your password.' })
+      return
+    }
+
+    // Ensure Turnstile token present before sending when requesting code
+    const cfTokenVal = cfToken || (typeof window !== 'undefined' ? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value : undefined)
+    if (!cfTokenVal) {
+      setError('Please complete the CAPTCHA to continue.')
+      return
+    }
+
+    // Request a 2FA code to be emailed.
+    setLoading(true)
     try {
-      if (remember) localStorage.setItem('kf8fvd_remember_email', email)
-      else localStorage.removeItem('kf8fvd_remember_email')
-    } catch { }
-    router.push(callback)
-  };
+      const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, cf_turnstile_response: cfTokenVal }) })
+      const j = await res.json()
+      if (!res.ok || j?.error) {
+        setError(j?.error || 'Sign in request failed')
+        try { if ((window as any).turnstile && cfWidgetId != null) (window as any).turnstile.reset(cfWidgetId) } catch {}
+        setCfToken(null)
+        return
+      }
+      setCodeRequested(true)
+      setResendCooldown(45)
+      try { if (remember) localStorage.setItem('kf8fvd_remember_email', email) } catch {}
+    } catch (err: any) {
+      setError(err?.message || 'Request failed')
+    } finally { setLoading(false) }
+  }
+
+  // Primary form action: either request code (initial) or verify OTP (when codeRequested)
+  const handlePrimary = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!codeRequested) return handleSubmit(e)
+    return handleVerify()
+  }
+
+  // Verify OTP and complete sign-in using next-auth credentials provider
+  const handleVerify = async () => {
+    setError(null)
+    if (!otp || otp.trim().length === 0) return setError('Enter the 6-digit code')
+    setLoading(true)
+    try {
+      const callback = (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('callbackUrl') : null) || '/admin'
+      const res = await signIn('credentials', { redirect: false, email, password, otp: otp.trim(), callbackUrl: callback, remember: remember ? 'true' : 'false' })
+      if (res?.error) {
+        setError(res.error || 'Verification failed')
+        return
+      }
+      try { if (remember) localStorage.setItem('kf8fvd_remember_email', email) } catch {}
+      router.push(callback)
+    } catch (err:any) { setError(err?.message || 'Verification failed') }
+    finally { setLoading(false) }
+  }
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, cf_turnstile_response: cfToken || null }) })
+      const j = await res.json()
+      if (!res.ok || j?.error) return setError(j?.error || 'Resend failed')
+      setResendCooldown(45)
+    } catch (e:any) { setError(e?.message || 'Resend failed') }
+    finally { setLoading(false) }
+  }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <Card title="Sign In" subtitle="Enter your credentials">
-          <form onSubmit={handleSubmit} className="form-grid" suppressHydrationWarning>
-            <label>
-              <div className="field-label">Email</div>
-              <input
-                required
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="form-input"
-                placeholder="you@example.com"
-              />
-            </label>
+    <main className={`${styles.authMain} page-pad`}>
+      <div className={styles.center}>
+        <Card id="signin-card" title="Sign In" subtitle="Enter your credentials">
+          <form onSubmit={handlePrimary} className={styles.form} suppressHydrationWarning aria-labelledby="signin-card-title">
+            <div>
+              <label>
+                <div className={styles.label}>Email</div>
+                <input
+                  name="email"
+                  ref={emailRef}
+                  autoComplete="email"
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined })); }}
+                  className={styles.input}
+                  placeholder="you@example.com"
+                  aria-invalid={!!fieldErrors.email}
+                  aria-describedby={fieldErrors.email ? 'err-email' : undefined}
+                />
+              </label>
+              {fieldErrors.email && <div id="err-email" className={styles.error} role="alert">{fieldErrors.email}</div>}
+            </div>
 
-            <label>
-              <div className="field-label">Password</div>
-              <input
-                required
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="form-input"
-                placeholder="Your password"
-              />
-            </label>
+            <div>
+              <label>
+                <div className={styles.label}>Password</div>
+                <div className={styles.otpRow}>
+                  <input
+                    name="password"
+                    autoComplete="current-password"
+                    required
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined })); }}
+                    className={styles.input}
+                    placeholder="Your password"
+                    aria-invalid={!!fieldErrors.password}
+                    aria-describedby={fieldErrors.password ? 'err-password' : undefined}
+                  />
+                  <button type="button" onClick={() => setShowPassword(s => !s)} aria-pressed={showPassword} className={styles.ghostButton}>{showPassword ? 'Hide' : 'Show'}</button>
+                </div>
+              </label>
+              {fieldErrors.password && <div id="err-password" className={styles.error} role="alert">{fieldErrors.password}</div>}
+              <div style={{marginTop:8}}><a href="/forgot-password" className={styles.helperLink}>Forgot password?</a></div>
+            </div>
 
             {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
-              <div style={{marginTop:12}}>
-                <div id="cf-turnstile-container"></div>
+              <div className={styles.turnstile} role="region" aria-describedby="turnstile-desc">
+                <div id="cf-turnstile-container" aria-hidden={false}></div>
+                <div id="turnstile-desc" className={styles.smallText}>Complete the CAPTCHA to continue.</div>
               </div>
             )}
 
-            {error && <div className="text-red-600">{error}</div>}
+            {error && <div className={styles.error} role="alert" aria-live="assertive">{error}</div>}
+            {codeRequested && <div className={styles.success} role="status">A verification code was sent to your email. Enter it below to finish signing in.</div>}
+            {codeRequested && (
+              <div style={{marginTop:12}}>
+                <div className={styles.label}>Verification code</div>
+                <div className={styles.otpDigits}>
+                  <SegmentedOtp length={6} value={otp} onChange={(v)=> setOtp(v)} autoFocus inputClassName={styles.otpCell} />
+                </div>
+                <div style={{display:'flex', gap:8, marginTop:8}}>
+                  <button type="button" onClick={handleResend} className={styles.ghostButton} disabled={resendCooldown>0 || loading}>{resendCooldown>0 ? `Resend (${resendCooldown})` : 'Resend code'}</button>
+                </div>
+              </div>
+            )}
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:16}}>
-              <label style={{display:'flex', alignItems:'center', gap:8}}>
-                <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} />
-                <span style={{fontSize:13, color:'var(--white-90)'}}>Remember me</span>
+              <label className={styles.switch}>
+                <input type="checkbox" name="remember" className={styles.switchInput} checked={remember} onChange={e=>setRemember(e.target.checked)} aria-label="Remember me" />
+                <span className={styles.switchTrack}><span className={styles.switchThumb} aria-hidden /></span>
+                <span className={styles.smallText}>Remember me</span>
               </label>
               <div>
-                <button type="submit" className="btn-ghost btn-ghost-sm">Sign In</button>
+                <button type="submit" className={styles.primaryButton} disabled={loading || (!codeRequested && !cfToken) || (codeRequested && otp.trim().length < 6)} aria-disabled={loading || (!codeRequested && !cfToken) || (codeRequested && otp.trim().length < 6)}>
+                  {loading ? (
+                    <span style={{display:'inline-flex', alignItems:'center', gap:8}}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style={{marginRight:6}}>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" fill="none" />
+                        <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none">
+                          <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite" />
+                        </path>
+                      </svg>
+                      {codeRequested ? 'Verifying…' : 'Signing in…'}
+                    </span>
+                  ) : (codeRequested ? 'Verify & Sign In' : 'Sign In')}
+                </button>
               </div>
             </div>
           </form>

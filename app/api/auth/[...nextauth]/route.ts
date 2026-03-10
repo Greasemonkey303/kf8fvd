@@ -34,13 +34,20 @@ export const authOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
         remember: { label: 'Remember', type: 'text' },
+        otp: { label: 'OTP', type: 'text' },
         cf_turnstile_response: { label: 'Turnstile', type: 'text' },
       },
       async authorize(credentials) {
-        // if server-side Turnstile secret is configured, require and verify the token
+        try {
+          // eslint-disable-next-line no-console
+          console.log('[auth] authorize called for', { email: (credentials as any)?.email ? String((credentials as any).email) : null, hasOtp: !!(credentials as any)?.otp })
+        } catch (_) {}
+        // If a server-side Turnstile secret is configured and the client provided a token, verify it.
+        // We only verify when a token is present so that the separate 2FA request flow (which verifies Turnstile)
+        // can complete the authentication without requiring a fresh token on the final OTP submit.
         try {
           const token = (credentials as any)?.cf_turnstile_response || (credentials as any)?.['cf-turnstile-response'] || null
-          if (process.env.CF_TURNSTILE_SECRET) {
+          if (process.env.CF_TURNSTILE_SECRET && token) {
             const ok = await verifyTurnstileToken(String(token || ''))
             if (!ok) return null
           }
@@ -55,9 +62,35 @@ export const authOptions = {
         if (!user.is_active) return null
         const valid = user.hashed_password ? bcrypt.compareSync(credentials.password, user.hashed_password) : false
         if (!valid) return null
-        // include remember flag from credentials (client sends 'true' when checked)
-        const remember = credentials?.remember === 'true' || credentials?.remember === 'on' || credentials?.remember === '1'
-        return { id: String(user.id), name: user.name || '', email: user.email, remember }
+
+        // If an OTP was included, validate it and complete sign-in. Otherwise, require the separate
+        // 2FA request flow to send/verify the code.
+        const otp = (credentials as any)?.otp
+        if (otp) {
+          // Ensure table exists (best-effort)
+          try {
+            await query('CREATE TABLE IF NOT EXISTS two_factor_codes (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, email VARCHAR(255), code_hash VARCHAR(255), expires_at DATETIME, used_at DATETIME DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX (user_id), INDEX (email))')
+          } catch (e) {
+            // ignore create table errors
+          }
+
+          const codes = await query<any[]>('SELECT id, code_hash FROM two_factor_codes WHERE user_id = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1', [user.id])
+          const codeRow = Array.isArray(codes) && codes.length ? codes[0] : null
+          try { /* eslint-disable no-console */ console.log('[auth] verifying otp for user', user.id, { foundCode: !!codeRow }) } catch (_) {}
+          if (!codeRow) return null
+          const ok = bcrypt.compareSync(String(otp), codeRow.code_hash)
+          try { /* eslint-disable no-console */ console.log('[auth] otp compare result', !!ok) } catch (_) {}
+          if (!ok) return null
+          try { await query('UPDATE two_factor_codes SET used_at = NOW() WHERE id = ?', [codeRow.id]) } catch (e) {}
+
+          const remember = credentials?.remember === 'true' || credentials?.remember === 'on' || credentials?.remember === '1'
+          return { id: String(user.id), name: user.name || '', email: user.email, remember }
+        }
+
+        // If no OTP provided, do not allow sign-in from this authorize call. The client should first
+        // call the 2FA request endpoint which sends the code to the user's email, then submit the OTP
+        // in a follow-up signIn('credentials') call.
+        return null
       }
     })
   ],
