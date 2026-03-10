@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { query } from '../../../../lib/db'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import { isLocked, incrementFailure, resetKey } from '@/lib/rateLimiter'
 
 async function verifyTurnstileToken(token?: string) {
   // allow bypass via env var for troubleshooting
@@ -56,12 +57,20 @@ export const authOptions = {
         }
 
         if (!credentials?.email || !credentials?.password) return null
+        const email = String(credentials.email).trim().toLowerCase()
+        const emailKey = `email:${email}`
+        if (isLocked(emailKey)) return null
         const rows = await query<{ id: number; name?: string; email: string; hashed_password?: string; is_active: number }[]>('SELECT id, name, email, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [credentials.email])
         const user = Array.isArray(rows) && rows.length ? rows[0] : null
         if (!user) return null
         if (!user.is_active) return null
         const valid = user.hashed_password ? bcrypt.compareSync(credentials.password, user.hashed_password) : false
-        if (!valid) return null
+        if (!valid) {
+          try { incrementFailure(emailKey) } catch (_) {}
+          return null
+        }
+        // reset failures on successful password verify
+        try { resetKey(emailKey) } catch (_) {}
 
         // If an OTP was included, validate it and complete sign-in. Otherwise, require the separate
         // 2FA request flow to send/verify the code.
@@ -80,7 +89,10 @@ export const authOptions = {
           if (!codeRow) return null
           const ok = bcrypt.compareSync(String(otp), codeRow.code_hash)
           try { /* eslint-disable no-console */ console.log('[auth] otp compare result', !!ok) } catch (_) {}
-          if (!ok) return null
+          if (!ok) {
+            try { incrementFailure(emailKey) } catch (_) {}
+            return null
+          }
           try { await query('UPDATE two_factor_codes SET used_at = NOW() WHERE id = ?', [codeRow.id]) } catch (e) {}
 
           const remember = credentials?.remember === 'true' || credentials?.remember === 'on' || credentials?.remember === '1'

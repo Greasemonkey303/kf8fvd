@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { isLocked, incrementFailure, resetKey } from '@/lib/rateLimiter'
 
 async function verifyTurnstileToken(token?: string) {
   const bypass = (process.env.CF_TURNSTILE_BYPASS || '').toLowerCase()
@@ -29,6 +30,12 @@ export async function POST(req: Request) {
     const cfToken = body?.cf_turnstile_response || null
     if (!email || !password) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
+    // rate-limit: per-IP and per-email
+    const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown').toString().split(',')[0]
+    const ipKey = `ip:${ip}`
+    const emailKey = `email:${email}`
+    if (isLocked(ipKey) || isLocked(emailKey)) return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
+
     // Allow bypassing Turnstile for local debug by sending `_bypass: '1'` in the request body.
     if (process.env.CF_TURNSTILE_SECRET && String(body?._bypass || '') !== '1') {
       const ok = await verifyTurnstileToken(String(cfToken || ''))
@@ -41,7 +48,16 @@ export async function POST(req: Request) {
     if (!user.is_active) return NextResponse.json({ error: 'Account inactive' }, { status: 403 })
 
     const valid = user.hashed_password ? bcrypt.compareSync(password, user.hashed_password) : false
-    if (!valid) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    if (!valid) {
+      // record failures for IP and email
+      try { incrementFailure(ipKey) } catch (_) {}
+      try { incrementFailure(emailKey) } catch (_) {}
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+
+    // on success, reset failure counters for this IP/email
+    try { resetKey(ipKey) } catch (_) {}
+    try { resetKey(emailKey) } catch (_) {}
 
     // Ensure storage table exists (best-effort)
     try {
