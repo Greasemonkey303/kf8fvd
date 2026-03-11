@@ -98,3 +98,27 @@ SIEM_ENDPOINT=https://siem.example.com/ingest SIEM_API_KEY=XXX npm run ship:admi
 An example systemd unit is provided at `deploy/admin_actions_shipper.service`.
 
 
+CSP reporting (staging)
+----------------------
+
+To safely tighten CSP in staging before production, enable report-only mode which sends violation reports to the app for inspection:
+
+```bash
+# set this in your staging environment
+CSP_REPORT_ONLY=1
+# start the app and exercise pages; reports will be POSTed to /api/csp/report
+```
+
+Collected reports are stored in the `csp_reports` table. You can view recent reports locally with:
+
+```bash
+node scripts/query_csp_reports.js
+```
+
+Apply the migration added for CSP reporting:
+
+```powershell
+node scripts/apply_migration.js migrations/2026_03_12_csp_reports.sql
+```
+
+

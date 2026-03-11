@@ -19,6 +19,8 @@ const connectSrc = isProd
   ? `connect-src 'self' ${siteOrigin} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
   : `connect-src 'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`;
 
+const reportUri = `${siteOrigin}/api/csp/report`
+
 const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -28,8 +30,11 @@ const CSP = [
   connectSrc,
   scriptSrc,
   styleSrc,
+  `report-uri ${reportUri}`,
   "frame-ancestors 'none'",
 ].join('; ');
+
+const cspHeaderKey = (process.env.CSP_REPORT_ONLY === '1' || process.env.CSP_REPORT_ONLY === 'true') ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -38,7 +43,7 @@ const nextConfig: NextConfig = {
         // apply these headers to all routes
         source: '/(.*)',
         headers: [
-          { key: 'Content-Security-Policy', value: CSP },
+          { key: cspHeaderKey, value: CSP },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

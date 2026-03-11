@@ -27,8 +27,10 @@ const nextConfig = {
     const connectSrc = isProd
       ? `'self' ${siteOrigin} https://api.sendgrid.com`
       : `'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com ws: wss:`
+    const reportUri = `${siteOrigin}/api/csp/report`
+    const csp = `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; connect-src ${connectSrc}; report-uri ${reportUri};`
 
-    const csp = `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; connect-src ${connectSrc};`
+    const cspHeaderKey = (process.env.CSP_REPORT_ONLY === '1' || process.env.CSP_REPORT_ONLY === 'true') ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'
 
     const headers = [
       { key: 'X-Frame-Options', value: 'DENY' },
@@ -36,7 +38,7 @@ const nextConfig = {
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=()' },
       { key: 'X-XSS-Protection', value: '0' },
-      { key: 'Content-Security-Policy', value: csp }
+      { key: cspHeaderKey, value: csp }
     ]
 
     if (isProd) {
