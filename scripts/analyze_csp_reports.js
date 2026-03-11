@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Query recent CSP reports from the DB (useful when running staging with CSP_REPORT_ONLY=1)
+// Analyze CSP reports in the DB and summarize top violated directives and blocked URIs
 const fs = require('fs')
 const path = require('path')
 const mysql = require('mysql2/promise')
@@ -31,8 +31,28 @@ async function main(){
   const database = env.DB_NAME || process.env.DB_NAME || 'kf8fvd'
 
   const conn = await mysql.createConnection({ host, port, user, password, database })
-  const [rows] = await conn.execute('SELECT id, document_uri, blocked_uri, violated_directive, user_agent, received_at FROM csp_reports ORDER BY id DESC LIMIT 50')
-  console.table(rows)
+  const [rows] = await conn.execute('SELECT violated_directive, blocked_uri, COUNT(*) as cnt FROM csp_reports GROUP BY violated_directive, blocked_uri ORDER BY cnt DESC LIMIT 100')
+  if (!rows || rows.length === 0) {
+    console.log('No CSP reports found')
+    await conn.end()
+    return
+  }
+
+  const dirMap = {}
+  const uriMap = {}
+  for (const r of rows) {
+    const d = r.violated_directive || '<unknown>'
+    const u = r.blocked_uri || '<inline or data>'
+    dirMap[d] = (dirMap[d] || 0) + (r.cnt||0)
+    uriMap[u] = (uriMap[u] || 0) + (r.cnt||0)
+  }
+
+  console.log('\nTop violated directives:')
+  Object.entries(dirMap).sort((a,b)=>b[1]-a[1]).slice(0,20).forEach(([k,v])=>console.log(`${v}\t${k}`))
+
+  console.log('\nTop blocked URIs:')
+  Object.entries(uriMap).sort((a,b)=>b[1]-a[1]).slice(0,50).forEach(([k,v])=>console.log(`${v}\t${k}`))
+
   await conn.end()
 }
 

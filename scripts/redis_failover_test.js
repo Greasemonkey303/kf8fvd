@@ -2,9 +2,19 @@
 // Simple Redis failover/connectivity tester. Provide REDIS_FAILOVER_URLS as
 // comma-separated Redis URLs (or set REDIS_URL). The script will attempt to
 // connect to each and perform a write/read to verify availability.
-const Redis = require('ioredis')
+const ioredisImport = require('ioredis')
+const Redis = (ioredisImport && ioredisImport.default) ? ioredisImport.default : ioredisImport
 
-const urlsEnv = process.env.REDIS_FAILOVER_URLS || process.env.REDIS_URL || ''
+(function normalizeEnv(){
+  // ensure we coerce different environment shapes into a comma-separated string
+  let raw = process.env.REDIS_FAILOVER_URLS || process.env.REDIS_URL || ''
+  if (Array.isArray(raw)) raw = raw.join(',')
+  if (typeof raw === 'object' && raw !== null) raw = JSON.stringify(raw)
+  raw = String(raw || '')
+  process.env.__REDIS_FAILOVER_NORMALIZED__ = raw
+})()
+
+const urlsEnv = process.env.__REDIS_FAILOVER_NORMALIZED__ || ''
 if (!urlsEnv) {
   console.error('No REDIS_FAILOVER_URLS or REDIS_URL provided')
   process.exit(2)
