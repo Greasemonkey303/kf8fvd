@@ -9,6 +9,9 @@
     "lint": "eslint . --ext .js,.ts,.tsx",
     "scan:secrets": "node tools/scan-secrets.js",
     "prepare": "husky install",
+    "cleanup:admin_actions": "node scripts/cleanup_admin_actions.js",
+    "e2e:scaffold": "echo 'Playwright scaffold in tests/playwright'",
+    "monitor:auth": "node scripts/monitor_auth_locks.js",
     "audit": "npm audit --audit-level=moderate",
     "audit:fix": "npm audit fix"
   },
@@ -28,7 +31,8 @@
     "next-auth": "^4.24.13",
     "zxcvbn": "^4.4.2",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "ioredis": "^5.3.2"
   },
   "devDependencies": {
     "@types/node": "^20.19.35",

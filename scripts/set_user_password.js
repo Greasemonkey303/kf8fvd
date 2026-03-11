@@ -43,6 +43,35 @@ async function main(){
     console.log('Updating password for', email)
     const [res] = await conn.execute('UPDATE users SET hashed_password = ? WHERE email = ?', [hash, email])
     console.log('Update result:', res && res.affectedRows)
+
+    // Clear rate-limiter locks in Redis and remove DB auth_locks for this email
+    try {
+      const Redis = require('ioredis')
+      const redisUrl = env.REDIS_URL || process.env.REDIS_URL
+      if (redisUrl) {
+        const rclient = new Redis(redisUrl)
+        const keyName = `email:${email}`
+        const enc = encodeURIComponent(keyName)
+        const countKey = `rl:count:${enc}`
+        const lockKey = `rl:lock:${enc}`
+        const deleted = await rclient.del(countKey, lockKey)
+        console.log('Redis keys deleted:', countKey, lockKey, 'deletedCount=', deleted)
+        await rclient.quit()
+      } else {
+        console.log('No REDIS_URL found, skipping Redis unlock')
+      }
+    } catch (err) {
+      console.error('Redis unlock error:', err)
+    }
+
+    try {
+      const keyNameDb = `email:${email}`
+      const [delRes] = await conn.execute('DELETE FROM auth_locks WHERE key_name = ?', [keyNameDb])
+      console.log('Auth locks deleted:', (delRes && delRes.affectedRows) || 0)
+    } catch (err) {
+      console.error('Failed to delete auth_locks:', err)
+    }
+
     await conn.end()
     process.exit(0)
   } catch (err) {

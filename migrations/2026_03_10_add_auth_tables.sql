@@ -1,0 +1,34 @@
+-- Migration: create tables for two-factor codes, login attempts, and auth locks
+CREATE TABLE IF NOT EXISTS `two_factor_codes` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` BIGINT UNSIGNED DEFAULT NULL,
+  `email` VARCHAR(255) NOT NULL,
+  `code_hash` VARCHAR(255) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `used_at` DATETIME DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (`user_id`),
+  INDEX (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `login_attempts` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` BIGINT UNSIGNED DEFAULT NULL,
+  `email` VARCHAR(255) DEFAULT NULL,
+  `ip` VARCHAR(100) DEFAULT NULL,
+  `success` TINYINT(1) NOT NULL DEFAULT 0,
+  `reason` VARCHAR(255) DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (`email`),
+  INDEX (`ip`),
+  INDEX (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `auth_locks` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `key_name` VARCHAR(255) NOT NULL,
+  `locked_until` DATETIME NOT NULL,
+  `reason` VARCHAR(255) DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY (`key_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

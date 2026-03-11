@@ -34,3 +34,23 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Database migrations & admin utilities
+
+Run SQL migrations with the helper script:
+
+```powershell
+node scripts/apply_migration.js migrations/2026_03_10_add_auth_tables.sql
+node scripts/apply_migration.js migrations/2026_03_11_admin_actions.sql
+```
+
+Admin utilities and monitoring scripts:
+
+- `node scripts/check_db_locks.js` — show recent `auth_locks`, `login_attempts`, and `two_factor_codes` rows.
+- `node scripts/cleanup_admin_actions.js <days>` — delete `admin_actions` older than `<days>` (defaults to 365).
+- `node scripts/monitor_auth_locks.js` — print counts for `auth_locks`, `login_attempts`, and Redis `rl:*` keys.
+
+E2E testing:
+
+- A Playwright scaffold exists at `tests/playwright/placeholder.spec.ts`. Install Playwright and write tests in that folder for browser-driven flows (Turnstile requires a staging/test key).
+

@@ -59,14 +59,14 @@ export const authOptions = {
         if (!credentials?.email || !credentials?.password) return null
         const email = String(credentials.email).trim().toLowerCase()
         const emailKey = `email:${email}`
-        if (isLocked(emailKey)) return null
+          if (await isLocked(emailKey)) return null
         const rows = await query<{ id: number; name?: string; email: string; hashed_password?: string; is_active: number }[]>('SELECT id, name, email, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [credentials.email])
         const user = Array.isArray(rows) && rows.length ? rows[0] : null
         if (!user) return null
         if (!user.is_active) return null
         const valid = user.hashed_password ? bcrypt.compareSync(credentials.password, user.hashed_password) : false
         if (!valid) {
-          try { incrementFailure(emailKey) } catch (_) {}
+          try { await incrementFailure(emailKey, { reason: 'invalid_password' }) } catch (_) {}
           return null
         }
         // reset failures on successful password verify
@@ -90,7 +90,7 @@ export const authOptions = {
           const ok = bcrypt.compareSync(String(otp), codeRow.code_hash)
           try { /* eslint-disable no-console */ console.log('[auth] otp compare result', !!ok) } catch (_) {}
           if (!ok) {
-            try { incrementFailure(emailKey) } catch (_) {}
+            try { await incrementFailure(emailKey, { reason: 'invalid_otp' }) } catch (_) {}
             return null
           }
           try { await query('UPDATE two_factor_codes SET used_at = NOW() WHERE id = ?', [codeRow.id]) } catch (e) {}

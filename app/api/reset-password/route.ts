@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     // rate-limit by token / IP
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown').toString().split(',')[0]
     const ipKey = `ip:${ip}`
-    if (isLocked(ipKey)) return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
+    if (await isLocked(ipKey)) return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
 
     const tokenHash = sha256(token)
     // find token row
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       const found = await checkPwnedBySha1(sha1)
       if (found && found > 0) {
         // record a failure for IP to discourage brute-force
-        try { incrementFailure(ipKey) } catch (_) {}
+        try { await incrementFailure(ipKey) } catch (_) {}
         return NextResponse.json({ error: 'This password has been seen in data breaches; choose a different password.' }, { status: 400 })
       }
     } catch (e) {

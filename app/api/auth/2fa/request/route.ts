@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown').toString().split(',')[0]
     const ipKey = `ip:${ip}`
     const emailKey = `email:${email}`
-    if (isLocked(ipKey) || isLocked(emailKey)) return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
+    if (await isLocked(ipKey) || await isLocked(emailKey)) return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
 
     // Allow bypassing Turnstile for local debug by sending `_bypass: '1'` in the request body.
     if (process.env.CF_TURNSTILE_SECRET && String(body?._bypass || '') !== '1') {
@@ -50,14 +50,14 @@ export async function POST(req: Request) {
     const valid = user.hashed_password ? bcrypt.compareSync(password, user.hashed_password) : false
     if (!valid) {
       // record failures for IP and email
-      try { incrementFailure(ipKey) } catch (_) {}
-      try { incrementFailure(emailKey) } catch (_) {}
+      try { await incrementFailure(ipKey, { reason: 'invalid_password' }) } catch (_) {}
+      try { await incrementFailure(emailKey, { reason: 'invalid_password' }) } catch (_) {}
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
     // on success, reset failure counters for this IP/email
-    try { resetKey(ipKey) } catch (_) {}
-    try { resetKey(emailKey) } catch (_) {}
+    try { await resetKey(ipKey) } catch (_) {}
+    try { await resetKey(emailKey) } catch (_) {}
 
     // Ensure storage table exists (best-effort)
     try {
