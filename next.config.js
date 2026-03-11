@@ -24,7 +24,9 @@ const nextConfig = {
     const scriptSrc = isProd ? "'self'" : "'self' 'unsafe-inline' 'unsafe-eval'"
     const styleSrc = isProd ? "'self'" : "'self' 'unsafe-inline'"
     const imgSrc = isProd ? "'self' data: https:" : "'self' data: http: https:"
-    const connectSrc = isProd ? `"'self' ${siteOrigin} https://api.sendgrid.com"` : `"'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com ws: wss:"`
+    const connectSrc = isProd
+      ? `'self' ${siteOrigin} https://api.sendgrid.com`
+      : `'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com ws: wss:`
 
     const csp = `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; connect-src ${connectSrc};`
 

@@ -54,3 +54,47 @@ E2E testing:
 
 - A Playwright scaffold exists at `tests/playwright/placeholder.spec.ts`. Install Playwright and write tests in that folder for browser-driven flows (Turnstile requires a staging/test key).
 
+Playwright CI (staging)
+-----------------------
+
+Add repository secrets in GitHub for `SITE_URL`, `CF_TURNSTILE_SITEKEY`, `CF_TURNSTILE_SECRET`, `NEXTAUTH_SECRET`, DB and Redis connection variables. The workflow `.github/workflows/playwright.yml` will run Playwright tests against `SITE_URL` when those secrets are set.
+
+Quick start (local):
+
+```bash
+# install deps (this will be heavy: Playwright browsers)
+npm ci
+npx playwright install --with-deps
+npm run e2e
+```
+
+Redis failover & exporter
+-------------------------
+
+Run a quick connectivity test across multiple Redis endpoints:
+
+```bash
+# comma-separated URLs or set REDIS_URL
+REDIS_FAILOVER_URLS=redis://:pass@redis1:6379,redis://:pass@redis2:6379 npm run redis:failover-test
+```
+
+Start the Prometheus exporter which exposes metrics on `/metrics` (default port `9403`):
+
+```bash
+npm run exporter:start
+```
+
+Sample Prometheus alert rules are under `monitor/prometheus/auth_locks_alert.yml` (alert when `auth_locks_total > 0`).
+
+Admin actions shipper
+---------------------
+
+Ship `admin_actions` rows to an external SIEM by setting `SIEM_ENDPOINT` and optionally `SIEM_API_KEY`, then run:
+
+```bash
+SIEM_ENDPOINT=https://siem.example.com/ingest SIEM_API_KEY=XXX npm run ship:admin
+```
+
+An example systemd unit is provided at `deploy/admin_actions_shipper.service`.
+
+

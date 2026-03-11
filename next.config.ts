@@ -1,15 +1,33 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+const scriptSrc = isProd
+  ? "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
+  : "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'";
+
+const styleSrc = isProd
+  ? "style-src 'self' https://unpkg.com"
+  : "style-src 'self' 'unsafe-inline' https://unpkg.com";
+
+const imgSrc = isProd
+  ? "img-src 'self' data: https://*.gravatar.com https://www.google-analytics.com"
+  : "img-src 'self' data: http://127.0.0.1:9000 http://localhost:9000 https://*.gravatar.com https://www.google-analytics.com";
+
+const connectSrc = isProd
+  ? `connect-src 'self' ${siteOrigin} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
+  : `connect-src 'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`;
+
 const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "block-all-mixed-content",
   "font-src 'self' https://fonts.gstatic.com data:",
-  // allow local MinIO/dev hosts used for signed image URLs
-  "img-src 'self' data: http://127.0.0.1:9000 http://localhost:9000 https://*.gravatar.com https://www.google-analytics.com",
-  "connect-src 'self' https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov",
-  "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline' https://unpkg.com",
+  imgSrc,
+  connectSrc,
+  scriptSrc,
+  styleSrc,
   "frame-ancestors 'none'",
 ].join('; ');
 

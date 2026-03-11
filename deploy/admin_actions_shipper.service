@@ -1,0 +1,15 @@
+[Unit]
+Description=KF8FVD admin_actions shipper
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/kf8fvd
+ExecStart=/usr/bin/node /var/www/kf8fvd/scripts/ship_admin_actions.js
+Restart=on-failure
+Environment=SIEM_ENDPOINT=https://siem.example.com/ingest
+Environment=SIEM_API_KEY=replace-with-key
+
+[Install]
+WantedBy=multi-user.target

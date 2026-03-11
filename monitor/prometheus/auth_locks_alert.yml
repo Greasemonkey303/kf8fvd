@@ -1,0 +1,20 @@
+groups:
+  - name: auth_locks.rules
+    rules:
+      - alert: AuthLocksDetected
+        expr: auth_locks_total > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Auth locks detected"
+          description: "Auth locks count is > 0, possible brute-force activity."
+
+      - alert: RedisRLKeysHigh
+        expr: redis_rl_keys_total > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Many rate-limiter keys in Redis"
+          description: "redis rl:* keys exceed threshold (50). Investigate unusual auth activity."

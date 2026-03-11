@@ -12,6 +12,11 @@
     "cleanup:admin_actions": "node scripts/cleanup_admin_actions.js",
     "e2e:scaffold": "echo 'Playwright scaffold in tests/playwright'",
     "monitor:auth": "node scripts/monitor_auth_locks.js",
+    "exporter:start": "node monitor/exporter.js",
+    "redis:failover-test": "node scripts/redis_failover_test.js",
+    "ship:admin": "node scripts/ship_admin_actions.js",
+    "e2e": "npx playwright test",
+    "e2e:ci": "npx playwright test --reporter=github",
     "audit": "npm audit --audit-level=moderate",
     "audit:fix": "npm audit fix"
   },
@@ -35,6 +40,7 @@
     "ioredis": "^5.3.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.45.0",
     "@types/node": "^20.19.35",
     "@types/react": "^19",
     "@types/react-dom": "^19",

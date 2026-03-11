@@ -1,0 +1,10 @@
+# Example Prometheus scrape configuration for the auth exporter
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'kf8fvd_auth_exporter'
+    static_configs:
+      - targets: ['EXPORTER_HOST:9403']
+        labels:
+          service: 'auth_exporter'
