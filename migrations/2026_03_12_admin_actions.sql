@@ -1,0 +1,13 @@
+-- Migration: admin actions audit table
+CREATE TABLE IF NOT EXISTS `admin_actions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `actor` VARCHAR(255) NOT NULL,
+  `actor_type` VARCHAR(50) NOT NULL,
+  `action` VARCHAR(100) NOT NULL,
+  `target_key` VARCHAR(255) DEFAULT NULL,
+  `reason` VARCHAR(255) DEFAULT NULL,
+  `ip` VARCHAR(100) DEFAULT NULL,
+  `meta` JSON DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (`actor`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

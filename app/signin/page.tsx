@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
+import { tlog } from '@/lib/turnstileDebug';
+import { loadTurnstileScript, waitForTurnstileReady } from '@/lib/turnstileLoader';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Card } from '@/components';
@@ -9,6 +11,7 @@ import SegmentedOtp from '../../components/auth/SegmentedOtp'
 
 export default function SignInPage() {
   const router = useRouter();
+  const isDev = (process.env.NODE_ENV || '') !== 'production'
   const [email, setEmail] = useState<string>(() => {
     try { return localStorage.getItem('kf8fvd_remember_email') || '' } catch { return '' }
   })
@@ -19,7 +22,7 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
   const [cfToken, setCfToken] = useState<string | null>(null)
-  const cfIntervalRef = React.useRef<number | null>(null)
+  // removed interval polling; use loader instead
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
@@ -29,49 +32,42 @@ export default function SignInPage() {
   const [resendCooldown, setResendCooldown] = useState(0)
 
   useEffect(()=>{
-    if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
-      const id = 'cf-turnstile-script'
-      if (!document.getElementById(id)) {
-        const s = document.createElement('script')
-        s.id = id
-        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-        s.async = true
-        s.defer = true
-        document.body.appendChild(s)
-      }
-    }
-  }, [])
-
-  useEffect(()=>{
     const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
+    tlog('signin loader start', { sitekeyPresent: !!sitekey })
     if (!sitekey) return
-
-    const tryRender = () => {
-      // @ts-ignore
-      if (typeof window === 'undefined' || !(window as any).turnstile) return
-      const container = document.getElementById('cf-turnstile-container')
-      if (!container) return
-      if ((container as HTMLElement).dataset?.turnstileRendered === '1') {
-        if (cfIntervalRef.current) { clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
-        return
-      }
+    let cancelled = false
+    ;(async () => {
       try {
-        // @ts-ignore
-        const id = (window as any).turnstile.render(container, {
-          sitekey,
-          callback: (token: string) => setCfToken(token),
-        })
-        setCfWidgetId(typeof id === 'number' ? id : null)
-        ;(container as HTMLElement).dataset.turnstileRendered = '1'
-        if (cfIntervalRef.current) { clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+        await loadTurnstileScript().catch((e)=> { tlog('signin load script failed', e); throw e })
+        tlog('signin script loaded')
+        await waitForTurnstileReady(8000).catch((e)=> { tlog('signin wait ready failed', e); throw e })
+        if (cancelled) return
+        const container = document.getElementById('cf-turnstile-container')
+        if (!container) { tlog('signin: container missing after ready'); return }
+        try {
+          // @ts-ignore
+          const id = (window as any).turnstile.render(container, {
+            sitekey,
+            callback: (token: string) => {
+              tlog('signin callback token', token)
+              setCfToken(token)
+              try {
+                const inp = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
+                if (inp) inp.value = token
+              } catch {}
+            }
+          })
+          tlog('signin render success', { id })
+          setCfWidgetId(typeof id === 'number' ? id : null)
+          ;(container as HTMLElement).dataset.turnstileRendered = '1'
+        } catch (err) {
+          tlog('signin render error', err)
+        }
       } catch (err) {
-        // ignore and retry
+        tlog('signin loader error', err)
       }
-    }
-
-    tryRender()
-    cfIntervalRef.current = window.setInterval(tryRender, 500)
-    return () => { if (cfIntervalRef.current) clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+    })()
+    return () => { cancelled = true }
   }, [])
 
   // autofocus email input on mount
@@ -110,15 +106,25 @@ export default function SignInPage() {
 
     // Ensure Turnstile token present before sending when requesting code
     const cfTokenVal = cfToken || (typeof window !== 'undefined' ? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value : undefined)
+    let useBypass = false
     if (!cfTokenVal) {
-      setError('Please complete the CAPTCHA to continue.')
-      return
+      if (isDev) {
+        tlog('signin handleSubmit: no token present; enabling dev bypass')
+        useBypass = true
+      } else {
+        tlog('signin handleSubmit: missing token', { cfToken, cfTokenVal })
+        setError('Please complete the CAPTCHA to continue.')
+        return
+      }
     }
 
     // Request a 2FA code to be emailed.
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, cf_turnstile_response: cfTokenVal }) })
+      const payload: any = { email, password }
+      if (cfTokenVal) payload.cf_turnstile_response = cfTokenVal
+      if (useBypass) payload._bypass = '1'
+      const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await res.json()
       if (!res.ok || j?.error) {
         setError(j?.error || 'Sign in request failed')
@@ -163,7 +169,10 @@ export default function SignInPage() {
     if (resendCooldown > 0) return
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, cf_turnstile_response: cfToken || null }) })
+      const payload: any = { email, password }
+      if (cfToken) payload.cf_turnstile_response = cfToken
+      else if (isDev) payload._bypass = '1'
+      const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await res.json()
       if (!res.ok || j?.error) return setError(j?.error || 'Resend failed')
       setResendCooldown(45)
@@ -222,6 +231,7 @@ export default function SignInPage() {
             {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
               <div className={styles.turnstile} role="region" aria-describedby="turnstile-desc">
                 <div id="cf-turnstile-container" aria-hidden={false}></div>
+                <input type="hidden" name="cf-turnstile-response" />
                 <div id="turnstile-desc" className={styles.smallText}>Complete the CAPTCHA to continue.</div>
               </div>
             )}
@@ -246,7 +256,7 @@ export default function SignInPage() {
                 <span className={styles.smallText}>Remember me</span>
               </label>
               <div>
-                <button type="submit" className={styles.primaryButton} disabled={loading || (!codeRequested && !cfToken) || (codeRequested && otp.trim().length < 6)} aria-disabled={loading || (!codeRequested && !cfToken) || (codeRequested && otp.trim().length < 6)}>
+                <button type="submit" className={styles.primaryButton} disabled={loading || (!codeRequested && !cfToken && !isDev) || (codeRequested && otp.trim().length < 6)} aria-disabled={loading || (!codeRequested && !cfToken && !isDev) || (codeRequested && otp.trim().length < 6)}>
                   {loading ? (
                     <span style={{display:'inline-flex', alignItems:'center', gap:8}}>
                       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style={{marginRight:6}}>

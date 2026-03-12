@@ -32,6 +32,8 @@ export async function GET(req: Request) {
   const total = (Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0
 
   const offset = (page - 1) * pageSize
-  const rows = await query<any[]>('SELECT la.*, u.email as user_email FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where + ' ORDER BY la.created_at DESC LIMIT ? OFFSET ?', [...params, pageSize, offset])
+  const limitVal = Number(pageSize)
+  const offsetVal = Number(offset)
+  const rows = await query<any[]>('SELECT la.*, u.email as user_email FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where + ' ORDER BY la.created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
   return NextResponse.json({ rows, total, page, pageSize })
 }

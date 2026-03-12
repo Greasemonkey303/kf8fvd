@@ -7,6 +7,10 @@ try { Redis = require('ioredis') } catch (e) { Redis = null }
 
 const port = Number(process.env.METRICS_PORT || process.env.EXPORTER_PORT || 9403)
 
+// Metrics namespace (match rateLimiter). Use METRICS_PREFIX or NODE_ENV.
+const METRICS_PREFIX = process.env.METRICS_PREFIX || process.env.NODE_ENV || 'local'
+function metricKey(name) { return `metrics:${METRICS_PREFIX}:${name}` }
+
 async function collect() {
   const metrics = { auth_locks: 0, login_attempts: 0, redis_rl_keys: 0 }
   // DB
@@ -25,6 +29,18 @@ async function collect() {
   if (Redis && process.env.REDIS_URL) {
     try {
       const r = new Redis(process.env.REDIS_URL)
+      // Prefer cumulative counters stored in Redis if present (written by rateLimiter)
+      try {
+        const loginAttempts = await r.get(metricKey('login_attempts_total'))
+        const authLocksTotal = await r.get(metricKey('auth_locks_total'))
+        const authLocksActive = await r.get(metricKey('auth_locks_active'))
+        if (loginAttempts) metrics.login_attempts = Number(loginAttempts)
+        if (authLocksTotal) metrics.auth_locks = Number(authLocksTotal)
+        else if (authLocksActive) metrics.auth_locks = Number(authLocksActive)
+      } catch (e) {
+        // best-effort, continue to scan rl:* keys below
+      }
+
       let cursor = '0'
       let count = 0
       do {

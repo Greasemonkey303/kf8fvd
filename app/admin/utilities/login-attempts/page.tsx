@@ -3,15 +3,21 @@ import styles from '../../admin.module.css'
 import { query } from '@/lib/db'
 import Link from 'next/link'
 
-export default async function LoginAttemptsPage({ searchParams }: { searchParams?: { page?: string; pageSize?: string; q?: string; email?: string; ip?: string } }) {
+export default async function LoginAttemptsPage({ searchParams }: { searchParams?: any }) {
   const admin = await requireAdmin()
   if (!admin) return <main style={{padding:20}}>Unauthorized</main>
 
-  const page = Math.max(1, parseInt(searchParams?.page || '1'))
-  const pageSize = Math.min(200, Math.max(10, parseInt(searchParams?.pageSize || '50')))
-  const q = (searchParams?.q || '').trim()
-  const email = (searchParams?.email || '').trim()
-  const ip = (searchParams?.ip || '').trim()
+  // `searchParams` may be a Promise in some Next.js versions; await if so.
+  const sp = (searchParams ? await searchParams : {}) || {}
+  const rawPage = (sp.page ?? '1')
+  const rawPageSize = (sp.pageSize ?? '50')
+  const pageNum = parseInt(String(rawPage || '1'), 10)
+  const page = Number.isNaN(pageNum) ? 1 : Math.max(1, pageNum)
+  const pageSizeNum = parseInt(String(rawPageSize || '50'), 10)
+  const pageSize = Number.isNaN(pageSizeNum) ? 50 : Math.min(200, Math.max(10, pageSizeNum))
+  const q = String(sp.q || '').trim()
+  const email = String(sp.email || '').trim()
+  const ip = String(sp.ip || '').trim()
 
   let where = '1=1'
   const params: any[] = []
@@ -23,11 +29,20 @@ export default async function LoginAttemptsPage({ searchParams }: { searchParams
   if (email) { where += ' AND (u.email = ? OR la.email = ?)'; params.push(email, email) }
   if (ip) { where += ' AND la.ip = ?'; params.push(ip) }
 
+  // Debug: log the built query parameters to server console to help diagnose DB errors
+  // eslint-disable-next-line no-console
+  console.log('[admin:login-attempts] query params', { where, params, pageSize, page })
   const countRows = await query<any[]>('SELECT COUNT(*) as cnt FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where, params)
   const total = (Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0
 
   const offset = (page - 1) * pageSize
-  const rows = await query<any[]>('SELECT la.*, u.email as user_email FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where + ' ORDER BY la.created_at DESC LIMIT ? OFFSET ?', [...params, pageSize, offset])
+  // Ensure numeric values are passed for LIMIT/OFFSET
+  const limitVal = Number(pageSize)
+  const offsetVal = Number(offset)
+  // eslint-disable-next-line no-console
+  console.log('[admin:login-attempts] final params', { paramsCount: params.length, limitVal, offsetVal })
+  // Embed numeric LIMIT/OFFSET directly to avoid prepared-statement argument issues
+  const rows = await query<any[]>('SELECT la.*, u.email as user_email FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where + ' ORDER BY la.created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 

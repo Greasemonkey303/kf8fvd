@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react'
+import { tlog } from '@/lib/turnstileDebug'
+import { loadTurnstileScript, waitForTurnstileReady } from '@/lib/turnstileLoader'
 import styles from './contact.module.css'
 import { Card } from '@/components'
 
@@ -43,51 +45,43 @@ export default function Contact() {
   useEffect(()=>{
     setMounted(true)
     // dynamically load Cloudflare Turnstile script if sitekey is present
+    tlog('contact useEffect mount', { sitekeyPresent: !!process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY })
     if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
-      const id = 'cf-turnstile-script'
-      if (!document.getElementById(id)) {
-        const s = document.createElement('script')
-        s.id = id
-        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-        s.async = true
-        s.defer = true
-        document.body.appendChild(s)
-      }
+      loadTurnstileScript().then(() => tlog('contact script loaded')).catch(e => tlog('contact script load error', e))
     }
   },[])
 
   // When script loads, render turnstile widget programmatically and capture token via callback
   useEffect(()=>{
     const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
+    tlog('contact render effect start', { sitekeyPresent: !!sitekey })
     if (!sitekey) return
-
-    const tryRender = () => {
-      // @ts-ignore
-      if (typeof window === 'undefined' || !(window as any).turnstile) return
-      const container = document.getElementById('cf-turnstile-container')
-      if (!container) return
-      // if already rendered, clear interval and skip
-      if ((container as HTMLElement).dataset?.turnstileRendered === '1') {
-        if (cfIntervalRef.current) { clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
-        return
-      }
+    let cancelled = false
+    ;(async ()=>{
       try {
-        // @ts-ignore
-        const id = (window as any).turnstile.render(container, {
-          sitekey,
-          callback: (token: string) => setCfToken(token),
-        })
-        setCfWidgetId(typeof id === 'number' ? id : null)
-        ;(container as HTMLElement).dataset.turnstileRendered = '1'
-        if (cfIntervalRef.current) { clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+        await loadTurnstileScript().catch(e=> { tlog('contact load script failed', e); throw e })
+        tlog('contact script loaded, waiting for ready')
+        await waitForTurnstileReady(8000).catch(e=> { tlog('contact wait ready failed', e); throw e })
+        if (cancelled) return
+        const container = document.getElementById('cf-turnstile-container')
+        if (!container) { tlog('contact: container missing after ready'); return }
+        try {
+          // @ts-ignore
+          const id = (window as any).turnstile.render(container, {
+            sitekey,
+            callback: (token: string) => setCfToken(token),
+          })
+          setCfWidgetId(typeof id === 'number' ? id : null)
+          ;(container as HTMLElement).dataset.turnstileRendered = '1'
+          tlog('contact render success', { id })
+        } catch (err) {
+          tlog('contact render error', err)
+        }
       } catch (err) {
-        // ignore and retry
+        tlog('contact loader error', err)
       }
-    }
-
-    tryRender()
-    cfIntervalRef.current = window.setInterval(tryRender, 500)
-    return () => { if (cfIntervalRef.current) clearInterval(cfIntervalRef.current); cfIntervalRef.current = null }
+    })()
+    return () => { cancelled = true }
   },[])
 
   function validate(){
@@ -179,9 +173,16 @@ export default function Contact() {
       if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
         const token = cfToken || document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value
         if (!token) {
-          throw new Error('Please complete the CAPTCHA to continue')
+          // In development, allow a safe bypass so the form can be tested locally.
+          if ((process.env.NODE_ENV || '') !== 'production') {
+            tlog('contact confirmSend: no token present; enabling dev bypass')
+            fd.append('_bypass', '1')
+          } else {
+            throw new Error('Please complete the CAPTCHA to continue')
+          }
+        } else {
+          fd.append('cf-turnstile-response', token)
         }
-        fd.append('cf-turnstile-response', token)
       }
       files.forEach((f, i) => fd.append(`file-${i}`, f))
 

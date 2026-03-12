@@ -33,6 +33,7 @@ export default function RootLayout({
         <link rel="preload" as="image" href="/grand_rapids.jpg" />
         <meta property="og:site_name" content="KF8FVD" />
         <meta name="twitter:card" content="summary_large_image" />
+        <script id="cf-turnstile-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@graph": [

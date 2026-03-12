@@ -1,0 +1,42 @@
+groups:
+  - name: kf8fvd-auth.rules
+    rules:
+      - alert: AuthLocksSpike
+        expr: increase(auth_locks_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Spike in auth locks for kf8fvd"
+          description: "More than 5 auth locks occurred in the last 5 minutes. Investigate potential brute-force or automated login attempts."
+
+      - alert: HighLoginAttemptRate
+        expr: increase(login_attempts_total[5m]) > 200
+        for: 5m
+        labels:
+          severity: warning
+          team: secops
+        annotations:
+          summary: "High rate of login attempts"
+          description: "login_attempts_total increased by >200 over 5m. Check traffic, suspicious IPs, and whether rate-limiting thresholds need tuning."
+
+      - alert: HighRedisRlKeys
+        expr: redis_rl_keys_total > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "Large number of rl:* keys present in Redis"
+          description: "A large count of rl:* keys can indicate stuck locks or a key leak. Consider investigating key churn and TTL values."
+
+      - alert: ExporterDown
+        expr: exporter_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: ops
+        annotations:
+          summary: "Metrics exporter is down"
+          description: "The auth metrics exporter is not responding or returned exporter_up==0. Check the exporter process and connectivity."

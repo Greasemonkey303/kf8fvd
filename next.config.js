@@ -33,7 +33,8 @@ const nextConfig = {
       : `connect-src 'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`
     const fontSrc = "font-src 'self' https://fonts.gstatic.com data:"
     const reportUri = `${siteOrigin}/api/csp/report`
-    const csp = `default-src 'self'; base-uri 'self'; block-all-mixed-content; ${fontSrc}; ${imgSrc}; ${connectSrc}; ${scriptSrc}; ${styleSrc}; report-uri ${reportUri}; frame-ancestors 'none'`
+    // Explicitly allow Cloudflare Turnstile frames
+    const csp = `default-src 'self'; base-uri 'self'; block-all-mixed-content; ${fontSrc}; ${imgSrc}; ${connectSrc}; ${scriptSrc}; child-src https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; ${styleSrc}; report-uri ${reportUri}; frame-ancestors 'none'`
 
     const cspHeaderKey = (process.env.CSP_REPORT_ONLY === '1' || process.env.CSP_REPORT_ONLY === 'true') ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'
 

@@ -51,12 +51,17 @@ void testConnection();
  */
 export async function query<T>(sql: string, params?: unknown[]): Promise<T> {
   try {
-    const [rows] = await pool.execute(sql, params as any);
-    return rows as T;
+    const safeParams = Array.isArray(params) ? params.map(p => p === undefined ? null : p) : []
+    if (process.env.DEBUG_DB) {
+      // eslint-disable-next-line no-console
+      console.log('[db] executing', { sql, params: safeParams, types: safeParams.map(p => (p === null ? 'null' : typeof p)) })
+    }
+    const [rows] = await pool.execute(sql, safeParams as any)
+    return rows as T
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Database query error:', error);
-    throw error;
+    console.error('Database query error:', error)
+    throw error
   }
 }
 

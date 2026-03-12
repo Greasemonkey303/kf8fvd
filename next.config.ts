@@ -29,6 +29,10 @@ const CSP = [
   imgSrc,
   connectSrc,
   scriptSrc,
+  // Allow Turnstile iframe origin so the widget can render
+  // Include both `child-src` and `frame-src` to cover different browser implementations
+  "child-src https://challenges.cloudflare.com",
+  "frame-src https://challenges.cloudflare.com",
   styleSrc,
   `report-uri ${reportUri}`,
   "frame-ancestors 'none'",

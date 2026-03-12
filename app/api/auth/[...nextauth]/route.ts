@@ -38,7 +38,7 @@ export const authOptions = {
         otp: { label: 'OTP', type: 'text' },
         cf_turnstile_response: { label: 'Turnstile', type: 'text' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         try {
           // eslint-disable-next-line no-console
           console.log('[auth] authorize called for', { email: (credentials as any)?.email ? String((credentials as any).email) : null, hasOtp: !!(credentials as any)?.otp })
@@ -59,7 +59,16 @@ export const authOptions = {
         if (!credentials?.email || !credentials?.password) return null
         const email = String(credentials.email).trim().toLowerCase()
         const emailKey = `email:${email}`
-          if (await isLocked(emailKey)) return null
+        // derive IP from the incoming request when available (NextAuth passes `req`)
+        let ip = 'unknown'
+        try {
+          const hdrs: any = req && (req.headers || req.headersRaw || req.rawHeaders || {})
+          const maybe = hdrs && (hdrs['x-forwarded-for'] || hdrs['x-real-ip'] || hdrs['x-forwarded'] || hdrs['x-realip'])
+          if (maybe) ip = String(maybe).split(',')[0]
+          else if (req && typeof req.headers?.get === 'function') ip = String(req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown').split(',')[0]
+        } catch (_) {}
+        const ipKey = `ip:${ip}`
+        if (await isLocked(emailKey) || await isLocked(ipKey)) return null
         const rows = await query<{ id: number; name?: string; email: string; hashed_password?: string; is_active: number }[]>('SELECT id, name, email, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [credentials.email])
         const user = Array.isArray(rows) && rows.length ? rows[0] : null
         if (!user) return null
@@ -67,10 +76,12 @@ export const authOptions = {
         const valid = user.hashed_password ? bcrypt.compareSync(credentials.password, user.hashed_password) : false
         if (!valid) {
           try { await incrementFailure(emailKey, { reason: 'invalid_password' }) } catch (_) {}
+          try { await incrementFailure(ipKey, { reason: 'invalid_password' }) } catch (_) {}
           return null
         }
         // reset failures on successful password verify
         try { resetKey(emailKey) } catch (_) {}
+        try { resetKey(ipKey) } catch (_) {}
 
         // If an OTP was included, validate it and complete sign-in. Otherwise, require the separate
         // 2FA request flow to send/verify the code.
@@ -91,6 +102,7 @@ export const authOptions = {
           try { /* eslint-disable no-console */ console.log('[auth] otp compare result', !!ok) } catch (_) {}
           if (!ok) {
             try { await incrementFailure(emailKey, { reason: 'invalid_otp' }) } catch (_) {}
+            try { await incrementFailure(ipKey, { reason: 'invalid_otp' }) } catch (_) {}
             return null
           }
           try { await query('UPDATE two_factor_codes SET used_at = NOW() WHERE id = ?', [codeRow.id]) } catch (e) {}

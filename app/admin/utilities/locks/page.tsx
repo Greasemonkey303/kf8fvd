@@ -20,7 +20,9 @@ export default async function LocksPage({ searchParams }: { searchParams?: { pag
   const total = (Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0
 
   const offset = (page - 1) * pageSize
-  const rows = await query<any[]>('SELECT * FROM auth_locks WHERE ' + where + ' ORDER BY created_at DESC LIMIT ? OFFSET ?', [...params, pageSize, offset])
+  const limitVal = Number(pageSize)
+  const offsetVal = Number(offset)
+  const rows = await query<any[]>('SELECT * FROM auth_locks WHERE ' + where + ' ORDER BY created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
