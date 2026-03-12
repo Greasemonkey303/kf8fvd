@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '../../../../../../lib/auth'
-import { query } from '../../../../../../lib/db'
+import { requireAdmin } from '@/lib/auth'
+import { query } from '@/lib/db'
 import * as Minio from 'minio'
 
 const getErrMsg = (err: unknown) => {

@@ -270,15 +270,15 @@ export default function AdminHeroPage() {
             <div style={{flex:1}}>
               <label>
                 <div className="field-label">Title</div>
-                <input suppressHydrationWarning value={hero?.title || ''} onChange={e=>setHero(h=>({ ...(h||{}), title: e.target.value }))} className={styles.formInput} />
+                <input suppressHydrationWarning value={hero?.title || ''} onChange={e=>setHero((h:any)=>({ ...(h||{}), title: e.target.value }))} className={styles.formInput} />
               </label>
               <label>
                 <div className="field-label">Subtitle</div>
-                <input suppressHydrationWarning value={hero?.subtitle || ''} onChange={e=>setHero(h=>({ ...(h||{}), subtitle: e.target.value }))} className={styles.formInput} />
+                <input suppressHydrationWarning value={hero?.subtitle || ''} onChange={e=>setHero((h:any)=>({ ...(h||{}), subtitle: e.target.value }))} className={styles.formInput} />
               </label>
               <label>
                 <div className="field-label">Content (HTML allowed)</div>
-                <textarea suppressHydrationWarning value={hero?.content || ''} onChange={e=>setHero(h=>({ ...(h||{}), content: e.target.value }))} className={styles.formTextarea} />
+                <textarea suppressHydrationWarning value={hero?.content || ''} onChange={e=>setHero((h:any)=>({ ...(h||{}), content: e.target.value }))} className={styles.formTextarea} />
               </label>
             </div>
             <div style={{width:360}}>

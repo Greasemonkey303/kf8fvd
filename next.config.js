@@ -21,14 +21,19 @@ const nextConfig = {
     const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
     // In production, avoid unsafe-inline/eval and limit connect-src to secure endpoints
-    const scriptSrc = isProd ? "'self'" : "'self' 'unsafe-inline' 'unsafe-eval'"
-    const styleSrc = isProd ? "'self'" : "'self' 'unsafe-inline'"
-    const imgSrc = isProd ? "'self' data: https:" : "'self' data: http: https:"
+    const scriptSrc = isProd
+      ? "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
+      : "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'"
+    const styleSrc = isProd
+      ? "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
+      : "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com"
+    const imgSrc = isProd ? "img-src 'self' data: https: https://*.gravatar.com" : "img-src 'self' data: http: https: https://*.gravatar.com"
     const connectSrc = isProd
-      ? `'self' ${siteOrigin} https://api.sendgrid.com`
-      : `'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com ws: wss:`
+      ? `connect-src 'self' ${siteOrigin} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
+      : `connect-src 'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`
+    const fontSrc = "font-src 'self' https://fonts.gstatic.com data:"
     const reportUri = `${siteOrigin}/api/csp/report`
-    const csp = `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; connect-src ${connectSrc}; report-uri ${reportUri};`
+    const csp = `default-src 'self'; base-uri 'self'; block-all-mixed-content; ${fontSrc}; ${imgSrc}; ${connectSrc}; ${scriptSrc}; ${styleSrc}; report-uri ${reportUri}; frame-ancestors 'none'`
 
     const cspHeaderKey = (process.env.CSP_REPORT_ONLY === '1' || process.env.CSP_REPORT_ONLY === 'true') ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '../../../../../../lib/auth'
-import { transaction } from '../../../../../../lib/db'
+import { requireAdmin } from '@/lib/auth'
+import { transaction } from '@/lib/db'
 
 export async function POST(req: Request) {
   const admin = await requireAdmin()

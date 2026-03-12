@@ -8,8 +8,8 @@ const scriptSrc = isProd
   : "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'";
 
 const styleSrc = isProd
-  ? "style-src 'self' https://unpkg.com"
-  : "style-src 'self' 'unsafe-inline' https://unpkg.com";
+  ? "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
+  : "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com";
 
 const imgSrc = isProd
   ? "img-src 'self' data: https://*.gravatar.com https://www.google-analytics.com"

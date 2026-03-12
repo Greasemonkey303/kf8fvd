@@ -72,7 +72,7 @@ export default function SegmentedOtp({ length = 6, value = '', onChange, autoFoc
       {Array.from({ length }).map((_, i) => (
         <input
           key={i}
-          ref={(el) => (refs.current[i] = el)}
+          ref={(el) => { refs.current[i] = el }}
           inputMode="numeric"
           pattern="\d*"
           maxLength={1}

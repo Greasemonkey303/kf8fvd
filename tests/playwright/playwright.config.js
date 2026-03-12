@@ -1,7 +1,7 @@
 const { devices } = require('@playwright/test');
 
 module.exports = {
-  testDir: './tests/playwright',
+  testDir: '.',
   timeout: 30 * 1000,
   use: {
     baseURL: process.env.SITE_URL || 'http://localhost:3000',
