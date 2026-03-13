@@ -24,6 +24,14 @@ export default function UtilitiesLanding() {
             <Link href="/admin/utilities/login-attempts" className={styles.btnGhost}>View attempts</Link>
           </div>
         </div>
+
+        <div className={styles.adminSectionCard}>
+          <h3 style={{margin:0}}>Call Log (ADIF)</h3>
+          <p className={styles.smallMuted}>Upload and manage ADIF (.adi) call logs for the DX map and Recent QSOs.</p>
+          <div className={styles.controls}>
+            <Link href="/admin/utilities/call-log" className={styles.btnGhost}>Manage call log</Link>
+          </div>
+        </div>
       </div>
     </main>
   )

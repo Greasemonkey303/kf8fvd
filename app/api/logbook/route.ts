@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 
 import fs from 'fs';
 import path from 'path';
+import { query } from '@/lib/db'
 
 export async function GET(request: Request) {
   try {
@@ -33,57 +34,28 @@ export async function GET(request: Request) {
       // ignore
     }
 
-    // If a local ADIF file exists in public/, prefer that as a quick local import
+    // Try to read recent entries from DB (call_logs table) first
     try {
-      const localAdiPath = path.join(process.cwd(), 'public', 'logbook.adi');
-      if (fs.existsSync(localAdiPath)) {
-        const rawAdi = fs.readFileSync(localAdiPath, { encoding: 'utf8' });
-        const records = rawAdi.split(/<eor>/i).map(r => r.trim()).filter(Boolean);
-        const entries = records.slice(0, 50).map((rec) => {
-          const callMatch = rec.match(/<call(?::\d+)?>\s*([^<\s]+)/i);
-          const dateMatch = rec.match(/<qso_date(?::\d+)?>\s*([^<\s]+)/i) || rec.match(/<date(?::\d+)?>\s*([^<\s]+)/i);
-          const timeMatch = rec.match(/<time_on(?::\d+)?>\s*([^<\s]+)/i) || rec.match(/<time(?::\d+)?>\s*([^<\s]+)/i);
-          const bandMatch = rec.match(/<band(?::\d+)?>\s*([^<\s]+)/i) || rec.match(/<frequency(?::\d+)?>\s*([^<\s]+)/i);
-          const modeMatch = rec.match(/<mode(?::\d+)?>\s*([^<\s]+)/i);
-          const qthMatch = rec.match(/<qth(?::\d+)?>\s*([^<\s]+)/i);
-          const cityMatch = rec.match(/<city(?::\d+)?>\s*([^<\s]+)/i);
-          const stateMatch = rec.match(/<(?:state|cnty)(?::\d+)?>\s*([^<\s]+)/i);
-          const countryMatch = rec.match(/<country(?::\d+)?>\s*([^<\s]+)/i);
-
-          const call = callMatch ? callMatch[1] : 'N/A';
-          const date = dateMatch ? dateMatch[1] : '';
-          const time = timeMatch ? timeMatch[1] : '';
-          const band = bandMatch ? bandMatch[1] : '';
-          const mode = modeMatch ? modeMatch[1] : '';
-          const qth = qthMatch ? qthMatch[1] : (cityMatch ? cityMatch[1] : '');
-          const city = cityMatch ? cityMatch[1] : '';
-          const state = stateMatch ? stateMatch[1] : '';
-          const country = countryMatch ? countryMatch[1] : '';
-
-          const parts: string[] = [];
-          if (date) parts.push(date + (time ? ' ' + time : ''));
-          parts.push(call);
-          if (band) parts.push(band);
-          if (mode) parts.push(mode);
-
-          return {
-            call,
-            date,
-            time,
-            band,
-            mode,
-            qth,
-            city,
-            state,
-            country,
-            display: parts.filter(Boolean).join(' — '),
-          };
-        });
-
-        return NextResponse.json({ source: 'local-adi', entries });
+      const rows = await query<any[]>('SELECT `call`, DATE_FORMAT(qso_date, "%Y%m%d") AS date, TIME_FORMAT(time_on, "%H:%i:%s") AS time, band, mode, qth, city, state, country, lat, lon FROM call_logs ORDER BY COALESCE(qso_datetime, created_at) DESC LIMIT 200')
+      if (Array.isArray(rows) && rows.length > 0) {
+        const entries = rows.map(r => ({
+          call: r.call,
+          date: r.date || '',
+          time: r.time || '',
+          band: r.band || '',
+          mode: r.mode || '',
+          qth: r.qth || '',
+          city: r.city || '',
+          state: r.state || '',
+          country: r.country || '',
+          lat: r.lat || undefined,
+          lon: r.lon || undefined,
+          display: [r.date || '', r.call || ''].filter(Boolean).join(' — ')
+        }))
+        return NextResponse.json({ source: 'db', entries })
       }
     } catch (e) {
-      // ignore local ADIF read errors and continue
+      // if the table doesn't exist or DB query fails, fall back to local ADI
     }
 
     if (provider === 'custom' && process.env.LOGBOOK_URL) {

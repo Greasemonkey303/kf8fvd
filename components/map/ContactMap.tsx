@@ -166,16 +166,20 @@ export default function ContactMap(){
       mapRef.current = L.map(ref.current, { center:[20,0], zoom:2, minZoom:2 });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(mapRef.current);
 
-      setStatus('Loading ADIF...');
+      setStatus('Loading server logbook...');
       let entries: any[] = [];
       try {
-        const r = await fetch('/logbook.adi');
-        if (r.ok) { const txt = await r.text(); entries = parseAdif(txt); }
+        const r = await fetch('/api/logbook');
+        const j = await r.json();
+        entries = Array.isArray(j.entries) ? j.entries : (Array.isArray(j) ? j : []);
       } catch(e) { entries = []; }
 
       if (!entries || entries.length === 0) {
-        setStatus('Loading server logbook...');
-        try { const r = await fetch('/api/logbook'); const j = await r.json(); entries = Array.isArray(j.entries) ? j.entries : []; } catch(e) { entries = []; }
+        setStatus('Loading ADIF fallback...');
+        try {
+          const r = await fetch('/logbook.adi');
+          if (r.ok) { const txt = await r.text(); entries = parseAdif(txt); }
+        } catch(e) { entries = []; }
       }
 
       entriesRef.current = entries;
