@@ -23,6 +23,9 @@ export default function ResetPasswordClient({ token: initialToken = '' }: Props)
   const [pwnedCount, setPwnedCount] = useState<number | null>(null)
   const pwDebounce = useRef<number | null>(null)
 
+  const [mounted, setMounted] = useState(false)
+  useEffect(()=>{ setMounted(true) }, [])
+
   useEffect(()=>{
     if (token && token.length <= 6) {
       setUseShortCode(true)
@@ -97,9 +100,17 @@ export default function ResetPasswordClient({ token: initialToken = '' }: Props)
     finally { setLoading(false) }
   }
 
+  if (!mounted) {
+    return (
+      <Card id="reset-card" title="Reset Password" subtitle="Choose a new password">
+        <div className={styles.form} aria-labelledby="reset-card-title" />
+      </Card>
+    )
+  }
+
   return (
     <Card id="reset-card" title="Reset Password" subtitle="Choose a new password">
-      <form onSubmit={handleSubmit} className={styles.form} aria-labelledby="reset-card-title">
+      <form onSubmit={handleSubmit} className={styles.form} aria-labelledby="reset-card-title" suppressHydrationWarning>
         {error && <div className={styles.error} role="alert">{error}</div>}
         {success && <div className={styles.success} role="status">Password updated — redirecting to sign in</div>}
         <label>
