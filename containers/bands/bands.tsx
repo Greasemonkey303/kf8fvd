@@ -1,5 +1,6 @@
 "use client"
 import React, { useState } from 'react';
+import Modal from '@/components/modal/Modal'
 import styles from './bands.module.css';
 
 type ModeKey = 'fm' | 'dstar' | 'dmr' | null;
@@ -44,62 +45,60 @@ const Bands: React.FC = () => {
       </div>
 
       {open && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-          <div className={styles.modal}>
-            <button className={styles.modalClose} onClick={close} aria-label="Close">×</button>
-            {open === 'fm' && (
-              <div>
-                <h3>FM</h3>
-                <section>
-                  <h4 className={`${styles.sectionTitle} ${styles.sectionRepeater}`}>Repeaters</h4>
-                  <ul>
-                    <li>W8IRA</li>
-                  </ul>
-                </section>
-              </div>
-            )}
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modal} onClose={close} titleId={`bands-title-${open}`}>
+          <button className={styles.modalClose} onClick={close} aria-label="Close">×</button>
+          {open === 'fm' && (
+            <div>
+              <h3>FM</h3>
+              <section>
+                <h4 className={`${styles.sectionTitle} ${styles.sectionRepeater}`}>Repeaters</h4>
+                <ul>
+                  <li>W8IRA</li>
+                </ul>
+              </section>
+            </div>
+          )}
 
-            {open === 'dstar' && (
-              <div>
-                <h3>D-STAR</h3>
-                <section>
-                  <h4 className={`${styles.sectionTitle} ${styles.sectionRepeater}`}>Repeaters</h4>
-                  <ul>
-                    <li>WM8TG</li>
-                  </ul>
-                </section>
-                <section>
-                  <h4 className={`${styles.sectionTitle} ${styles.sectionDstar}`}>Reflectors</h4>
-                  <ul>
-                    <li>REF001C</li>
-                    <li>REF030C</li>
-                    <li>REF035C</li>
-                  </ul>
-                </section>
-              </div>
-            )}
+          {open === 'dstar' && (
+            <div>
+              <h3>D-STAR</h3>
+              <section>
+                <h4 className={`${styles.sectionTitle} ${styles.sectionRepeater}`}>Repeaters</h4>
+                <ul>
+                  <li>WM8TG</li>
+                </ul>
+              </section>
+              <section>
+                <h4 className={`${styles.sectionTitle} ${styles.sectionDstar}`}>Reflectors</h4>
+                <ul>
+                  <li>REF001C</li>
+                  <li>REF030C</li>
+                  <li>REF035C</li>
+                </ul>
+              </section>
+            </div>
+          )}
 
-            {open === 'dmr' && (
-              <div>
-                <h3>DMR</h3>
-                <section>
-                  <h4 className={`${styles.sectionTitle} ${styles.sectionRepeater}`}>Repeaters</h4>
-                  <ul>
-                    <li>KD8RXD</li>
-                  </ul>
-                </section>
+          {open === 'dmr' && (
+            <div>
+              <h3>DMR</h3>
+              <section>
+                <h4 className={`${styles.sectionTitle} ${styles.sectionRepeater}`}>Repeaters</h4>
+                <ul>
+                  <li>KD8RXD</li>
+                </ul>
+              </section>
 
-                <section>
-                  <h4 className={`${styles.sectionTitle} ${styles.sectionNetwork}`}>Networks</h4>
-                  <ul>
-                    <li>BrandMeister — Talkgroup: 1</li>
-                    <li>MI5 — Talkgroup: STATEWIDE1</li>
-                  </ul>
-                </section>
-              </div>
-            )}
-          </div>
-        </div>
+              <section>
+                <h4 className={`${styles.sectionTitle} ${styles.sectionNetwork}`}>Networks</h4>
+                <ul>
+                  <li>BrandMeister — Talkgroup: 1</li>
+                  <li>MI5 — Talkgroup: STATEWIDE1</li>
+                </ul>
+              </section>
+            </div>
+          )}
+        </Modal>
       )}
     </section>
   );

@@ -6,6 +6,7 @@ import styles from '../../admin.module.css'
 import projectStyles from '../../../projects/hotspot/hotspot.module.css'
 import Card from '../../../../components/card/card'
 import ProjectEditorSidebar from '../../../../components/admin/projects/ProjectEditorSidebar'
+import Modal from '@/components/modal/Modal'
 import { useToast } from '../../../../components/toast/ToastProvider'
 import createDOMPurify from 'dompurify'
 import { buildPublicUrl } from '../../../../lib/s3'
@@ -44,6 +45,8 @@ export default function AdminAboutEditor({ params }: { params: any }) {
   const [editorExpanded, setEditorExpanded] = useState(false)
   const descRef = useRef<HTMLDivElement | null>(null)
   const [descExpanded, setDescExpanded] = useState(false)
+  const previewCloseRef = useRef<HTMLButtonElement | null>(null)
+  const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
 
   const [uploadProgress, setUploadProgress] = useState<Record<string | number, number>>({})
@@ -656,54 +659,50 @@ export default function AdminAboutEditor({ params }: { params: any }) {
                 </form>
       )}
       {previewOpen && (
-        <div className={styles.modalOverlay} onClick={()=>setPreviewOpen(false)}>
-          <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-              <div style={{fontWeight:700}}>Preview</div>
-              <button className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
-            </div>
-            <div style={{maxWidth:920}}>
-              <div style={{display:'flex',flexDirection:'column',gap:12}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <div style={{fontWeight:600}}>{slug ? `/aboutme` : 'About preview'}</div>
-                  <div>
-                    {slug ? <a className={styles.btnGhost} href={`/aboutme`} target="_blank" rel="noopener noreferrer">Open in new tab</a> : null}
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={()=>setPreviewOpen(false)} initialFocusRef={previewCloseRef} titleId="preview-title">
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+            <div style={{fontWeight:700}}>Preview</div>
+            <button ref={previewCloseRef} className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
+          </div>
+          <div style={{maxWidth:920}}>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div style={{fontWeight:600}}>{slug ? `/aboutme` : 'About preview'}</div>
+                <div>
+                  {slug ? <a className={styles.btnGhost} href={`/aboutme`} target="_blank" rel="noopener noreferrer">Open in new tab</a> : null}
+                </div>
+              </div>
+              <Card title={cards[activeIdx]?.title || 'About'} subtitle={cards[activeIdx]?.subtitle || ''}>
+                <div className={projectStyles.content} style={{gap:8}}>
+                  <div className={projectStyles.media}>
+                    {cards[activeIdx]?.image ? (
+                      <div className={projectStyles.mainPhotoWrap} style={{maxWidth:320}}>
+                        <img src={cards[activeIdx]?.image} alt={cards[activeIdx]?.title} className={projectStyles.mainPhoto} />
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className={projectStyles.story}>
+                    <div style={{color:'var(--white-95)'}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(metadata.summary?.text || '')) : (metadata.summary?.text || '') }} />
+                    {cards[activeIdx]?.content ? <div style={{marginTop:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(cards[activeIdx]?.content).slice(0,400) + (String(cards[activeIdx]?.content).length > 400 ? '…' : '')) : (String(cards[activeIdx]?.content).slice(0,400) + (String(cards[activeIdx]?.content).length > 400 ? '…' : '')) }} /> : null}
                   </div>
                 </div>
-                <Card title={cards[activeIdx]?.title || 'About'} subtitle={cards[activeIdx]?.subtitle || ''}>
-                  <div className={projectStyles.content} style={{gap:8}}>
-                    <div className={projectStyles.media}>
-                      {cards[activeIdx]?.image ? (
-                        <div className={projectStyles.mainPhotoWrap} style={{maxWidth:320}}>
-                          <img src={cards[activeIdx]?.image} alt={cards[activeIdx]?.title} className={projectStyles.mainPhoto} />
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className={projectStyles.story}>
-                      <div style={{color:'var(--white-95)'}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(metadata.summary?.text || '')) : (metadata.summary?.text || '') }} />
-                      {cards[activeIdx]?.content ? <div style={{marginTop:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(cards[activeIdx]?.content).slice(0,400) + (String(cards[activeIdx]?.content).length > 400 ? '…' : '')) : (String(cards[activeIdx]?.content).slice(0,400) + (String(cards[activeIdx]?.content).length > 400 ? '…' : '')) }} /> : null}
-                    </div>
-                  </div>
-                </Card>
-              </div>
+              </Card>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
       {deleteModal && deleteModal.open ? (
-        <div className={styles.modalOverlay} onClick={()=>setDeleteModal({ open: false })}>
-          <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-              <div style={{fontWeight:700}}>Confirm Delete</div>
-              <button className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Close</button>
-            </div>
-            <div style={{marginBottom:12}}>{deleteModal.message || 'Are you sure?'}</div>
-            <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
-              <button className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Cancel</button>
-              <button className={styles.btnDanger} onClick={confirmDelete}>Delete</button>
-            </div>
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => setDeleteModal({ open: false })} initialFocusRef={deleteCancelRef} titleId="confirm-delete-title" descriptionId="confirm-delete-desc">
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+            <div style={{fontWeight:700}}>Confirm Delete</div>
+            <button className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Close</button>
           </div>
-        </div>
+          <div style={{marginBottom:12}}>{deleteModal.message || 'Are you sure?'}</div>
+          <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+            <button ref={deleteCancelRef} className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Cancel</button>
+            <button className={styles.btnDanger} onClick={confirmDelete}>Delete</button>
+          </div>
+        </Modal>
       ) : null}
     </div>
   )

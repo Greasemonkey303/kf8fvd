@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from '../../admin.module.css'
+import Modal from '@/components/modal/Modal'
 
 export default function UserEditor({ params }: { params: { id: string } }) {
   // `params` may be a Promise in the App Router — unwrap with React.use when available
@@ -29,6 +30,7 @@ export default function UserEditor({ params }: { params: { id: string } }) {
     router.push('/admin/users')
   }
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
 
   async function confirmDelete() {
     try {
@@ -85,16 +87,14 @@ export default function UserEditor({ params }: { params: { id: string } }) {
             </form>
           )}
           {showDeleteConfirm && (
-            <div className="modal-overlay">
-              <div className="modal card">
-                <h4>Confirm delete</h4>
-                <p>Are you sure you want to delete this user? This action cannot be undone.</p>
-                <div className="flex gap-2">
-                  <button className={styles.btnDanger} onClick={confirmDelete}>Delete</button>
-                  <button className={styles.btnGhost} onClick={()=>setShowDeleteConfirm(false)}>Cancel</button>
-                </div>
+            <Modal overlayClassName="modal-overlay" contentClassName="modal card" onClose={() => setShowDeleteConfirm(false)} initialFocusRef={deleteCancelRef} titleId="user-delete-title">
+              <h4 id="user-delete-title">Confirm delete</h4>
+              <p>Are you sure you want to delete this user? This action cannot be undone.</p>
+              <div className="flex gap-2">
+                <button className={styles.btnDanger} onClick={confirmDelete}>Delete</button>
+                <button ref={deleteCancelRef} className={styles.btnGhost} onClick={()=>setShowDeleteConfirm(false)}>Cancel</button>
               </div>
-            </div>
+            </Modal>
           )}
         </div>
       </div>

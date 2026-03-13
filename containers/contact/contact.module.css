@@ -68,6 +68,12 @@
 
 .modalOverlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: var(--overlay); z-index:2200; padding: 1rem }
 .modal { background: var(--card-bg); padding: 1rem 1.25rem; border-radius: 10px; color:var(--white-100); max-width:720px; width:100% }
+
+/* Confirm dialog: use a stronger, non-transparent backdrop and a slightly elevated dialog */
+.confirmOverlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(2,6,23,0.94); z-index:2400; padding: 1rem; }
+.confirmModal { background: linear-gradient(180deg, rgba(8,18,40,0.98), rgba(6,12,30,0.96)); border-radius: 12px; padding: 1.25rem; color: var(--white-100); max-width:720px; width:100%; box-shadow: 0 30px 80px rgba(2,6,23,0.75); border: 1px solid rgba(255,255,255,0.03) }
+.confirmModal h4 { margin: 0 0 8px 0; font-size:1.05rem }
+.confirmModal .preview { max-height: 240px; overflow:auto; }
 .preview { white-space: pre-wrap; background: var(--muted-bg); padding:8px; border-radius:6px; margin-top:6px }
 
 .toast { position: fixed; right: 16px; bottom: 16px; background: var(--color-success); color: var(--white-100); padding: 0.6rem 0.9rem; border-radius: 8px; box-shadow: 0 16px 40px var(--shadow-45); z-index:2400 }

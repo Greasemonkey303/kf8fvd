@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Modal from '@/components/modal/Modal'
 import Image from 'next/image'
 import styles from './HotspotGallery.module.css'
 
@@ -68,12 +69,10 @@ export default function HotspotGallery({ images }: Props){
       </div>
 
       {open && typeof document !== 'undefined' && createPortal(
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true" onClick={()=> setOpen(null)}>
-          <div className={styles.modal} onClick={(e)=> e.stopPropagation()}>
-            <button aria-label="Close image" className={styles.modalClose} onClick={()=> setOpen(null)}>✕</button>
-            <img src={open!} alt="Hotspot large" />
-          </div>
-        </div>,
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modal} onClose={() => setOpen(null)} titleId="hotspot-image-title">
+          <button aria-label="Close image" className={styles.modalClose} onClick={()=> setOpen(null)}>✕</button>
+          <img src={open!} alt="Hotspot large" />
+        </Modal>,
         document.body
       )}
     </div>

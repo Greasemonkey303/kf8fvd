@@ -62,7 +62,7 @@ export default function AdminPage() {
             } catch {}
           }
         } catch {}
-        setCounts({ projects: (p.items||[]).length, messages: (m.items||[]).length, users: (u.items||[]).length, aboutPosts: aboutCount })
+        setCounts({ projects: (p.items||[]).length, messages: (typeof m.total === 'number' ? m.total : (m.items||[]).length), users: (u.items||[]).length, aboutPosts: aboutCount })
       } catch {
         // ignore
       }

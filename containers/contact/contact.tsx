@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { tlog } from '@/lib/turnstileDebug'
 import { loadTurnstileScript, waitForTurnstileReady } from '@/lib/turnstileLoader'
+import Modal from '@/components/modal/Modal'
 import styles from './contact.module.css'
 import { Card } from '@/components'
 
@@ -17,6 +18,7 @@ export default function Contact() {
   const [files, setFiles] = useState<File[]>([])
   const [errors, setErrors] = useState<Record<string,string>>({})
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const successRef = useRef<HTMLDivElement | null>(null)
@@ -27,6 +29,8 @@ export default function Contact() {
   const messageRef = useRef<HTMLTextAreaElement | null>(null)
   const submitButtonRef = useRef<HTMLButtonElement | null>(null)
   const progressInnerRef = useRef<HTMLDivElement | null>(null)
+  const xhrRef = useRef<XMLHttpRequest | null>(null)
+  const confirmCancelRef = useRef<HTMLButtonElement | null>(null)
   const [mounted, setMounted] = useState(false)
   const [totalSize, setTotalSize] = useState(0)
   const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
@@ -137,6 +141,7 @@ export default function Contact() {
     const merged = [...files, ...arr].slice(0,6)
     setFiles(merged)
     setTotalSize(merged.reduce((s,f)=> s + f.size, 0))
+    setErrors(prev => { const e = { ...prev }; delete e.files; return e })
     // reset input to allow re-adding same file
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -151,6 +156,7 @@ export default function Contact() {
     const merged = [...files, ...arr].slice(0,6)
     setFiles(merged)
     setTotalSize(merged.reduce((s,f)=> s + f.size, 0))
+    setErrors(prev => { const e = { ...prev }; delete e.files; return e })
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -174,12 +180,13 @@ export default function Contact() {
 
   function handleSubmit(e: React.FormEvent){
     e.preventDefault()
+    if (loading || uploadProgress !== null) return
     if (!validate()) return
     setConfirmOpen(true)
   }
 
   async function confirmSend(){
-    setConfirmOpen(false)
+    setConfirmError(null)
     setLoading(true)
     try {
       // small analytics/log
@@ -195,34 +202,33 @@ export default function Contact() {
       if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
         const token = cfToken || document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value
         if (!token) {
-          // In development, allow a safe bypass so the form can be tested locally.
-          if ((process.env.NODE_ENV || '') !== 'production') {
-            tlog('contact confirmSend: no token present; enabling dev bypass')
-            fd.append('_bypass', '1')
-          } else {
-            throw new Error('Please complete the CAPTCHA to continue')
-          }
-        } else {
-          fd.append('cf-turnstile-response', token)
+          throw new Error('Please complete the CAPTCHA to continue')
         }
+        fd.append('cf-turnstile-response', token)
       }
       files.forEach((f, i) => fd.append(`file-${i}`, f))
 
       // use XMLHttpRequest to track upload progress for attachments
       const xhr = new XMLHttpRequest()
+      xhrRef.current = xhr
       await new Promise<void>((resolve, reject) => {
         xhr.open('POST', '/api/contact')
         xhr.onload = () => {
+          xhrRef.current = null
           try {
-            const data = JSON.parse(xhr.responseText || '{}')
+            const raw = xhr.responseText || ''
+            let data: any
+            try { data = raw ? JSON.parse(raw) : undefined } catch (e) { data = undefined }
             if (xhr.status < 200 || xhr.status >= 300) {
-              console.error('API /api/contact error', data)
-              return reject(new Error(data?.details || data?.error || 'Send failed'))
+              console.error('API /api/contact error', { status: xhr.status, responseText: raw, parsed: data })
+              const errMsg = data?.details || data?.error?.message || data?.error || raw || 'Send failed'
+              return reject(new Error(errMsg))
             }
             resolve()
           } catch (err) { reject(err as any) }
         }
-        xhr.onerror = () => reject(new Error('Network error'))
+        xhr.onerror = () => { xhrRef.current = null; reject(new Error('Network error')) }
+        xhr.onabort = () => { xhrRef.current = null; reject(new Error('Upload canceled')) }
         if (xhr.upload) {
           xhr.upload.onprogress = (ev) => {
             if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100))
@@ -230,7 +236,6 @@ export default function Contact() {
         }
         xhr.send(fd)
       })
-
       setUploadProgress(null)
       // reset turnstile widget to avoid reusing token
       try {
@@ -238,16 +243,30 @@ export default function Contact() {
         if ((window as any).turnstile && cfWidgetId != null) (window as any).turnstile.reset(cfWidgetId)
         setCfToken(null)
       } catch {}
-      
+
       setSuccess(true)
       // clear form
       setName(''); setEmail(''); setMessage(''); setFiles([])
+      // close the confirm modal on success
+      setConfirmOpen(false)
     } catch (err) {
       console.error('contact send error', err)
-      setErrors(prev => ({ ...prev, _global: (err as any)?.message || 'Send failed' }))
+      const msg = (err as any)?.message || 'Send failed'
+      setConfirmError(msg)
+      setErrors(prev => ({ ...prev, _global: msg }))
     } finally {
       setLoading(false)
+      xhrRef.current = null
     }
+  }
+
+  function cancelUpload(){
+    try { if (xhrRef.current) xhrRef.current.abort() } catch {}
+    xhrRef.current = null
+    setUploadProgress(null)
+    setLoading(false)
+    setErrors(prev => ({ ...prev, _global: 'Upload canceled' }))
+    setConfirmOpen(false)
   }
 
   useEffect(() => {
@@ -257,6 +276,23 @@ export default function Contact() {
       const t = setTimeout(()=> setSuccess(false), 3500)
       return ()=> clearTimeout(t)
     }
+  }, [success])
+
+  
+
+  // Escape key closes preview or confirm modal
+  useEffect(()=>{
+    function onKey(e: KeyboardEvent){
+      if (e.key === 'Escape'){
+        if (previewSrc) closePreview()
+        if (confirmOpen) setConfirmOpen(false)
+      }
+    }
+    if (previewSrc || confirmOpen) {
+      window.addEventListener('keydown', onKey)
+      return () => window.removeEventListener('keydown', onKey)
+    }
+  },[previewSrc, confirmOpen])
 
 
   // focus global error when present
@@ -277,19 +313,19 @@ export default function Contact() {
 
               <div>
                 <label htmlFor="contact-name">Name</label>
-                <input id="contact-name" ref={nameRef} aria-label="Name" aria-invalid={!!errors.name} aria-describedby={errors.name? 'err-name':''} value={name} onChange={(e)=> setName(e.target.value)} placeholder="Your name" required autoComplete="name" onBlur={()=> validateField('name')} />
+                <input id="contact-name" ref={nameRef} aria-label="Name" aria-invalid={!!errors.name} aria-describedby={errors.name? 'err-name':''} value={name} onChange={(e)=> { setName(e.target.value); setErrors(prev => { const e = { ...prev }; delete e.name; return e }) }} placeholder="Your name" required autoComplete="name" onBlur={()=> validateField('name')} />
                 {errors.name && <div id="err-name" className={styles.formError} role="alert">{errors.name}</div>}
               </div>
 
               <div>
                 <label htmlFor="contact-email">Email</label>
-                <input id="contact-email" ref={emailRef} aria-label="Email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email? 'err-email':''} value={email} onChange={(e)=> setEmail(e.target.value)} placeholder="you@example.com" required autoComplete="email" onBlur={()=> validateField('email')} />
+                <input id="contact-email" ref={emailRef} aria-label="Email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email? 'err-email':''} value={email} onChange={(e)=> { setEmail(e.target.value); setErrors(prev => { const e = { ...prev }; delete e.email; return e }) }} placeholder="you@example.com" required autoComplete="email" onBlur={()=> validateField('email')} />
                 {errors.email && <div id="err-email" className={styles.formError} role="alert">{errors.email}</div>}
               </div>
 
               <div>
                 <label htmlFor="contact-message">Message</label>
-                <textarea id="contact-message" ref={messageRef} aria-label="Message" aria-invalid={!!errors.message} aria-describedby={errors.message? 'err-message':''} value={message} onChange={(e)=> setMessage(e.target.value)} placeholder="Message" required onBlur={()=> validateField('message')} />
+                <textarea id="contact-message" ref={messageRef} aria-label="Message" aria-invalid={!!errors.message} aria-describedby={errors.message? 'err-message':''} value={message} onChange={(e)=> { setMessage(e.target.value); setErrors(prev => { const e = { ...prev }; delete e.message; return e }) }} placeholder="Message" required onBlur={()=> validateField('message')} />
                 {errors.message && <div id="err-message" className={styles.formError} role="alert">{errors.message}</div>}
               </div>
 
@@ -337,11 +373,12 @@ export default function Contact() {
               {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
                 <div className="mt-12">
                   <div id="cf-turnstile-container"></div>
+                  {!cfToken && <div className={styles.small} role="status" aria-live="polite">Please complete the CAPTCHA to enable sending.</div>}
                 </div>
               )}
 
                 <div className={styles.actions}>
-                  <button ref={submitButtonRef} type="submit" disabled={loading} aria-busy={loading}>
+                  <button ref={submitButtonRef} type="submit" disabled={loading || uploadProgress !== null || (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && !cfToken)} aria-busy={loading}>
                     {loading ? (
                       <>
                         <span className={styles.spinner} aria-hidden></span>
@@ -364,37 +401,53 @@ export default function Contact() {
       </div>
 
       {confirmOpen && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-          <div className={styles.modal}>
-            <h4>Confirm message</h4>
-            <p><strong>Name:</strong> {name || '—'}</p>
-            <p><strong>Email:</strong> {email || '—'}</p>
-            <p><strong>Message:</strong></p>
-            <div className={styles.preview}>{message || '—'}</div>
-            {files.length>0 && <p><strong>Attachments:</strong> {files.map(f=> f.name).join(', ')}</p>}
-            <div className={styles.confirmActions}>
-              <button onClick={()=> setConfirmOpen(false)}>Cancel</button>
-              <button onClick={confirmSend}>Confirm & Send</button>
-            </div>
+        <Modal overlayClassName={styles.confirmOverlay} contentClassName={styles.confirmModal} onClose={() => setConfirmOpen(false)} initialFocusRef={confirmCancelRef} titleId="confirm-title" descriptionId="confirm-desc">
+          <h4 id="confirm-title">Confirm message</h4>
+          <p><strong>Name:</strong> {name || '—'}</p>
+          <p><strong>Email:</strong> {email || '—'}</p>
+          <p><strong>Message:</strong></p>
+          <div id="confirm-desc" className={styles.preview}>{message || '—'}</div>
+          {files.length>0 && <p><strong>Attachments:</strong> {files.map(f=> f.name).join(', ')}</p>}
+          {confirmError && <div className={styles.formError} role="alert">{confirmError}</div>}
+
+          {uploadProgress !== null && (
+            <>
+              <div className={styles.progress} aria-hidden>
+                <div className={styles.progressInner} style={{ width: `${uploadProgress}%` }} aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100} />
+              </div>
+              <div className={styles.progressInfo}>
+                <span className={styles.progressText}>{uploadProgress}%</span>
+                <button type="button" onClick={() => { cancelUpload() }} className={styles.cancelUpload}>Cancel</button>
+              </div>
+            </>
+          )}
+
+          <div className={styles.confirmActions}>
+            <button ref={confirmCancelRef} onClick={() => { if (uploadProgress !== null) cancelUpload(); else setConfirmOpen(false) }}>Cancel</button>
+            <button onClick={confirmSend} disabled={loading || uploadProgress !== null || (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && !cfToken)} aria-disabled={loading || uploadProgress !== null}>{loading ? 'Sending…' : 'Confirm & Send'}</button>
           </div>
-        </div>
+        </Modal>
       )}
 
               {previewSrc && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true" onClick={closePreview}>
-          <div className={styles.modal} onClick={(e)=> e.stopPropagation()}>
-            <h4>{previewName}</h4>
-            <img src={previewSrc} alt={previewName || 'preview'} className={styles.previewImg} />
-            <div className="flex justify-end mt-8">
-                <button onClick={closePreview}>Close</button>
-              </div>
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modal} onClose={closePreview} titleId="preview-title">
+          <h4 id="preview-title">{previewName}</h4>
+          <img src={previewSrc} alt={previewName || 'preview'} className={styles.previewImg} />
+          <div className="flex justify-end mt-8">
+              <button onClick={closePreview}>Close</button>
           </div>
-        </div>
+        </Modal>
         )}
 
         {uploadProgress !== null && (
-          <div className="progress-fixed">
-            <div className={styles.progress}><div ref={progressInnerRef} className={styles.progressInner} /></div>
+          <div className="progress-fixed" role="status" aria-live="polite" aria-atomic="true">
+            <div className={styles.progress} aria-hidden={false}>
+              <div ref={progressInnerRef} className={styles.progressInner} style={{ width: `${uploadProgress}%` }} aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100} />
+            </div>
+            <div className={styles.progressInfo}>
+              <span className={styles.progressText}>{uploadProgress}%</span>
+              <button type="button" onClick={cancelUpload} className={styles.cancelUpload}>Cancel</button>
+            </div>
           </div>
         )}
 

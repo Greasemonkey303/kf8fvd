@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import styles from '../../admin.module.css'
 import Card from '../../../../components/card/card'
 import { buildPublicUrl } from '@/lib/s3'
+import Modal from '@/components/modal/Modal'
 
 export default function AdminHeroPage() {
   const [hero, setHero] = useState<any | null>(null)
@@ -11,6 +12,7 @@ export default function AdminHeroPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
@@ -366,31 +368,29 @@ export default function AdminHeroPage() {
                     )}
                           {/* Delete confirmation modal */}
                           {deleteTarget && (
-                            <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="delete-image-title">
-                              <div className={styles.modalContent}>
-                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
-                                  <h4 id="delete-image-title" style={{margin:0}}>Delete image</h4>
-                                  <div>
-                                    <button className={styles.btnGhostSmall} onClick={() => { setDeleteTarget(null); setDeleteError(null); }} aria-label="Close">Close</button>
-                                  </div>
-                                </div>
-                                <p className={styles.smallMuted}>Are you sure you want to delete this image? This action cannot be undone.</p>
-                                <div style={{display:'flex', gap:12, marginTop:12, alignItems:'center'}}>
-                                  <div style={{width:120,height:80,overflow:'hidden',borderRadius:8,background:'#021022'}}>
-                                    <img src={getPreviewSrc(deleteTarget.url)} alt={deleteTarget.alt || ''} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
-                                  </div>
-                                  <div style={{flex:1}}>
-                                    <div style={{fontWeight:700}}>{deleteTarget.alt || 'Untitled image'}</div>
-                                    <div className={styles.smallMuted} style={{marginTop:6}}>This will remove the image from the hero images list and delete the object from storage.</div>
-                                    {deleteError && <div role="alert" className={styles.modalError} style={{marginTop:8}}>{deleteError}</div>}
-                                  </div>
-                                </div>
-                                <div style={{display:'flex', gap:8, justifyContent:'flex-end', marginTop:16}}>
-                                  <button className={styles.btnGhost} onClick={() => { setDeleteTarget(null); setDeleteError(null); }} disabled={deleting}>Cancel</button>
-                                  <button className={styles.btnDanger} onClick={confirmDelete} disabled={deleting}>{deleting ? (<span style={{display:'inline-flex', alignItems:'center', gap:8}}><span className={styles.spinner} style={{width:14, height:14}} />Deleting…</span>) : 'Delete'}</button>
+                            <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => { setDeleteTarget(null); setDeleteError(null); }} initialFocusRef={deleteCancelRef} titleId="delete-image-title">
+                              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
+                                <h4 id="delete-image-title" style={{margin:0}}>Delete image</h4>
+                                <div>
+                                  <button className={styles.btnGhostSmall} onClick={() => { setDeleteTarget(null); setDeleteError(null); }} aria-label="Close">Close</button>
                                 </div>
                               </div>
-                            </div>
+                              <p className={styles.smallMuted}>Are you sure you want to delete this image? This action cannot be undone.</p>
+                              <div style={{display:'flex', gap:12, marginTop:12, alignItems:'center'}}>
+                                <div style={{width:120,height:80,overflow:'hidden',borderRadius:8,background:'#021022'}}>
+                                  <img src={getPreviewSrc(deleteTarget.url)} alt={deleteTarget.alt || ''} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+                                </div>
+                                <div style={{flex:1}}>
+                                  <div style={{fontWeight:700}}>{deleteTarget.alt || 'Untitled image'}</div>
+                                  <div className={styles.smallMuted} style={{marginTop:6}}>This will remove the image from the hero images list and delete the object from storage.</div>
+                                  {deleteError && <div role="alert" className={styles.modalError} style={{marginTop:8}}>{deleteError}</div>}
+                                </div>
+                              </div>
+                              <div style={{display:'flex', gap:8, justifyContent:'flex-end', marginTop:16}}>
+                                <button ref={deleteCancelRef} className={styles.btnGhost} onClick={() => { setDeleteTarget(null); setDeleteError(null); }} disabled={deleting}>Cancel</button>
+                                <button className={styles.btnDanger} onClick={confirmDelete} disabled={deleting}>{deleting ? (<span style={{display:'inline-flex', alignItems:'center', gap:8}}><span className={styles.spinner} style={{width:14, height:14}} />Deleting…</span>) : 'Delete'}</button>
+                              </div>
+                            </Modal>
                           )}
 
                           {/* ARIA live region for announcements */}

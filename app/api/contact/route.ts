@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { isLocked, incrementFailure } from '@/lib/rateLimiter'
+import { query } from '@/lib/db'
 
 type SGAttachment = {
   content: string
@@ -9,18 +11,35 @@ type SGAttachment = {
 }
 
 import fs from 'fs/promises'
+import path from 'path'
 
 const getErrMsg = (err: unknown) => {
   if (err instanceof Error) return err.message
   try { return String(err) } catch { return 'Unknown error' }
 }
 
-// Simple rate limiter configuration (per IP)
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
-const RATE_LIMIT_MAX = 20 // max requests per window
+function jsonErr(code: string, message: string, details?: unknown, status = 400) {
+  return NextResponse.json({ error: { code, message, details } }, { status })
+}
 
-// In-memory rate limiter store (single-instance)
-const rateMap = new Map<string, number[]>();
+// File limits
+const MAX_TOTAL = 50 * 1024 * 1024 // 50MB total
+const MAX_PER_FILE = 50 * 1024 * 1024 // 50MB per file
+const ALLOWED_MIME_PREFIXES = ['image/', 'application/pdf', 'text/']
+const ALLOWED_MIME_EXACT = [
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]
+
+function isAllowedMime(mime: string, filename: string) {
+  if (!mime || typeof mime !== 'string') {
+    const ext = (filename || '').split('.').pop()?.toLowerCase() || ''
+    return ['png','jpg','jpeg','gif','webp','pdf','txt','doc','docx'].includes(ext)
+  }
+  for (const p of ALLOWED_MIME_PREFIXES) if (mime.startsWith(p)) return true
+  if (ALLOWED_MIME_EXACT.includes(mime)) return true
+  return false
+}
 
 export async function POST(req: Request) {
   try {
@@ -29,39 +48,43 @@ export async function POST(req: Request) {
     const TO_EMAIL = process.env.SENDGRID_TO || 'zach@kf8fvd'
 
     if (!SENDGRID_API_KEY) {
-      return NextResponse.json({ error: 'Missing SENDGRID_API_KEY' }, { status: 500 })
+      return jsonErr('MISSING_CONFIG', 'Missing SENDGRID_API_KEY', undefined, 500)
     }
 
     const form = await req.formData()
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.headers.get('x-forwarded') || 'unknown'
     const userAgent = req.headers.get('user-agent') || 'unknown'
-    // rate limit check (in-memory)
+
+    const emailFromForm = (form.get('email')?.toString() || '').trim()
+    const ipKey = `ip:${ip}`
+    const emailKey = emailFromForm ? `email:${emailFromForm}` : null
+
+    // rate limiter: check centralized limiter (IP and optional email)
     try {
-      const now = Date.now();
-      const arr = rateMap.get(ip) || [];
-      const filtered = arr.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-      if (filtered.length >= RATE_LIMIT_MAX) {
-        console.warn('[api/contact] rate limit exceeded', ip);
-        return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+      if (await isLocked(ipKey) || (emailKey && await isLocked(emailKey))) {
+        console.warn('[api/contact] rate limit locked', ip)
+        return jsonErr('RATE_LIMIT', 'Rate limit exceeded', undefined, 429)
       }
-      filtered.push(now);
-      rateMap.set(ip, filtered);
     } catch (e) {
-      console.warn('[api/contact] rate limiter error', e);
+      console.warn('[api/contact] rate limiter check failed', e)
     }
+
     // honeypot check
     const honeypot = form.get('hp')?.toString() || ''
     if (honeypot.trim()) {
-      console.warn('[api/contact] honeypot triggered')
-      return NextResponse.json({ error: 'Spam detected' }, { status: 400 })
+      console.warn('[api/contact] honeypot triggered', ip)
+      try { await incrementFailure(ipKey, { reason: 'honeypot' }) } catch (_) {}
+      if (emailKey) try { await incrementFailure(emailKey, { reason: 'honeypot' }) } catch (_) {}
+      return jsonErr('SPAM', 'Spam detected', undefined, 400)
     }
 
     // Cloudflare Turnstile verification (if configured)
-    const cfToken = form.get('cf-turnstile-response')?.toString() || form.get('cf-turnstile-response')?.toString() || form.get('cf-turnstile')?.toString() || ''
+    const cfToken = form.get('cf-turnstile-response')?.toString() || form.get('cf-turnstile')?.toString() || ''
     const CF_SECRET = process.env.CF_TURNSTILE_SECRET
     if (CF_SECRET) {
       if (!cfToken) {
-        return NextResponse.json({ error: 'Missing Turnstile token' }, { status: 400 })
+        try { await incrementFailure(ipKey, { reason: 'turnstile_missing' }) } catch (_) {}
+        return jsonErr('MISSING_CAPTCHA', 'Missing CAPTCHA token', undefined, 400)
       }
       const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST',
@@ -71,28 +94,39 @@ export async function POST(req: Request) {
       const vr = await verifyRes.json()
       if (!vr.success) {
         console.warn('[api/contact] turnstile failed', vr)
-        return NextResponse.json({ error: 'Turnstile verification failed', details: vr }, { status: 400 })
+        try { await incrementFailure(ipKey, { reason: 'turnstile_failed' }) } catch (_) {}
+        return jsonErr('CAPTCHA_FAILED', 'CAPTCHA verification failed', vr, 400)
       }
     }
+
     const name = form.get('name')?.toString() || 'Website visitor'
-    const email = form.get('email')?.toString() || ''
+    const email = emailFromForm || ''
     const message = form.get('message')?.toString() || ''
 
     const attachments: SGAttachment[] = []
     let totalBytes = 0
-    const MAX_TOTAL = 50 * 1024 * 1024 // 50MB total
     for (const entry of form.entries()) {
       const [, value] = entry
-      // Some runtimes present uploaded files as File, Blob, or file-like objects.
       const maybeFile = value as unknown
       if (maybeFile && typeof (maybeFile as { name?: unknown }).name === 'string' && typeof (maybeFile as { arrayBuffer?: unknown }).arrayBuffer === 'function') {
         const file = maybeFile as File
         const ab = await file.arrayBuffer()
         const uint8 = new Uint8Array(ab)
         const bytes = uint8.byteLength
+        // per-file size check
+        if (bytes > MAX_PER_FILE) {
+          try { await incrementFailure(ipKey, { reason: 'file_too_large' }) } catch (_) {}
+          return jsonErr('FILE_TOO_LARGE', 'An attachment exceeds the per-file size limit', { filename: file.name }, 413)
+        }
         totalBytes += bytes
         if (totalBytes > MAX_TOTAL) {
-          return NextResponse.json({ error: 'Total attachments exceed 50MB limit' }, { status: 413 })
+          try { await incrementFailure(ipKey, { reason: 'total_size_exceeded' }) } catch (_) {}
+          return jsonErr('TOTAL_TOO_LARGE', 'Total attachments exceed 50MB limit', undefined, 413)
+        }
+        const mime = file.type || ''
+        if (!isAllowedMime(mime, file.name)) {
+          try { await incrementFailure(ipKey, { reason: 'unsupported_file_type' }) } catch (_) {}
+          return jsonErr('UNSUPPORTED_FILE_TYPE', 'Attachment type is not allowed', { filename: file.name, type: mime }, 415)
         }
         const base64 = Buffer.from(uint8).toString('base64')
         const isImage = (file.type || '').startsWith('image/')
@@ -107,16 +141,34 @@ export async function POST(req: Request) {
       }
     }
 
-    // Debug: log what attachments we will send
+    let savedAttachmentsMeta: Array<{ filename: string; type: string; dir?: string }> = []
     if (attachments.length) {
       try { console.log('[api/contact] attachments:', attachments.map(a => a.filename)) } catch { /* ignore */ }
+      // attempt to persist attachments to disk (for admin downloads)
+      try {
+        const uploadDir = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+        const base = path.join(process.cwd(), 'data', 'uploads', uploadDir)
+        await fs.mkdir(base, { recursive: true })
+        for (const a of attachments) {
+          try {
+            const safeName = path.basename(a.filename || 'file')
+            const filePath = path.join(base, safeName)
+            await fs.writeFile(filePath, Buffer.from(a.content || '', 'base64'))
+            savedAttachmentsMeta.push({ filename: safeName, type: a.type || 'application/octet-stream', dir: uploadDir })
+          } catch (e) {
+            console.error('[api/contact] failed to save attachment', e)
+            // fallback to metadata without dir
+            savedAttachmentsMeta.push({ filename: a.filename || 'file', type: a.type || 'application/octet-stream' })
+          }
+        }
+      } catch (e) {
+        console.error('[api/contact] failed to persist attachments to disk', e)
+        savedAttachmentsMeta = attachments.map(a => ({ filename: a.filename, type: a.type }))
+      }
     }
 
-    // server-side email validation (simple)
     const emailIsValid = typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
-    // Always use the verified `SENDGRID_FROM` as the envelope 'from' to satisfy SendGrid.
-    // Use the visitor's email in `reply_to` so you can reply directly.
     function escapeHtml(str: string) {
       return String(str || '')
         .replace(/&/g, '&amp;')
@@ -177,7 +229,9 @@ export async function POST(req: Request) {
     if (!res.ok) {
       const text = await res.text()
       console.error('[api/contact] SendGrid error', res.status, text)
-      return NextResponse.json({ error: 'SendGrid error', details: text, status: res.status }, { status: 500 })
+      try { await incrementFailure(ipKey, { reason: 'sendgrid_error' }) } catch (_) {}
+      if (emailKey) try { await incrementFailure(emailKey, { reason: 'sendgrid_error' }) } catch (_) {}
+      return jsonErr('SENDGRID_ERROR', 'SendGrid error', text, 502)
     }
 
     // append message to local log for backup/inspection
@@ -188,6 +242,14 @@ export async function POST(req: Request) {
       await fs.appendFile(`${outDir}/messages.log`, logLine, 'utf8')
     } catch (e) {
       console.error('[api/contact] failed to write message log', e)
+    }
+
+    // persist message to database (non-blocking: log errors but don't fail the request)
+    try {
+      const attachmentsMeta = (savedAttachmentsMeta && savedAttachmentsMeta.length) ? savedAttachmentsMeta : attachments.map(a => ({ filename: a.filename, type: a.type }))
+      await query('INSERT INTO messages (name, email, message, attachments, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)', [name || null, email || null, message || null, JSON.stringify(attachmentsMeta), ip || null, userAgent || null])
+    } catch (dbErr) {
+      console.error('[api/contact] failed to persist message to DB', dbErr)
     }
 
     // send a confirmation email to the visitor (if valid)
@@ -212,6 +274,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
-    return NextResponse.json({ error: getErrMsg(err) }, { status: 500 })
+    console.error('[api/contact] unhandled error', err)
+    return jsonErr('SERVER_ERROR', getErrMsg(err), undefined, 500)
   }
 }

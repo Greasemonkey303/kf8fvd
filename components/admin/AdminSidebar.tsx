@@ -1,12 +1,28 @@
 "use client"
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import styles from '../../app/admin/admin.module.css'
 
 export default function AdminSidebar({ admin }: { admin: { name?: string; email?: string } | null }) {
   const pathname = usePathname() || ''
   const isActive = (href: string) => pathname.startsWith(href)
+  const [unread, setUnread] = useState<number>(0)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/messages?unread=true')
+        const j = await res.json()
+        if (!mounted) return
+        if (j && typeof j.unread === 'number') setUnread(Number(j.unread))
+      } catch (e) {
+        // ignore
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
 
   return (
     <aside className={`${styles.sidebar} accent-scroll`}>
@@ -15,7 +31,7 @@ export default function AdminSidebar({ admin }: { admin: { name?: string; email?
         <a className={`${styles.navLink} ${isActive('/admin/projects') ? styles.navLinkActive : ''}`} href="/admin/projects">Projects</a>
         <a className={`${styles.navLink} ${isActive('/admin/credentials') ? styles.navLinkActive : ''}`} href="/admin/credentials">Credentials</a>
         <a className={`${styles.navLink} ${isActive('/admin/about') ? styles.navLinkActive : ''}`} href="/admin/about">About</a>
-        <a className={`${styles.navLink} ${isActive('/admin/messages') ? styles.navLinkActive : ''}`} href="/admin/messages">Messages</a>
+        <a className={`${styles.navLink} ${isActive('/admin/messages') ? styles.navLinkActive : ''}`} href="/admin/messages">Messages{unread>0 && <span style={{background:'#e11d48',color:'#fff',borderRadius:999,padding:'2px 6px',marginLeft:8,fontSize:12}}>{unread}</span>}</a>
         <a className={`${styles.navLink} ${isActive('/admin/home') ? styles.navLinkActive : ''}`} href="/admin/home">Home</a>
         <div className={styles.navSubList}>
           <a className={`${styles.navLink} ${styles.navSubLink} ${isActive('/admin/home/hero') ? styles.navLinkActive : ''}`} href="/admin/home/hero">Hero</a>
