@@ -19,6 +19,8 @@ export default function Contact() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const successRef = useRef<HTMLDivElement | null>(null)
+  const globalErrorRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const nameRef = useRef<HTMLInputElement | null>(null)
   const emailRef = useRef<HTMLInputElement | null>(null)
@@ -105,6 +107,26 @@ export default function Contact() {
       else if (first === 'message' && messageRef.current) messageRef.current.focus()
     }
     return Object.keys(e).length === 0
+  }
+
+  function validateField(field: 'name'|'email'|'message'){
+    setErrors(prev => {
+      const e = { ...prev }
+      if (field === 'name') {
+        if (!name.trim()) e.name = 'Please enter your name.'
+        else delete e.name
+      }
+      if (field === 'email') {
+        if (!email.trim()) e.email = 'Please enter your email.'
+        else if (!isValidEmail(email.trim())) e.email = 'Please enter a valid email address.'
+        else delete e.email
+      }
+      if (field === 'message') {
+        if (!message.trim() || message.trim().length < 10) e.message = 'Please enter a message (10+ characters).'
+        else delete e.message
+      }
+      return e
+    })
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>){
@@ -229,11 +251,20 @@ export default function Contact() {
   }
 
   useEffect(() => {
-    if (progressInnerRef.current && uploadProgress !== null) {
-      progressInnerRef.current.style.width = `${uploadProgress}%`;
+    if (success) {
+      // focus toast for screen reader users and keyboard users
+      try { if (successRef.current) successRef.current.focus() } catch {}
+      const t = setTimeout(()=> setSuccess(false), 3500)
+      return ()=> clearTimeout(t)
     }
-  }, [uploadProgress]);
 
+
+  // focus global error when present
+  useEffect(()=>{
+    if (errors._global && globalErrorRef.current) {
+      try { globalErrorRef.current.focus() } catch {}
+    }
+  },[errors._global])
   return (
     <main className={styles.contact}>
       <div className={styles.wrapper}>
@@ -242,25 +273,25 @@ export default function Contact() {
             {mounted ? (
               <form className={styles.form} onSubmit={handleSubmit} noValidate>
                 <h3 className={styles.formHeading}>Message me now</h3>
-              {errors._global && <div className={styles.formError} role="alert" aria-live="assertive">{errors._global}</div>}
+              {errors._global && <div ref={globalErrorRef} tabIndex={-1} className={styles.formError} role="alert" aria-live="assertive">{errors._global}</div>}
 
-              <label>
-                Name
-                <input ref={nameRef} aria-label="Name" aria-invalid={!!errors.name} aria-describedby={errors.name? 'err-name':''} value={name} onChange={(e)=> setName(e.target.value)} placeholder="Your name" />
+              <div>
+                <label htmlFor="contact-name">Name</label>
+                <input id="contact-name" ref={nameRef} aria-label="Name" aria-invalid={!!errors.name} aria-describedby={errors.name? 'err-name':''} value={name} onChange={(e)=> setName(e.target.value)} placeholder="Your name" required autoComplete="name" onBlur={()=> validateField('name')} />
                 {errors.name && <div id="err-name" className={styles.formError} role="alert">{errors.name}</div>}
-              </label>
+              </div>
 
-              <label>
-                Email
-                <input ref={emailRef} aria-label="Email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email? 'err-email':''} value={email} onChange={(e)=> setEmail(e.target.value)} placeholder="you@example.com" />
+              <div>
+                <label htmlFor="contact-email">Email</label>
+                <input id="contact-email" ref={emailRef} aria-label="Email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email? 'err-email':''} value={email} onChange={(e)=> setEmail(e.target.value)} placeholder="you@example.com" required autoComplete="email" onBlur={()=> validateField('email')} />
                 {errors.email && <div id="err-email" className={styles.formError} role="alert">{errors.email}</div>}
-              </label>
+              </div>
 
-              <label>
-                Message
-                <textarea ref={messageRef} aria-label="Message" aria-invalid={!!errors.message} aria-describedby={errors.message? 'err-message':''} value={message} onChange={(e)=> setMessage(e.target.value)} placeholder="Message" />
+              <div>
+                <label htmlFor="contact-message">Message</label>
+                <textarea id="contact-message" ref={messageRef} aria-label="Message" aria-invalid={!!errors.message} aria-describedby={errors.message? 'err-message':''} value={message} onChange={(e)=> setMessage(e.target.value)} placeholder="Message" required onBlur={()=> validateField('message')} />
                 {errors.message && <div id="err-message" className={styles.formError} role="alert">{errors.message}</div>}
-              </label>
+              </div>
 
               <label className={`${styles.fileLabel} ${dragOver? styles.dropZone : ''}`} onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={()=> setDragOver(false)}>
                 Attachments
@@ -310,7 +341,14 @@ export default function Contact() {
               )}
 
                 <div className={styles.actions}>
-                  <button ref={submitButtonRef} type="submit" disabled={loading}>{loading? <span className={styles.spinner} aria-hidden></span>: 'Send'}</button>
+                  <button ref={submitButtonRef} type="submit" disabled={loading} aria-busy={loading}>
+                    {loading ? (
+                      <>
+                        <span className={styles.spinner} aria-hidden></span>
+                        <span style={{marginLeft:8}}>Sending…</span>
+                      </>
+                    ) : 'Send'}
+                  </button>
                 </div>
               </form>
             ) : (
@@ -361,7 +399,7 @@ export default function Contact() {
         )}
 
       {success && (
-        <div className={styles.toast} role="status">Message sent — thanks! I'll reply as soon as I can.</div>
+        <div ref={successRef} tabIndex={-1} className={styles.toast} role="status" aria-live="polite">Message sent — thanks! I'll reply as soon as I can.</div>
       )}
     </main>
   )

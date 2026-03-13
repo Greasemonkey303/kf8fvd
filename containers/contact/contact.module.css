@@ -72,6 +72,15 @@
 
 .toast { position: fixed; right: 16px; bottom: 16px; background: var(--color-success); color: var(--white-100); padding: 0.6rem 0.9rem; border-radius: 8px; box-shadow: 0 16px 40px var(--shadow-45); z-index:2400 }
 
+/* High-contrast focus styles for accessibility */
+.form input:focus, .form textarea:focus, .actions button:focus, .chooseBtn:focus, .removeFile:focus, .mailto:focus, .confirmActions button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
+  border-color: var(--logo-green);
+}
+
+.form label { display:block }
+
 @media (min-width: 800px) { .inner { grid-template-columns: 1fr 320px } }
 
 @media (max-width: 799px) {
