@@ -1,10 +1,27 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from 'react'
+import createDOMPurify from 'dompurify'
 import styles from './page.module.css'
 import Modal from '@/components/modal/Modal'
 
-type Msg = { id: number; name?: string | null; email?: string | null; message?: string | null; attachments?: any[]; ip?: string | null; user_agent?: string | null; is_read?: boolean; created_at?: string }
+function escapeHtml(str: string) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function makeSafeHtmlFromText(s: string) {
+  const txt = String(s || '')
+  return escapeHtml(txt).replace(/\n/g, '<br/>')
+}
+
+type Attachment = { url?: string | null; filename?: string | null }
+
+type Msg = { id: number; name?: string | null; email?: string | null; message?: string | null; message_sanitized?: string | null; attachments?: Attachment[]; ip?: string | null; user_agent?: string | null; is_read?: boolean; created_at?: string }
 
 export default function Page() {
   const [items, setItems] = useState<Msg[]>([])
@@ -31,6 +48,8 @@ export default function Page() {
   }
 
   useEffect(() => { load() }, [])
+
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
 
   async function mark(id: number, read: boolean) {
     await fetch('/api/admin/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
@@ -110,7 +129,7 @@ export default function Page() {
                 <td className={styles.td}>{it.created_at ? (new Date(it.created_at).toLocaleString()) : '-'}</td>
                 <td className={styles.td}>{it.name || '-'}</td>
                 <td className={styles.td}>{it.email || '-'}</td>
-                <td className={styles.td} style={{maxWidth:420}} dangerouslySetInnerHTML={{__html: (it.message || '') .replace(/\n/g, '<br/>').substring(0, 1000)}} />
+                <td className={styles.td} style={{maxWidth:420}} dangerouslySetInnerHTML={{__html: makeSafeHtmlFromText(String(it.message || '').substring(0, 1000))}} />
                 <td className={styles.td}>
                   <div className={styles.controls}>
                     <button className={styles.btnGhost} onClick={() => viewMessage(it)}>View</button>
@@ -127,7 +146,7 @@ export default function Page() {
 
       {/* Modal */}
       {selected && (
-        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={closeModal} initialFocusRef={closeModalBtnRef} titleId={`msg-title-${selected.id}`}>
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={closeModal} initialFocusRef={closeModalBtnRef as unknown as React.RefObject<HTMLElement>} titleId={`msg-title-${selected.id}`}>
           <div className={styles.modalHeader}>
             <div style={{fontWeight:700}} id={`msg-title-${selected.id}`}>{selected.name || 'Message'}</div>
             <div style={{marginLeft:'auto', display:'flex', gap:8}}>
@@ -144,13 +163,13 @@ export default function Page() {
               <div style={{color:'var(--white-85)'}}>Email: {selected.email ? <a href={`mailto:${selected.email}`}>{selected.email}</a> : '-'}</div>
               <div style={{color:'var(--white-85)'}}>IP: {selected.ip || '-'}</div>
             </div>
-            <div style={{border:'1px solid rgba(255,255,255,0.04)', borderRadius:8, padding:12, background:'var(--card-bg)'}} dangerouslySetInnerHTML={{ __html: (selected.message || '').replace(/\n/g, '<br/>') }} />
+            <div style={{border:'1px solid rgba(255,255,255,0.04)', borderRadius:8, padding:12, background:'var(--card-bg)'}} dangerouslySetInnerHTML={{ __html: (selected.message_sanitized ? (purify ? purify.sanitize(String(selected.message_sanitized)) : String(selected.message_sanitized)) : makeSafeHtmlFromText(selected.message || '')) }} />
 
             {selected.attachments && selected.attachments.length > 0 && (
               <div style={{marginTop:12}}>
                 <div style={{fontWeight:700, marginBottom:6}}>Attachments</div>
                 <ul>
-                  {selected.attachments.map((a: any, i: number) => (
+                  {selected.attachments.map((a: Attachment, i: number) => (
                     <li key={i} className={styles.attachment}>
                       {a && a.url ? (
                         <a className={styles.attachmentLink} href={a.url} target="_blank" rel="noopener noreferrer" download>
@@ -169,7 +188,7 @@ export default function Page() {
         </Modal>
       )}
       {confirmDelete && (
-        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => setConfirmDelete(null)} initialFocusRef={confirmCancelRef} titleId="confirm-delete-title" descriptionId="confirm-delete-desc">
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => setConfirmDelete(null)} initialFocusRef={confirmCancelRef as unknown as React.RefObject<HTMLElement>} titleId="confirm-delete-title" descriptionId="confirm-delete-desc">
           <div className={styles.modalHeader}>
             <div style={{fontWeight:700}} id="confirm-delete-title">Confirm delete</div>
           </div>

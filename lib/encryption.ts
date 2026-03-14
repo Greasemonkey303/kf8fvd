@@ -2,8 +2,11 @@ import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 
 const KEY_B64 = process.env.ENCRYPTION_KEY || '';
 if (!KEY_B64) {
-  // Do not throw during import; runtime will fail when encrypt/decrypt used without key.
-  // eslint-disable-next-line no-console
+  // In production we require an encryption key; in dev we warn for convenience.
+  if (process.env.NODE_ENV === 'production') {
+    console.error('ENCRYPTION_KEY is required in production')
+    throw new Error('ENCRYPTION_KEY is required in production')
+  }
   console.warn('ENCRYPTION_KEY not set; encryption functions will fail at runtime');
 }
 

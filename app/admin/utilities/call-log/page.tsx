@@ -7,12 +7,12 @@ export const metadata = {
 }
 
 export default async function Page() {
-  let rows: any[] = []
+  let rows: Record<string, unknown>[] = []
   let error: string | null = null
   try {
-    rows = await query<any[]>(`SELECT id, \`call\`, DATE_FORMAT(qso_date, '%Y-%m-%d') AS qso_date, TIME_FORMAT(time_on, '%H:%i:%s') AS time_on, band, mode, qth, city, state, country, raw_entry, adif_tags, created_at FROM call_logs ORDER BY COALESCE(qso_datetime, created_at) DESC LIMIT 200`)
-  } catch (err:any) {
-    error = String(err?.message || err)
+    rows = await query<Record<string, unknown>[]>(`SELECT id, \`call\`, DATE_FORMAT(qso_date, '%Y-%m-%d') AS qso_date, TIME_FORMAT(time_on, '%H:%i:%s') AS time_on, band, mode, qth, city, state, country, raw_entry, adif_tags, created_at FROM call_logs ORDER BY COALESCE(qso_datetime, created_at) DESC LIMIT 200`)
+  } catch (err: unknown) {
+    error = err instanceof Error ? err.message : String(err)
   }
 
   return (

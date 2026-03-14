@@ -14,7 +14,8 @@ export async function POST(req: Request) {
     if (!/^[0-9A-F]{5}$/.test(prefix)) return NextResponse.json({ error: 'Invalid prefix' }, { status: 400 })
     const text = await fetchRange(prefix)
     return NextResponse.json({ ok: true, data: text })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 400 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: msg || 'Failed' }, { status: 400 })
   }
 }

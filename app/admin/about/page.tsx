@@ -3,16 +3,19 @@
 import React, { useEffect, useState, useRef } from 'react'
 import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
+import Image from 'next/image'
+import createDOMPurify from 'dompurify'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
 
 type AboutItem = { id: number | string; slug: string; title: string; subtitle?: string; image_path?: string; description?: string; is_published: number }
+type AdminCard = AboutItem & { editLink?: string; position?: number }
 
 export default function AdminAboutList() {
   const [items, setItems] = useState<AboutItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<(string|number)[]>([])
-  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<any | null>(null)
+  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<{ items: Record<string, unknown>[] } | null>(null)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState(query)
   const [slugEdited, setSlugEdited] = useState(false)
@@ -24,39 +27,57 @@ export default function AdminAboutList() {
   const toast = useToast()
   const [creating, setCreating] = useState(false)
 
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+
   async function load() {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/pages?page=1&limit=1000')
       const data = await res.json()
-      const rows: any[] = data.items || []
-      const cards: any[] = []
+      const rows: Record<string, unknown>[] = data.items || []
+      const cards: AdminCard[] = []
           // Do not filter by slug here — include all pages so admins can manage any created section
-          rows.forEach(r => {
-        try {
-          const md = r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata) : null
-          if (md) {
-            if (Array.isArray(md.cards) && md.cards.length > 0) {
-              md.cards.forEach((c: any, idx: number) => {
-                cards.push({ id: `${r.id}-c-${idx}`, slug: `${r.slug}#${idx}`, title: c?.title || r.title, subtitle: c?.subtitle || '', image_path: c?.image || '', description: c?.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=${idx}`, position: (c && typeof c.position === 'number') ? c.position : undefined })
-              })
-            } else {
-              // fallback to legacy named cards
-              if (md.aboutCard) cards.push({ id: `${r.id}-about`, slug: `${r.slug}#about`, title: md.aboutCard.title || r.title, subtitle: md.aboutCard.subtitle || '', image_path: md.aboutCard.image || '', description: md.aboutCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=0`, position: (md.aboutCard && typeof md.aboutCard.position === 'number') ? md.aboutCard.position : undefined })
-              if (md.topologyCard) cards.push({ id: `${r.id}-topology`, slug: `${r.slug}#topology`, title: md.topologyCard.title || '', subtitle: md.topologyCard.subtitle || '', image_path: md.topologyCard.image || '', description: md.topologyCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=1`, position: (md.topologyCard && typeof md.topologyCard.position === 'number') ? md.topologyCard.position : undefined })
-              if (md.hamshackCard) cards.push({ id: `${r.id}-hamshack`, slug: `${r.slug}#hamshack`, title: md.hamshackCard.title || '', subtitle: md.hamshackCard.subtitle || '', image_path: md.hamshackCard.image || '', description: md.hamshackCard.content || '', is_published: r.is_published, editLink: `/admin/about/${r.id}?card=2`, position: (md.hamshackCard && typeof md.hamshackCard.position === 'number') ? md.hamshackCard.position : undefined })
+          rows.forEach(rawRow => {
+            try {
+              const row = rawRow as Record<string, unknown>
+              const rawMeta = row['metadata']
+              const md = rawMeta ? (typeof rawMeta === 'string' ? JSON.parse(rawMeta as string) : rawMeta) : null
+              if (md && typeof md === 'object') {
+                const meta = md as Record<string, unknown>
+                if (Array.isArray(meta.cards) && meta.cards.length > 0) {
+                  const cardsArray = meta.cards as unknown[]
+                  cardsArray.forEach((c, idx: number) => {
+                    const cardObj = c as Record<string, unknown>
+                    const title = (cardObj['title'] as string) || (row['title'] as string) || ''
+                    const subtitle = (cardObj['subtitle'] as string) || ''
+                    const image_path = (cardObj['image'] as string) || ''
+                    const description = (cardObj['content'] as string) || ''
+                    const position = typeof cardObj['position'] === 'number' ? (cardObj['position'] as number) : undefined
+                    const is_published = typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0)
+                    const idVal = row['id'] ?? `${idx}`
+                    const slugVal = row['slug'] ?? ''
+                    cards.push({ id: `${idVal}-c-${idx}`, slug: `${slugVal}#${idx}`, title, subtitle, image_path, description, is_published, editLink: `/admin/about/${row['id']}?card=${idx}`, position })
+                  })
+                } else {
+                  // fallback to legacy named cards
+                  const aboutCard = meta['aboutCard'] as Record<string, unknown> | undefined
+                  const topologyCard = meta['topologyCard'] as Record<string, unknown> | undefined
+                  const hamshackCard = meta['hamshackCard'] as Record<string, unknown> | undefined
+                  if (aboutCard) cards.push({ id: `${row['id']}-about`, slug: `${row['slug']}#about`, title: (aboutCard['title'] as string) || (row['title'] as string) || '', subtitle: (aboutCard['subtitle'] as string) || '', image_path: (aboutCard['image'] as string) || '', description: (aboutCard['content'] as string) || '', is_published: typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0), editLink: `/admin/about/${row['id']}?card=0`, position: (typeof aboutCard['position'] === 'number') ? (aboutCard['position'] as number) : undefined })
+                  if (topologyCard) cards.push({ id: `${row['id']}-topology`, slug: `${row['slug']}#topology`, title: (topologyCard['title'] as string) || '', subtitle: (topologyCard['subtitle'] as string) || '', image_path: (topologyCard['image'] as string) || '', description: (topologyCard['content'] as string) || '', is_published: typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0), editLink: `/admin/about/${row['id']}?card=1`, position: (typeof topologyCard['position'] === 'number') ? (topologyCard['position'] as number) : undefined })
+                  if (hamshackCard) cards.push({ id: `${row['id']}-hamshack`, slug: `${row['slug']}#hamshack`, title: (hamshackCard['title'] as string) || '', subtitle: (hamshackCard['subtitle'] as string) || '', image_path: (hamshackCard['image'] as string) || '', description: (hamshackCard['content'] as string) || '', is_published: typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0), editLink: `/admin/about/${row['id']}?card=2`, position: (typeof hamshackCard['position'] === 'number') ? (hamshackCard['position'] as number) : undefined })
+                }
+              }
+            } catch (e) {
+              // ignore malformed metadata
             }
-          }
-        } catch (e) {
-          // ignore malformed metadata
-        }
-      })
+          })
       // If any cards include a saved `position`, sort globally by it so admin list reflects saved order
       const anyPosition = cards.some(c => typeof c.position === 'number')
       if (anyPosition) {
-        cards.sort((a: any, b: any) => {
-          const pa = (typeof a.position === 'number') ? a.position : Number.POSITIVE_INFINITY
-          const pb = (typeof b.position === 'number') ? b.position : Number.POSITIVE_INFINITY
+        cards.sort((a, b) => {
+          const pa = (typeof a.position === 'number') ? a.position as number : Number.POSITIVE_INFINITY
+          const pb = (typeof b.position === 'number') ? b.position as number : Number.POSITIVE_INFINITY
           if (pa === pb) return 0
           return pa - pb
         })
@@ -179,14 +200,14 @@ export default function AdminAboutList() {
 
   const [savingOrder, setSavingOrder] = useState(false)
 
-  const moveItemInArray = (arr: any[], from: number, to: number) => {
+  const moveItemInArray = <T,>(arr: T[], from: number, to: number): T[] => {
     const copy = arr.slice()
     const [item] = copy.splice(from, 1)
     copy.splice(to, 0, item)
     return copy
   }
 
-  const saveOrder = async (newItems: any[]) => {
+  const saveOrder = async <T extends { id?: string | number }>(newItems: T[]) => {
     setSavingOrder(true)
     try {
       const order = newItems.map(i => String(i.id))
@@ -254,7 +275,7 @@ export default function AdminAboutList() {
     const itemsToRestore = deletedUndoBuffer.items
     for (const it of itemsToRestore) {
       try {
-        const payload = { slug: it.slug, title: it.title, content: it.content || '', metadata: it.metadata || {}, is_published: it.is_published ? 1 : 0 }
+        const payload = { slug: String((it as Record<string, unknown>)['slug'] || ''), title: String((it as Record<string, unknown>)['title'] || ''), content: String((it as Record<string, unknown>)['content'] || ''), metadata: (it as Record<string, unknown>)['metadata'] || {}, is_published: (it as Record<string, unknown>)['is_published'] ? 1 : 0 }
         await fetch('/api/admin/pages', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
       } catch (e) { console.error('undo create failed', e) }
     }
@@ -446,12 +467,16 @@ export default function AdminAboutList() {
                   <div style={{ maxWidth: 520 }}>
                     <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <div style={{ width: 140, height: 100, background: '#061426', borderRadius: 8, overflow: 'hidden', flex: '0 0 140px' }}>
-                          {form.image_path ? <img src={form.image_path} alt={form.title || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9fb7d6' }}>No image</div>}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: String(form.description || '') }} />
-                        </div>
+                          <div style={{ width: 140, height: 100, background: '#061426', borderRadius: 8, overflow: 'hidden', flex: '0 0 140px' }}>
+                            {form.image_path ? (
+                              <Image src={String(form.image_path)} alt={form.title || ''} width={140} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} unoptimized />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9fb7d6' }}>No image</div>
+                            )}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: ((form as Record<string, unknown>)['description_sanitized'] ?? (purify ? purify.sanitize(String(form.description || '')) : String(form.description || ''))) as string }} />
+                          </div>
                       </div>
                     </Card>
                   </div>

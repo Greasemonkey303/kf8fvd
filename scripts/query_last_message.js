@@ -13,7 +13,7 @@ const mysql = require('mysql2/promise')
     timezone: 'Z'
   })
   try {
-    const [rows] = await pool.query('SELECT id, name, email, message, attachments, ip, user_agent, created_at, is_read FROM messages ORDER BY id DESC LIMIT 1')
+    const [rows] = await pool.query('SELECT id, name, email, message, message_sanitized, attachments, ip, user_agent, created_at, is_read FROM messages ORDER BY id DESC LIMIT 1')
     console.log(JSON.stringify(rows, null, 2))
   } catch (e) {
     console.error('DB error', e)

@@ -71,7 +71,9 @@ export default function HotspotGallery({ images }: Props){
       {open && typeof document !== 'undefined' && createPortal(
         <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modal} onClose={() => setOpen(null)} titleId="hotspot-image-title">
           <button aria-label="Close image" className={styles.modalClose} onClick={()=> setOpen(null)}>✕</button>
-          <img src={open!} alt="Hotspot large" />
+          <div className={styles.openImageWrap} style={{width:'100%',maxWidth:1200}}>
+            <Image src={open!} alt="Hotspot large" width={1200} height={800} unoptimized={String(open).startsWith('data:')} className={styles.openImage} />
+          </div>
         </Modal>,
         document.body
       )}

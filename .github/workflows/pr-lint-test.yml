@@ -1,0 +1,39 @@
+name: PR Lint & (optional) Tests
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run ESLint
+        run: npm run lint
+
+  unit-tests:
+    # This job is optional; enable by setting the repository secret CI_RUN_TESTS=true
+    if: ${{ secrets.CI_RUN_TESTS == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run unit tests
+        env:
+          # If you want CI to run tests, set CI env or provide an env file via secrets
+          CI: 'true'
+        run: npm test

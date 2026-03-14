@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const ip = (url.searchParams.get('ip') || '').trim()
 
   let where = '1=1'
-  const params: any[] = []
+  const params: unknown[] = []
   if (q) {
     where += ' AND (u.email LIKE ? OR la.email LIKE ? OR la.ip LIKE ? OR la.reason LIKE ?)'
     const like = `%${q}%`
@@ -28,12 +28,12 @@ export async function GET(req: Request) {
     params.push(ip)
   }
 
-  const countRows = await query<any[]>('SELECT COUNT(*) as cnt FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where, params)
+  const countRows = await query<Record<string, unknown>[]>('SELECT COUNT(*) as cnt FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where, params)
   const total = (Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0
 
   const offset = (page - 1) * pageSize
   const limitVal = Number(pageSize)
   const offsetVal = Number(offset)
-  const rows = await query<any[]>('SELECT la.*, u.email as user_email FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where + ' ORDER BY la.created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
+  const rows = await query<Record<string, unknown>[]>('SELECT la.*, u.email as user_email FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where + ' ORDER BY la.created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
   return NextResponse.json({ rows, total, page, pageSize })
 }

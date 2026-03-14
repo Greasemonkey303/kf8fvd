@@ -10,7 +10,7 @@ export async function GET() {
       updated_by VARCHAR(128) DEFAULT NULL,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`)
-    const rows = await query<any[]>('SELECT * FROM onair ORDER BY id ASC LIMIT 1')
+    const rows = await query<Record<string, unknown>[]>('SELECT * FROM onair ORDER BY id ASC LIMIT 1')
     const item = Array.isArray(rows) && rows.length ? rows[0] : { id: null, is_on: 0 }
     return NextResponse.json({ item })
   } catch (err) {
@@ -35,13 +35,13 @@ export async function PATCH(req: Request) {
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`)
 
-    const rows = await query<any[]>('SELECT id FROM onair ORDER BY id ASC LIMIT 1')
+    const rows = await query<Record<string, unknown>[]>('SELECT id FROM onair ORDER BY id ASC LIMIT 1')
     if (Array.isArray(rows) && rows.length) {
       await query('UPDATE onair SET is_on = ?, updated_by = ?, note = ? WHERE id = ?', [is_on, updated_by, note, rows[0].id])
     } else {
       await query('INSERT INTO onair (is_on, updated_by, note) VALUES (?, ?, ?)', [is_on, updated_by, note])
     }
-    const updated = await query<any[]>('SELECT * FROM onair ORDER BY id ASC LIMIT 1')
+    const updated = await query<Record<string, unknown>[]>('SELECT * FROM onair ORDER BY id ASC LIMIT 1')
     return NextResponse.json({ item: updated && updated.length ? updated[0] : { is_on } })
   } catch (err) {
     // eslint-disable-next-line no-console

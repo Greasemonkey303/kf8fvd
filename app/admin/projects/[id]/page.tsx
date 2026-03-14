@@ -38,6 +38,9 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   const [descExpanded, setDescExpanded] = useState(false)
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  const frec = form as Record<string, unknown>
+  const safeDescription = (frec.description_sanitized as string) ?? (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))
+  const safeDetails = (frec.details_sanitized as string) ?? (purify ? purify.sanitize(String(form.details || '')) : (form.details || ''))
   const [previewOpen, setPreviewOpen] = useState(false)
   const toPublicUrl = (p?: string) => {
     if (!p) return undefined
@@ -281,8 +284,8 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   // only watch editable fields
   }, [form.title, form.subtitle, form.slug, form.description, form.details, images])
 
-  async function save(e?: React.FormEvent | any) {
-    if (e?.preventDefault) e.preventDefault()
+  async function save(e?: React.FormEvent) {
+    if (e) e.preventDefault()
     const metadata = { ...(form.details ? { details: form.details } : {}), images }
     await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
     try { toast.showToast && toast.showToast('Project saved', 'success') } catch {}
@@ -705,8 +708,8 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                               ) : null}
                             </div>
                             <div className={projectStyles.story}>
-                              <div style={{color:'var(--white-95)'}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />
-                              {form.details ? <div style={{marginTop:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.details).slice(0,400) + (String(form.details).length > 400 ? '…' : '')) : (String(form.details).slice(0,400) + (String(form.details).length > 400 ? '…' : '')) }} /> : null}
+                              <div style={{ color: 'var(--white-95)' }} dangerouslySetInnerHTML={{ __html: safeDescription }} />
+                              {form.details ? <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: (safeDetails || '').slice(0, 400) + ((String(safeDetails || '').length > 400) ? '…' : '') }} /> : null}
                             </div>
                           </div>
                         </Card>
@@ -721,8 +724,8 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                         <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
                           {form.image_path ? <img src={toPublicUrl(form.image_path)} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}
                         </div>
-                        <div style={{flex:1}}>
-                          <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: safeDescription }} />
                           {(() => {
                             const generated = (form.details || '').trim() ? `/projects/${form.slug}` : null
                             const linkUrl = form.external_link || generated

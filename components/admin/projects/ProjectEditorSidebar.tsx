@@ -3,6 +3,7 @@
 import React from 'react'
 import styles from '../../../app/admin/admin.module.css'
 import { buildPublicUrl } from '@/lib/s3'
+import Image from 'next/image'
 
 type ProjectForm = {
   id?: number
@@ -67,12 +68,43 @@ export default function ProjectEditorSidebar({
     if (s.startsWith('/')) return s
     return buildPublicUrl(s)
   }
+  const mainUrl = toPublicUrl(form.image_path)
+  const galleryNodes = images.slice(0,6).map((src:string, idx:number) => {
+    const thumbUrl = toPublicUrl(src)
+    return (
+      <div key={idx} style={{position:'relative', width:96}}>
+        {thumbUrl ? (
+          <Image src={thumbUrl as string} width={96} height={72} onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{objectFit:'cover', cursor:'pointer', boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined}} alt="" unoptimized />
+        ) : (
+          <div className={styles.thumb} onClick={()=>setForm({...form, image_path: src})} style={{width:96, height:72, background:'rgba(255,255,255,0.03)', cursor:'pointer'}} />
+        )}
+        <div className={styles.controls} style={{marginTop:6}}>
+          <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, -1)} disabled={idx===0} title="Move left">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, 1)} disabled={idx===Math.min(images.length,6)-1} title="Move right">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button type="button" className={styles.btnGhost} onClick={()=>editImage(idx)} title="Edit URL">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 21v-3.75L16.81 3.44a1.5 1.5 0 0 1 2.12 0l1.64 1.64a1.5 1.5 0 0 1 0 2.12L6.75 21H3z" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button type="button" className={styles.btnGhost} style={{marginLeft:'auto'}} onClick={()=>deleteImage(idx)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    )
+  })
   return (
     <aside>
       <div style={{marginBottom:12}}>
         <div className={styles.fieldLabel}>Main image</div>
         <div className={styles.mainPreview} style={{width:'100%', borderRadius:8}}>
-          <img src={toPublicUrl(form.image_path) || undefined} alt="Main" style={{width:'100%', height:180, objectFit:'cover', display:'block'}} />
+          {mainUrl ? (
+            <Image src={mainUrl as string} alt="Main" width={800} height={180} style={{width:'100%', height:180, objectFit:'cover', display:'block'}} unoptimized />
+          ) : (
+            <div style={{width:'100%', height:180, background:'rgba(255,255,255,0.02)'}} />
+          )}
         </div>
         <div style={{marginTop:10}} className={styles.smallMuted}>Select an image from the gallery to set as main, or upload/change below.</div>
         <div className={styles.controls} style={{marginTop:10}}>
@@ -129,25 +161,7 @@ export default function ProjectEditorSidebar({
       <div style={{marginTop:14}}>
         <div className={styles.fieldLabel}>Gallery</div>
         <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:8}}>
-          {images.slice(0,6).map((src:string, idx:number)=> (
-            <div key={idx} style={{position:'relative', width:96}}>
-              <img src={toPublicUrl(src)} onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined, cursor:'pointer', width:96, height:72, objectFit:'cover'}} />
-              <div className={styles.controls} style={{marginTop:6}}>
-                <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, -1)} disabled={idx===0} title="Move left">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-                <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, 1)} disabled={idx===Math.min(images.length,6)-1} title="Move right">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-                <button type="button" className={styles.btnGhost} onClick={()=>editImage(idx)} title="Edit URL">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 21v-3.75L16.81 3.44a1.5 1.5 0 0 1 2.12 0l1.64 1.64a1.5 1.5 0 0 1 0 2.12L6.75 21H3z" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-                <button type="button" className={styles.btnGhost} style={{marginLeft:'auto'}} onClick={()=>deleteImage(idx)}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              </div>
-            </div>
-          ))}
+          {galleryNodes}
         </div>
         <div style={{marginTop:8}}>
           <div className={styles.fieldLabel}>Upload images (max 6)</div>

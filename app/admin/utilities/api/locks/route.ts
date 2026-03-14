@@ -11,18 +11,18 @@ export async function GET(req: Request) {
   const q = (url.searchParams.get('q') || '').trim()
 
   let where = '1=1'
-  const params: any[] = []
+  const params: unknown[] = []
   if (q) {
     where += ' AND key_name LIKE ?'
     params.push(`%${q}%`)
   }
 
-  const countRows = await query<any[]>('SELECT COUNT(*) as cnt FROM auth_locks WHERE ' + where, params)
+  const countRows = await query<Record<string, unknown>[]>('SELECT COUNT(*) as cnt FROM auth_locks WHERE ' + where, params)
   const total = (Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0
 
   const offset = (page - 1) * pageSize
   const limitVal = Number(pageSize)
   const offsetVal = Number(offset)
-  const rows = await query<any[]>('SELECT * FROM auth_locks WHERE ' + where + ' ORDER BY created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
+  const rows = await query<Record<string, unknown>[]>('SELECT * FROM auth_locks WHERE ' + where + ' ORDER BY created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
   return NextResponse.json({ rows, total, page, pageSize })
 }

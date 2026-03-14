@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import styles from './about.module.css'
 import { Card } from '@/components'
+import createDOMPurify from 'dompurify'
 import modalStyles from '@/components/modal/imageModal.module.css'
 import { createPortal } from 'react-dom'
 import { useEffect } from 'react'
@@ -12,7 +13,8 @@ import { useEffect } from 'react'
 type AboutCard = {
   title?: string
   subtitle?: string
-  content?: string // sanitized HTML
+  content?: string // raw HTML
+  content_sanitized?: string | null
   image?: string
   templateSmall?: string
   templateLarge?: string
@@ -28,6 +30,8 @@ type AboutData = {
 
 export default function About({ data }: { data?: AboutData }) {
   const [open, setOpen] = useState<string | null>(null)
+
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
 
   useEffect(() => {
     if (!open) return;
@@ -63,6 +67,7 @@ export default function About({ data }: { data?: AboutData }) {
         title: c?.title || '',
         subtitle: c?.subtitle || '',
         content: String(c?.content || ''),
+        content_sanitized: c?.content_sanitized ?? c?.contentSanitized ?? null,
         image: c?.image || '/headshot.jpg',
         templateSmall: c?.templateSmall || '',
         templateLarge: c?.templateLarge || ''
@@ -104,10 +109,10 @@ export default function About({ data }: { data?: AboutData }) {
                 const contentClass = (card?.templateSmall === 'badge') ? `${styles.content} ${styles.contentNarrow}` : ((card?.templateSmall === 'thumb') ? `${styles.content} ${styles.contentMedium}` : styles.content)
                 return (
                   <div className={contentClass}>
-                    {/* Use plain <img> so CSS controls sizing */}
-                    <img src={String(card.image || '/headshot.jpg')} alt={card.title || 'About'} className={tp.className} style={{objectFit:'cover', display:'block'}} />
+                    {/* Use Next.js Image for optimization; fallback to unoptimized for data/blob URLs */}
+                    <Image src={String(card.image || '/headshot.jpg')} alt={card.title || 'About'} width={tp.width} height={tp.height} className={tp.className} style={{objectFit:'cover', display:'block'}} unoptimized={String(card.image || '').startsWith('data:') || String(card.image || '').startsWith('blob:')} />
                     <div className={styles.copy}>
-                      <div dangerouslySetInnerHTML={{ __html: String(card.content || '') }} />
+                      <div dangerouslySetInnerHTML={{ __html: (card.content_sanitized ?? (purify ? purify.sanitize(String(card.content || '')) : String(card.content || ''))) }} />
                     </div>
                   </div>
                 )
@@ -119,18 +124,18 @@ export default function About({ data }: { data?: AboutData }) {
                   <div className={styles.imgHint} aria-hidden>Click image to view full screen</div>
                 </div>
                 <div className={styles.topoCopy}>
-                  <div dangerouslySetInnerHTML={{ __html: String(card.content || '') }} />
+                  <div dangerouslySetInnerHTML={{ __html: (card.content_sanitized ?? (purify ? purify.sanitize(String(card.content || '')) : String(card.content || ''))) }} />
                 </div>
               </div>
             )}
           </Card>
         ))}
       </div>
-      {open && typeof document !== 'undefined' && createPortal(
+            {open && typeof document !== 'undefined' && createPortal(
         <div className={modalStyles.backdrop} onClick={() => setOpen(null)} role="dialog" aria-modal="true">
           <div className={modalStyles.sheet} onClick={(e) => e.stopPropagation()}>
             <button className={modalStyles.close} onClick={() => setOpen(null)} aria-label="Close image">✕</button>
-            <img src={open} alt="" className={modalStyles.image} />
+            <Image src={open} alt="" width={1200} height={800} className={modalStyles.image} unoptimized={String(open).startsWith('data:') || String(open).startsWith('blob:')} />
           </div>
         </div>,
         document.body

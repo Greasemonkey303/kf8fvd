@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { query, transaction } from '@/lib/db'
+import type mysql from 'mysql2/promise'
 import crypto from 'crypto'
 
 const MAX_UPLOAD_SIZE = parseInt(process.env.MAX_UPLOAD_SIZE || '5242880', 10) // default 5MB
 
-function parseAdifRecords(txt: string) {
+function parseAdifRecords(txt: string): Array<{ raw: string; tags: Record<string, string> }> {
   const raw = txt.replace(/\r/g,'\n')
   const parts = raw.split(/<EOR>|<eor>/).map(s=>s.trim()).filter(Boolean)
-  const recs = [] as any[]
+  const recs: Array<{ raw: string; tags: Record<string, string> }> = []
   for (const rec of parts) {
     const obj: Record<string, string> = {}
     const re = /<([^:>\s]+)(?::(\d+))?>\s*([^<]*)/g
@@ -50,8 +51,8 @@ export async function GET(req: Request) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
     const pageSize = Math.min(1000, Math.max(10, parseInt(url.searchParams.get('pageSize') || '200')))
     const offset = (page - 1) * pageSize
-    const rows = await query<any[]>('SELECT * FROM call_logs ORDER BY COALESCE(qso_datetime, created_at) DESC LIMIT ? OFFSET ?', [pageSize, offset])
-    const countRes = await query<any[]>('SELECT COUNT(*) as cnt FROM call_logs')
+    const rows = await query<Array<Record<string, unknown>>>('SELECT * FROM call_logs ORDER BY COALESCE(qso_datetime, created_at) DESC LIMIT ? OFFSET ?', [pageSize, offset])
+    const countRes = await query<Array<Record<string, unknown>>>('SELECT COUNT(*) as cnt FROM call_logs')
     const total = Array.isArray(countRes) && countRes.length ? (countRes[0].cnt || 0) : 0
     return NextResponse.json({ entries: rows || [], total })
   } catch (err) {
@@ -68,12 +69,15 @@ export async function POST(req: Request) {
     const file = form.get('file') as File | null
     const replace = (form.get('replace') || '').toString() === '1' || (form.get('replace') || '').toString().toLowerCase() === 'true'
     if (!file) return NextResponse.json({ error: 'file-required' }, { status: 400 })
-    const name = (file as any).name || ''
+    function getFileProp(f: unknown, prop: string) {
+      try { return (f as Record<string, unknown>)[prop] } catch { return undefined }
+    }
+    const name = (typeof getFileProp(file, 'name') === 'string') ? String(getFileProp(file, 'name')) : ''
     if (!/\.adi$/i.test(name)) return NextResponse.json({ error: 'only .adi files allowed' }, { status: 400 })
 
     // If the File exposes a size property, enforce server-side max size limit early
-    const fAny = file as any
-    if (fAny && typeof fAny.size === 'number' && fAny.size > MAX_UPLOAD_SIZE) {
+    const sizeProp = getFileProp(file, 'size')
+    if (typeof sizeProp === 'number' && sizeProp > MAX_UPLOAD_SIZE) {
       return NextResponse.json({ error: 'file-too-large', maxAllowed: MAX_UPLOAD_SIZE }, { status: 400 })
     }
 
@@ -91,7 +95,7 @@ export async function POST(req: Request) {
     let inserted = 0
     let skipped = 0
 
-    await transaction(async (conn:any) => {
+    await transaction(async (conn: mysql.PoolConnection) => {
       if (replace) {
         await conn.execute('DELETE FROM call_logs')
       }
@@ -139,7 +143,7 @@ export async function POST(req: Request) {
             adif_json
           ]
           const [res] = await conn.execute(sql, params)
-          const affected = (res && typeof (res as any).affectedRows === 'number') ? (res as any).affectedRows : 0
+          const affected = (res && typeof (res as Record<string, unknown>).affectedRows === 'number') ? Number((res as Record<string, unknown>).affectedRows) : 0
           if (affected > 0) inserted++
           else skipped++
           // no-op: rely on returned counts only

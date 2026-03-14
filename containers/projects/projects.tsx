@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import styles from './projects.module.css'
 import createDOMPurify from 'dompurify'
+import Image from 'next/image'
 import { buildPublicUrl } from '@/lib/s3'
 import useAdmin from '@/components/hooks/useAdmin'
 import { Card } from '@/components'
@@ -11,6 +12,7 @@ export default function Projects() {
   const [items, setItems] = useState<any[]>([])
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const { isAdmin } = useAdmin()
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
 
   useEffect(() => {
     let mounted = true
@@ -80,7 +82,7 @@ export default function Projects() {
                           }
                           if (imageSrc) {
                             return (
-                              <img src={imageSrc} alt={p.title} className={styles.thumb} />
+                              <Image src={imageSrc} alt={p.title} className={styles.thumb} width={320} height={200} unoptimized={String(imageSrc).startsWith('data:') || String(imageSrc).startsWith('blob:') || String(imageSrc).indexOf('X-Amz-Algorithm') !== -1 || String(imageSrc).indexOf('minio') !== -1 || String(imageSrc).indexOf('127.0.0.1') !== -1} />
                             )
                           }
                         } catch (e) {
@@ -142,7 +144,7 @@ export default function Projects() {
                   )}
                 </div>
                 <div>
-                  <p dangerouslySetInnerHTML={{ __html: (()=>{ try { const purify = createDOMPurify(window as any); return purify.sanitize(String(p.description || '')) } catch(e){ return String(p.description || '') } })() }} />
+                  <p dangerouslySetInnerHTML={{ __html: (p.description_sanitized ?? (purify ? purify.sanitize(String(p.description || '')) : String(p.description || ''))) }} />
                   {p.slug ? <p><a href={`/projects/${p.slug}`}>Read more</a></p> : null}
                 </div>
               </div>

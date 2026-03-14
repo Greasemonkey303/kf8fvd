@@ -3,7 +3,7 @@ import styles from '../../admin.module.css'
 import { query } from '@/lib/db'
 import Link from 'next/link'
 
-export default async function LoginAttemptsPage({ searchParams }: { searchParams?: any }) {
+export default async function LoginAttemptsPage({ searchParams }: { searchParams?: Record<string, unknown> }) {
   const admin = await requireAdmin()
   if (!admin) return <main style={{padding:20}}>Unauthorized</main>
 
@@ -20,7 +20,7 @@ export default async function LoginAttemptsPage({ searchParams }: { searchParams
   const ip = String(sp.ip || '').trim()
 
   let where = '1=1'
-  const params: any[] = []
+  const params: unknown[] = []
   if (q) {
     where += ' AND (u.email LIKE ? OR la.email LIKE ? OR la.ip LIKE ? OR la.reason LIKE ?)'
     const like = `%${q}%`
@@ -30,19 +30,17 @@ export default async function LoginAttemptsPage({ searchParams }: { searchParams
   if (ip) { where += ' AND la.ip = ?'; params.push(ip) }
 
   // Debug: log the built query parameters to server console to help diagnose DB errors
-  // eslint-disable-next-line no-console
   console.log('[admin:login-attempts] query params', { where, params, pageSize, page })
-  const countRows = await query<any[]>('SELECT COUNT(*) as cnt FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where, params)
+  const countRows = await query<Record<string, unknown>[]>('SELECT COUNT(*) as cnt FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where, params)
   const total = (Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0
 
   const offset = (page - 1) * pageSize
   // Ensure numeric values are passed for LIMIT/OFFSET
   const limitVal = Number(pageSize)
   const offsetVal = Number(offset)
-  // eslint-disable-next-line no-console
   console.log('[admin:login-attempts] final params', { paramsCount: params.length, limitVal, offsetVal })
   // Embed numeric LIMIT/OFFSET directly to avoid prepared-statement argument issues
-  const rows = await query<any[]>('SELECT la.*, u.email as user_email FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where + ' ORDER BY la.created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
+  const rows = await query<Record<string, unknown>[]>('SELECT la.*, u.email as user_email FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where + ' ORDER BY la.created_at DESC LIMIT ' + limitVal + ' OFFSET ' + offsetVal, params)
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 

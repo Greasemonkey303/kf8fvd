@@ -6,9 +6,12 @@ import Card from '../../../../components/card/card'
 import { buildPublicUrl } from '@/lib/s3'
 import Modal from '@/components/modal/Modal'
 
+type Hero = { id?: number; title?: string; subtitle?: string; content?: string }
+type HeroImage = { id?: number; url?: string; alt?: string; is_featured?: number }
+
 export default function AdminHeroPage() {
-  const [hero, setHero] = useState<any | null>(null)
-  const [images, setImages] = useState<any[]>([])
+  const [hero, setHero] = useState<Hero | null>(null)
+  const [images, setImages] = useState<HeroImage[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -33,7 +36,7 @@ export default function AdminHeroPage() {
       if (item) {
         const r2 = await fetch(`/api/hero`)
         const j2 = await r2.json()
-        setImages(Array.isArray(j2.images) ? j2.images : [])
+        setImages(Array.isArray(j2.images) ? (j2.images as HeroImage[]) : [])
       } else {
         setImages([])
       }
@@ -128,7 +131,7 @@ export default function AdminHeroPage() {
       const publicUrl = pd.publicUrl || buildPublicUrl(storedKey)
       // record in DB (store the object key, not a presigned URL)
       // auto-feature if no featured exists
-      const currentlyHasFeatured = images.find((i: any) => Number(i.is_featured) === 1)
+      const currentlyHasFeatured = images.find(i => Number(i.is_featured) === 1)
       const shouldFeature = !currentlyHasFeatured
       await fetch('/api/admin/hero/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hero_id: hero.id, url: storedKey, alt: file.name, is_featured: shouldFeature ? 1 : 0 }) })
       setUploadSuccess(true)
@@ -145,7 +148,7 @@ export default function AdminHeroPage() {
   }
 
   // Build a preview src for stored image `url` values (storedKey or legacy urls)
-  function getPreviewSrc(urlVal: any) {
+  function getPreviewSrc(urlVal: unknown) {
     if (!urlVal) return ''
     const u = String(urlVal)
     if (u.startsWith('/')) return u
@@ -209,7 +212,7 @@ export default function AdminHeroPage() {
   }
 
   // state for delete confirmation modal
-  const [deleteTarget, setDeleteTarget] = useState<{ id: number; url?: any; alt?: string } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; url?: string; alt?: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [ariaMessage, setAriaMessage] = useState<string>('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -272,15 +275,15 @@ export default function AdminHeroPage() {
             <div style={{flex:1}}>
               <label>
                 <div className="field-label">Title</div>
-                <input suppressHydrationWarning value={hero?.title || ''} onChange={e=>setHero((h:any)=>({ ...(h||{}), title: e.target.value }))} className={styles.formInput} />
+                <input suppressHydrationWarning value={hero?.title || ''} onChange={e=>setHero(h=>({ ...(h||{}), title: e.target.value }))} className={styles.formInput} />
               </label>
               <label>
                 <div className="field-label">Subtitle</div>
-                <input suppressHydrationWarning value={hero?.subtitle || ''} onChange={e=>setHero((h:any)=>({ ...(h||{}), subtitle: e.target.value }))} className={styles.formInput} />
+                <input suppressHydrationWarning value={hero?.subtitle || ''} onChange={e=>setHero(h=>({ ...(h||{}), subtitle: e.target.value }))} className={styles.formInput} />
               </label>
               <label>
                 <div className="field-label">Content (HTML allowed)</div>
-                <textarea suppressHydrationWarning value={hero?.content || ''} onChange={e=>setHero((h:any)=>({ ...(h||{}), content: e.target.value }))} className={styles.formTextarea} />
+                <textarea suppressHydrationWarning value={hero?.content || ''} onChange={e=>setHero(h=>({ ...(h||{}), content: e.target.value }))} className={styles.formTextarea} />
               </label>
             </div>
             <div style={{width:360}}>
@@ -291,26 +294,26 @@ export default function AdminHeroPage() {
                 <div style={{marginTop:12}}>
                   {/* Featured image section */}
                   {(() => {
-                    const featured = images.find((i: any) => Number(i.is_featured) === 1) || null
-                    const others = images.filter((i: any) => Number(i.is_featured) !== 1)
+                    const featured = images.find((i) => Number(i.is_featured) === 1) || null
+                    const others = images.filter((i) => Number(i.is_featured) !== 1)
                     return (
                       <div>
                         {featured ? (
                           <div style={{marginBottom:12}}>
                             <div className={styles.draftTitleBold}>Featured</div>
                             <div style={{marginTop:8, width:'100%', height:180, overflow:'hidden', borderRadius:10}}>
-                              <img src={getPreviewSrc(featured.url)} alt={featured.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
+                              <img src={getPreviewSrc((featured as any).url)} alt={(featured as any).alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
                             </div>
-                              <div style={{display:'flex', gap:8, marginTop:8, alignItems:'center'}}>
-                              <button className={styles.btnGhostSmall} onClick={() => setDeleteTarget({ id: featured.id, url: featured.url, alt: featured.alt })}>Delete</button>
-                              {editingId === featured.id ? (
+                            <div style={{display:'flex', gap:8, marginTop:8, alignItems:'center'}}>
+                              <button className={styles.btnGhostSmall} onClick={() => setDeleteTarget({ id: Number((featured as any).id ?? 0), url: (featured as any).url, alt: (featured as any).alt })}>Delete</button>
+                              {editingId === (featured as any).id ? (
                                 <div style={{display:'flex', gap:8, alignItems:'center'}}>
                                   <input value={editingAlt} onChange={e=>setEditingAlt(e.target.value)} className={styles.formInput} style={{width:180}} />
-                                  <button className={styles.btnGhostSmall} onClick={() => { updateImageMeta(featured.id, editingAlt); setEditingId(null) }}>Save</button>
+                                  <button className={styles.btnGhostSmall} onClick={() => { updateImageMeta(Number((featured as any).id ?? 0), editingAlt); setEditingId(null) }}>Save</button>
                                   <button className={styles.btnGhostSmall} onClick={() => { setEditingId(null); setEditingAlt('') }}>Cancel</button>
                                 </div>
                               ) : (
-                                <button className={styles.btnGhostSmall} onClick={() => { setEditingId(featured.id); setEditingAlt(featured.alt || '') }}>Edit alt</button>
+                                <button className={styles.btnGhostSmall} onClick={() => { setEditingId(typeof (featured as any).id === 'number' ? (featured as any).id : null); setEditingAlt((featured as any).alt || '') }}>Edit alt</button>
                               )}
                             </div>
                           </div>
@@ -322,21 +325,21 @@ export default function AdminHeroPage() {
                           <div className={styles.draftTitleBold}>Other images</div>
                           <div className={styles.imgGallery} style={{marginTop:8}}>
                             {others.map((img: any) => (
-                              <div key={img.id} style={{width:120}}>
+                              <div key={String(img.id)} style={{width:120}}>
                                 <div style={{width:120, height:80, overflow:'hidden', borderRadius:8}}>
                                   <img src={getPreviewSrc(img.url)} alt={img.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
                                 </div>
                                 <div style={{display:'flex', gap:6, marginTop:6, alignItems:'center'}}>
-                                  <button className={styles.btnGhostSmall} onClick={()=>setFeaturedImage(img.id)}>Feature</button>
-                                  <button className={styles.btnGhostSmall} onClick={()=>setDeleteTarget({ id: img.id, url: img.url, alt: img.alt })}>Delete</button>
+                                  <button className={styles.btnGhostSmall} onClick={()=>setFeaturedImage(Number(img.id ?? 0))}>Feature</button>
+                                  <button className={styles.btnGhostSmall} onClick={()=>setDeleteTarget({ id: Number(img.id ?? 0), url: img.url, alt: img.alt })}>Delete</button>
                                   {editingId === img.id ? (
-                                    <>
+                                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
                                       <input value={editingAlt} onChange={e=>setEditingAlt(e.target.value)} className={styles.formInput} style={{width:120}} />
-                                      <button className={styles.btnGhostSmall} onClick={() => { updateImageMeta(img.id, editingAlt); setEditingId(null) }}>Save</button>
+                                      <button className={styles.btnGhostSmall} onClick={() => { updateImageMeta(Number(img.id ?? 0), editingAlt); setEditingId(null) }}>Save</button>
                                       <button className={styles.btnGhostSmall} onClick={() => { setEditingId(null); setEditingAlt('') }}>Cancel</button>
-                                    </>
+                                    </div>
                                   ) : (
-                                    <button className={styles.btnGhostSmall} onClick={() => { setEditingId(img.id); setEditingAlt(img.alt || '') }}>Edit</button>
+                                    <button className={styles.btnGhostSmall} onClick={() => { setEditingId(typeof img.id === 'number' ? img.id : null); setEditingAlt(img.alt || '') }}>Edit alt</button>
                                   )}
                                 </div>
                               </div>
@@ -368,7 +371,7 @@ export default function AdminHeroPage() {
                     )}
                           {/* Delete confirmation modal */}
                           {deleteTarget && (
-                            <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => { setDeleteTarget(null); setDeleteError(null); }} initialFocusRef={deleteCancelRef} titleId="delete-image-title">
+                            <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => { setDeleteTarget(null); setDeleteError(null); }} initialFocusRef={deleteCancelRef as unknown as React.RefObject<HTMLElement>} titleId="delete-image-title">
                               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
                                 <h4 id="delete-image-title" style={{margin:0}}>Delete image</h4>
                                 <div>

@@ -40,18 +40,18 @@ export default function ResetPasswordClient({ token: initialToken = '' }: Props)
     pwDebounce.current = window.setTimeout(async ()=>{
       const p = password || ''
       if (!p) { setStrengthScore(null); setStrengthFeedback(null); setPwnedCount(null); return }
-      try {
-        // @ts-ignore
-        const zx = (await import('zxcvbn')).default
-        // @ts-ignore
-        const res = zx(p)
-        setStrengthScore(res.score)
-        const msg = (res.feedback && (res.feedback.warning || '') + ' ' + (res.feedback.suggestions || []).join(' ')) || ''
-        setStrengthFeedback(msg.trim() || null)
-      } catch (e) {
-        setStrengthScore(null)
-        setStrengthFeedback(null)
-      }
+        try {
+          // @ts-expect-error dynamic import of optional dev dependency
+          const zx = (await import('zxcvbn')).default
+          // @ts-expect-error unknown lib shape
+          const res = zx(p)
+          setStrengthScore(res.score)
+          const msg = (res.feedback && (res.feedback.warning || '') + ' ' + (res.feedback.suggestions || []).join(' ')) || ''
+          setStrengthFeedback(msg.trim() || null)
+        } catch (e) {
+          setStrengthScore(null)
+          setStrengthFeedback(null)
+        }
 
       // HIBP check: compute SHA-1 prefix client-side and ask server proxy
       try {
@@ -96,7 +96,10 @@ export default function ResetPasswordClient({ token: initialToken = '' }: Props)
       if (!res.ok) return setError(j?.error || 'Reset failed')
       setSuccess(true)
       setTimeout(()=> router.push('/signin'), 1600)
-    } catch (e:any) { setError(e?.message || 'Request failed') }
+    } catch (e) {
+      if (e instanceof Error) setError(e.message)
+      else setError('Request failed')
+    }
     finally { setLoading(false) }
   }
 

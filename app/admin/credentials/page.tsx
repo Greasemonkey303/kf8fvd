@@ -6,8 +6,12 @@ import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
 import CredentialCard from '../../../components/credentials/CredentialCard'
 import createDOMPurify from 'dompurify'
+import Image from 'next/image'
 
 type CredItem = { id?: number | null; section: string; slug: string; s3_prefix?: string; title: string; tag?: string; authority?: string; image_path?: string | null; description?: string | null; is_published?: number; sort_order?: number }
+type Section = { id?: number | null; name?: string; slug?: string; subtitle?: string; image_path?: string | null; sort_order?: number }
+type LocalDraft = { key: string; payload: { form?: Partial<CredItem>; updated?: number } } | null
+type DeletedUndo = { items: CredItem[]; ts: number } | null
 
 export default function AdminCredentials() {
   const [items, setItems] = useState<CredItem[]>([])
@@ -21,16 +25,16 @@ export default function AdminCredentials() {
   const autosaveTimer = React.useRef<number | null>(null)
   const draftIdRef = React.useRef<string | null>(null)
   const draftKey = () => `admin_credential_draft:${form.slug || draftIdRef.current}`
-  const [pendingDraftTemp, setPendingDraftTemp] = useState<any | null>(null)
-  const [pendingDraftSlug, setPendingDraftSlug] = useState<any | null>(null)
+  const [pendingDraftTemp, setPendingDraftTemp] = useState<LocalDraft>(null)
+  const [pendingDraftSlug, setPendingDraftSlug] = useState<LocalDraft>(null)
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [selectedIds, setSelectedIds] = useState<(string|number)[]>([])
-  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<any | null>(null)
+  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<DeletedUndo>(null)
   const [needOrderSave, setNeedOrderSave] = useState(false)
-  const [sections, setSections] = useState<any[]>([])
+  const [sections, setSections] = useState<Section[]>([])
   const [sectionsLoading, setSectionsLoading] = useState(true)
   const [showSectionsPanel, setShowSectionsPanel] = useState(false)
-  const [sectionForm, setSectionForm] = useState<any>({ id: null, name: '', slug: '', subtitle: '', image_path: '', sort_order: 0 })
+  const [sectionForm, setSectionForm] = useState<Section>({ id: null, name: '', slug: '', subtitle: '', image_path: '', sort_order: 0 })
   const [slugEdited, setSlugEdited] = useState(false)
   const [sectionSlugEdited, setSectionSlugEdited] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -40,7 +44,7 @@ export default function AdminCredentials() {
     const res = await fetch('/api/admin/credentials')
     const data = await res.json()
     setItems(data.items || [])
-    try { console.debug('[admin/credentials] load items', (data.items || []).map((i:any)=>({ id: i.id, sort_order: i.sort_order, section: i.section }))) } catch {}
+    try { console.debug('[admin/credentials] load items', (data.items || []).map((i: Partial<CredItem>)=>({ id: i.id, sort_order: i.sort_order, section: i.section }))) } catch {}
     setLoading(false)
   }
 
@@ -135,7 +139,7 @@ export default function AdminCredentials() {
     } catch {}
   }, [form.slug])
 
-  function applyDraftObject(draftObj: { key: string; payload: any } | null) {
+  function applyDraftObject(draftObj: LocalDraft) {
     if (!draftObj || !draftObj.payload) return
     try {
       const p = draftObj.payload
@@ -148,7 +152,7 @@ export default function AdminCredentials() {
     setPendingDraftSlug(null)
   }
 
-  function discardDraftObject(draftObj: { key: string; payload: any } | null) {
+  function discardDraftObject(draftObj: LocalDraft) {
     if (!draftObj) return
     try { localStorage.removeItem(draftObj.key) } catch {}
     setPendingDraftTemp(null)
@@ -222,7 +226,7 @@ export default function AdminCredentials() {
     if (e) e.preventDefault()
     try {
       const isUpdate = !!sectionForm.id
-      const payload: any = { ...sectionForm }
+      const payload: Section = { ...sectionForm }
       if (!payload.name) { alert('Name is required'); return }
       if (!payload.slug) payload.slug = String(payload.name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-')
       const res = await fetch('/api/admin/credential-sections', { method: isUpdate ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -248,7 +252,7 @@ export default function AdminCredentials() {
     } catch (err) { console.error('deleteSection err', err) }
   }
 
-  function editSection(s: any) {
+  function editSection(s?: Section) {
     if (!s) return
     setSectionForm({ id: s.id ?? null, name: s.name || '', slug: s.slug || '', subtitle: s.subtitle || '', image_path: s.image_path || '', sort_order: s.sort_order || 0 })
     setSectionSlugEdited(true)
@@ -312,7 +316,7 @@ export default function AdminCredentials() {
     const list = Array.isArray(deletedUndoBuffer.items) ? deletedUndoBuffer.items : [deletedUndoBuffer.items]
     for (const it of list) {
       try {
-        const payload: any = { section: it.section, slug: it.slug, title: it.title, tag: it.tag, authority: it.authority, image_path: it.image_path || '', description: it.description || '', is_published: it.is_published || 0, sort_order: it.sort_order || 0 }
+        const payload: Partial<CredItem> = { section: it.section, slug: it.slug, title: it.title, tag: it.tag, authority: it.authority, image_path: it.image_path || '', description: it.description || '', is_published: it.is_published || 0, sort_order: it.sort_order || 0 }
         await fetch('/api/admin/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       } catch (err) { console.error('undo create err', err) }
     }
@@ -362,7 +366,7 @@ export default function AdminCredentials() {
 
   async function saveSectionOrder() {
     try {
-      const payload = (sections || []).map((s: any) => ({ id: s.id, sort_order: s.sort_order || 0 }))
+      const payload = (sections || []).map((s) => ({ id: s.id, sort_order: s.sort_order || 0 }))
       try { console.debug('[admin/credentials] manual saveSectionOrder payload', payload) } catch {}
       const res = await fetch('/api/admin/credential-sections/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(() => ({}))
@@ -410,7 +414,7 @@ export default function AdminCredentials() {
     arr.splice(idx, 0, item)
     const newItems = arr.map((it, i) => ({ ...it, sort_order: i }))
     setItems(newItems)
-    try { console.debug('[admin/credentials] handleDrop newItems', newItems.map((i:any)=>({ id: i.id, sort_order: i.sort_order }))) } catch {}
+    try { console.debug('[admin/credentials] handleDrop newItems', newItems.map((i)=>({ id: i.id, sort_order: i.sort_order }))) } catch {}
 
     // persist immediately so front-end reflects server ordering
     try {
@@ -464,12 +468,12 @@ export default function AdminCredentials() {
     const arr = [...prev]
     const [item] = arr.splice(srcIdx, 1)
     arr.splice(idx, 0, item)
-    const newSections = arr.map((it: any, i: number) => ({ ...it, sort_order: i }))
+    const newSections = arr.map((it, i: number) => ({ ...it, sort_order: i }))
     setSections(newSections)
 
     // persist section order immediately
     try {
-      const payload = newSections.map((s: any) => ({ id: s.id, sort_order: s.sort_order || 0 }))
+      const payload = newSections.map((s) => ({ id: s.id, sort_order: s.sort_order || 0 }))
       const res = await fetch('/api/admin/credential-sections/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { alert('Save section order failed: ' + (data?.error || res.status)); setNeedSectionOrderSave(true) } else {
@@ -518,10 +522,10 @@ export default function AdminCredentials() {
     if (srcSection === targetSection && srcIndex === targetIndex) { setCardDragOver(null); cardDragRef.current = null; return }
 
     // Build grouped map
-    const grouped: Record<string, any[]> = {}
-    for (const s of (sections || []) as any[]) { grouped[s.slug] = [] }
+    const grouped: Record<string, CredItem[]> = {}
+    for (const s of sections) { const key = String((s as Record<string, unknown>)['slug'] || ''); grouped[key] = [] }
     // include any items that have no matching section
-    const unsect: any[] = []
+    const unsect: CredItem[] = []
     items.forEach(it => {
       if (it && it.section && grouped[it.section]) grouped[it.section].push(it)
       else unsect.push(it)
@@ -542,9 +546,10 @@ export default function AdminCredentials() {
     destList.splice(targetIndex, 0, moved)
 
     // rebuild new items array by concatenating groups in the order of sections
-    const newItems: any[] = []
+    const newItems: CredItem[] = []
     for (const s of sections) {
-      const list = grouped[s.slug] || []
+      const key = String((s as Record<string, unknown>)['slug'] || '')
+      const list = grouped[key] || []
       for (let i = 0; i < list.length; i++) {
         list[i].sort_order = i
         newItems.push(list[i])
@@ -555,7 +560,7 @@ export default function AdminCredentials() {
 
     setItems(newItems)
     setNeedOrderSave(true)
-    try { console.debug('[admin/credentials] handleCardDrop newItems', newItems.map((i:any)=>({ id: i.id, section: i.section, sort_order: i.sort_order }))) } catch {}
+    try { console.debug('[admin/credentials] handleCardDrop newItems', newItems.map((i)=>({ id: i.id, section: i.section, sort_order: i.sort_order }))) } catch {}
     setCardDragOver(null)
     cardDragRef.current = null
 
@@ -586,12 +591,12 @@ export default function AdminCredentials() {
     }
   }
 
-  const purify = typeof window !== 'undefined' ? createDOMPurify(window as any) : null
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
 
   const groupedItems = React.useMemo(() => {
-    const groups: Record<string, any[]> = {};
-    for (const s of (sections || []) as any[]) { groups[s.slug] = [] }
-    const others: any[] = [];
+    const groups: Record<string, CredItem[]> = {};
+    for (const s of sections || []) { const slug = s.slug || ''; if (slug) groups[slug] = [] }
+    const others: CredItem[] = [];
     (items || []).forEach(it => {
       if (it && it.section && groups[it.section]) groups[it.section].push(it)
       else others.push(it)
@@ -776,19 +781,19 @@ export default function AdminCredentials() {
                               const name = e.target.value
                               if (!sectionSlugEdited) {
                                 const slug = String(name || '').toLowerCase().trim().replace(/[^a-z0-9\s-_]/g, '').replace(/\s+/g, '-')
-                                setSectionForm((s: any) => ({ ...s, name, slug }))
+                                setSectionForm((s) => ({ ...s, name, slug } as Section))
                               } else {
-                                setSectionForm((s: any) => ({ ...s, name }))
+                                setSectionForm((s) => ({ ...s, name } as Section))
                               }
                             }} className={styles.formInput} />
                           </label>
                           <label>
                             <div className="field-label">Slug</div>
-                            <input value={sectionForm.slug} onChange={e => { setSectionSlugEdited(true); setSectionForm((s: any) => ({ ...s, slug: e.target.value })) }} className={styles.formInput} />
+                            <input value={sectionForm.slug} onChange={e => { setSectionSlugEdited(true); setSectionForm((s) => ({ ...s, slug: e.target.value } as Section)) }} className={styles.formInput} />
                           </label>
                           <label>
                             <div className="field-label">Subtitle</div>
-                            <input value={sectionForm.subtitle} onChange={e => setSectionForm((s: any) => ({ ...s, subtitle: e.target.value }))} className={styles.formInput} />
+                            <input value={sectionForm.subtitle} onChange={e => setSectionForm((s) => ({ ...s, subtitle: e.target.value } as Section))} className={styles.formInput} />
                           </label>
                           <div className="flex gap-2">
                             <button className={styles.btnGhost} type="button" onClick={() => submitSection()}>{sectionForm.id ? 'Save' : 'Create'}</button>
@@ -807,7 +812,7 @@ export default function AdminCredentials() {
                               <button className={styles.btnGhost} type="button" onClick={saveSectionOrder} disabled={!needSectionOrderSave}>Save order</button>
                             </div>
                           </div>
-                          {sectionsLoading ? <div className="muted">Loading...</div> : sections.length === 0 ? <div className="muted">No sections</div> : sections.map((s: any, sIdx: number) => (
+                          {sectionsLoading ? <div className="muted">Loading...</div> : sections.length === 0 ? <div className="muted">No sections</div> : sections.map((s, sIdx: number) => (
                             <div key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:8, padding:8, borderRadius:8, background: sectionDragOverIndex === sIdx ? 'rgba(255,255,255,0.02)' : 'transparent'}} draggable onDragStart={(e)=>handleSectionDragStart(e, sIdx)} onDragOver={(e)=>handleSectionDragOver(e, sIdx)} onDragLeave={handleSectionDragLeave} onDrop={(e)=>handleSectionDrop(e, sIdx)}>
                               <div>
                                 <div style={{display:'flex', alignItems:'center', gap:8}}>
@@ -818,7 +823,7 @@ export default function AdminCredentials() {
                               </div>
                               <div style={{display:'flex', gap:8}}>
                                 <button className={styles.btnGhost} onClick={() => editSection(s)}>Edit</button>
-                                <button className={styles.btnDanger} onClick={() => deleteSection(s.id)}>Delete</button>
+                                  <button className={styles.btnDanger} onClick={() => deleteSection(s.id ?? undefined)}>Delete</button>
                               </div>
                             </div>
                           ))}
@@ -832,7 +837,7 @@ export default function AdminCredentials() {
               <div style={{gridColumn:'1/-1'}}>
                 <hr />
                     <div className={styles.sectionsGrid}>
-                  {(sections && sections.length > 0) ? sections.map((s: any, sIdx: number) => (
+                  {(sections && sections.length > 0) ? sections.map((s, sIdx: number) => (
                     <Card key={s.id} className={styles.adminSectionCard} title={s.name} subtitle={s.subtitle ? s.subtitle : s.slug}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginBottom:8}}>
                         <div draggable onDragStart={(e)=>handleSectionDragStart(e, sIdx)} onDragOver={(e)=>handleSectionDragOver(e, sIdx)} onDragLeave={handleSectionDragLeave} onDrop={(e)=>handleSectionDrop(e, sIdx)} style={{display:'flex', alignItems:'center', gap:8}}>
@@ -841,13 +846,13 @@ export default function AdminCredentials() {
                         </div>
                         <div style={{display:'flex', gap:8}}>
                           <button className={styles.btnGhost} onClick={() => editSection(s)}>Edit</button>
-                          <button className={styles.btnDanger} onClick={() => deleteSection(s.id)}>Delete</button>
+                          <button className={styles.btnDanger} onClick={() => deleteSection(s.id ?? undefined)}>Delete</button>
                         </div>
                       </div>
 
                       <div>
-                        {(groupedItems.groups[s.slug] || []).map((it: any, idx: number) => (
-                          <div key={it.id} className={styles.credentialRow} draggable onDragStart={(e)=>handleCardDragStart(e, s.slug, idx)} onDragOver={(e)=>handleCardDragOver(e, s.slug, idx)} onDragLeave={handleCardDragLeave} onDrop={(e)=>handleCardDrop(e, s.slug, idx)}>
+                        {(groupedItems.groups[String((s as Record<string, unknown>)['slug'] || '')] || []).map((it, idx: number) => (
+                          <div key={it.id} className={styles.credentialRow} draggable onDragStart={(e)=>handleCardDragStart(e, String(s.slug || ''), idx)} onDragOver={(e)=>handleCardDragOver(e, String(s.slug || ''), idx)} onDragLeave={handleCardDragLeave} onDrop={(e)=>handleCardDrop(e, String(s.slug || ''), idx)}>
                             <div className={styles.credentialRowInner}>
                               <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6}} aria-hidden>≡</div>
                               <input type="checkbox" checked={it.id != null && selectedIds.includes(Number(it.id))} onChange={()=>{ if (it.id != null) toggleSelect(Number(it.id)) }} />
@@ -892,7 +897,7 @@ export default function AdminCredentials() {
                   {groupedItems.others && groupedItems.others.length > 0 ? (
                     <div style={{marginTop:12}}>
                       <div style={{fontWeight:700, marginBottom:8}}>Uncategorized</div>
-                      {groupedItems.others.map((it: any, idx: number) => (
+                      {groupedItems.others.map((it, idx: number) => (
                         <div key={it.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
                           <div style={{display:'flex', alignItems:'center', gap:8, flex:1}}>
                             <input type="checkbox" checked={it.id != null && selectedIds.includes(Number(it.id))} onChange={()=>{ if (it.id != null) toggleSelect(Number(it.id)) }} />
@@ -922,13 +927,17 @@ export default function AdminCredentials() {
                       <button className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
                     </div>
                     <div style={{maxWidth:520}}>
-                      <Card title={form.title || 'Untitled'} subtitle={(sections.find((s:any)=>s.slug===form.section)?.name) || form.section || ''}>
+                      <Card title={form.title || 'Untitled'} subtitle={(sections.find((s)=>s.slug===form.section)?.name) || form.section || ''}>
                         <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
-                          <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
-                            {form.image_path ? <img src={form.image_path} alt={form.title || ''} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}
+                          <div style={{ width: 140, height: 100, background: '#061426', borderRadius: 8, overflow: 'hidden', flex: '0 0 140px' }}>
+                            {form.image_path ? (
+                              <Image src={String(form.image_path)} alt={form.title || ''} width={140} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} unoptimized />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9fb7d6' }}>No image</div>
+                            )}
                           </div>
-                          <div style={{flex:1}}>
-                            <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: (((form as Record<string, unknown>)['description_sanitized'] ?? (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))) as string) }} />
                           </div>
                         </div>
                       </Card>

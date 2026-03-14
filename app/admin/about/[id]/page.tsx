@@ -8,6 +8,7 @@ import Card from '../../../../components/card/card'
 import ProjectEditorSidebar from '../../../../components/admin/projects/ProjectEditorSidebar'
 import Modal from '@/components/modal/Modal'
 import { useToast } from '../../../../components/toast/ToastProvider'
+import Image from 'next/image'
 import createDOMPurify from 'dompurify'
 import { buildPublicUrl } from '../../../../lib/s3'
 
@@ -21,10 +22,10 @@ type AboutMetadata = {
   cards?: CardData[]
 }
 
-export default function AdminAboutEditor({ params }: { params: any }) {
-  // `params` may be a Promise in the App Router — unwrap with React.use when available
-  const resolvedParams: any = (React as any).use ? (React as any).use(params) : params
-  const idParam = resolvedParams && resolvedParams.id
+export default function AdminAboutEditor({ params }: { params?: unknown }) {
+  // `params` may be a Promise in the App Router — treat as unknown and access via indexer
+  const resolvedParams = params as Record<string, unknown> | undefined
+  const idParam = resolvedParams ? (resolvedParams['id'] ?? resolvedParams['slug']) : undefined
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -52,7 +53,7 @@ export default function AdminAboutEditor({ params }: { params: any }) {
   const [uploadProgress, setUploadProgress] = useState<Record<string | number, number>>({})
   const [previewOpen, setPreviewOpen] = useState(false)
   const toast = useToast()
-  const [deleteModal, setDeleteModal] = useState<any>({ open: false })
+  const [deleteModal, setDeleteModal] = useState<Record<string, unknown> | null>({ open: false })
   const savingRef = useRef(false)
   
 
@@ -63,19 +64,30 @@ export default function AdminAboutEditor({ params }: { params: any }) {
     try {
       const res = await fetch('/api/admin/pages?page=1&limit=1000')
       const json = await res.json()
-      const items = json?.items || []
-      const found = items.find((i: any) => String(i.id) === String(idParam) || String(i.slug) === String(idParam))
+      const items = (json?.items || []) as Array<Record<string, unknown>>
+      const found = items.find(i => String(i['id']) === String(idParam) || String(i['slug']) === String(idParam))
       if (found) {
-        setId(found.id)
-        setSlug(found.slug || '')
-        setTitle(found.title || '')
-        setIsPublished(Boolean(found.is_published))
+        setId(Number(found['id']) || null)
+        setSlug(String(found['slug'] || ''))
+        setTitle(String(found['title'] || ''))
+        setIsPublished(Boolean(found['is_published']))
         try {
           const md = found.metadata ? (typeof found.metadata === 'string' ? JSON.parse(found.metadata) : found.metadata) : {}
           // If cards array exists, prefer it. Otherwise convert legacy named cards to a cards array so editor works consistently.
           let loadedCards: CardData[] = []
           if (Array.isArray(md.cards) && md.cards.length) {
-            loadedCards = md.cards.map((c: any) => ({ title: c?.title || '', subtitle: c?.subtitle || '', content: c?.content || '', image: c?.image || '/headshot.jpg', images: Array.isArray(c?.images) ? (c.images as string[]) : (c?.image ? [c.image] : []), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '' }))
+            loadedCards = (md.cards as unknown[]).map((c: unknown) => {
+              const card = c as Record<string, unknown>
+              return {
+                title: String(card['title'] ?? ''),
+                subtitle: String(card['subtitle'] ?? ''),
+                content: String(card['content'] ?? ''),
+                image: String(card['image'] ?? '/headshot.jpg'),
+                images: Array.isArray(card['images']) ? (card['images'] as string[]) : (card['image'] ? [String(card['image'])] : []),
+                templateLarge: String(card['templateLarge'] ?? ''),
+                templateSmall: String(card['templateSmall'] ?? ''),
+              } as CardData
+            })
           } else {
             const about = md.aboutCard || {}
             const topo = md.topologyCard || {}
@@ -94,8 +106,8 @@ export default function AdminAboutEditor({ params }: { params: any }) {
               if (cp === 'about') requestedIndex = 0
               else if (cp === 'topology') requestedIndex = 1
               else if (cp === 'hamshack') requestedIndex = 2
-              else {
-                const parsed = parseInt(cp as any, 10)
+                else {
+                const parsed = parseInt(String(cp), 10)
                 if (!Number.isNaN(parsed)) requestedIndex = parsed
               }
             }
@@ -166,13 +178,13 @@ export default function AdminAboutEditor({ params }: { params: any }) {
 
   const discardDraft = ()=>{ try{ localStorage.removeItem(draftKey()); localStorage.removeItem('admin_about_draft:about') }catch{}; load(); try{ toast?.showToast && toast.showToast('Draft discarded', 'info') }catch{} }
 
-  const updateMetadata = (path: string[], value: any) => {
-    setMetadata((prev: any)=>{
-      const next = JSON.parse(JSON.stringify(prev || {}))
-      let cur = next
-      for (let i=0;i<path.length-1;i++){ const k = path[i]; if (!cur[k]) cur[k] = {}; cur = cur[k] }
-      cur[path[path.length-1]] = value
-      return next
+  const updateMetadata = (path: string[], value: unknown) => {
+    setMetadata((prev)=>{
+      const next = JSON.parse(JSON.stringify(prev || {})) as Record<string, unknown>
+      let cur: Record<string, unknown> = next
+      for (let i=0;i<path.length-1;i++){ const k = path[i]; if (!cur[k as string]) (cur as Record<string, unknown>)[k as string] = {}; cur = (cur[k as string] as Record<string, unknown>) }
+      (cur as Record<string, unknown>)[path[path.length-1]] = value
+      return next as AboutMetadata
     })
   }
 
@@ -189,17 +201,18 @@ export default function AdminAboutEditor({ params }: { params: any }) {
       return copy
     })
   }
-  const updateCard = (idx: number, key: keyof CardData, value: any) => {
+  const updateCard = (idx: number, key: keyof CardData, value: unknown) => {
     setCards(old => {
       const copy = old.slice()
       if (idx < 0 || idx >= copy.length) return old
-      copy[idx] = { ...copy[idx], ...(copy[idx] as any), [key]: value }
+      const base = copy[idx] || {}
+      copy[idx] = { ...base, ...(base as Partial<CardData>), [key]: value } as CardData
       return copy
     })
   }
 
   // Project-like sidebar helpers (operate on the first/about card)
-  const setFormLike = (val: any) => {
+  const setFormLike = (val: unknown) => {
     // Accept updater function or plain object and operate on the active card index
     const idx = Number.isInteger(activeIdx) ? activeIdx : 0
     const cardAt = cards[idx] || {}
@@ -215,23 +228,29 @@ export default function AdminAboutEditor({ params }: { params: any }) {
       is_published: isPublished,
       details: cardAt?.content || ''
     }
-    const next = typeof val === 'function' ? val(current) : { ...current, ...val }
-    if (next.slug !== undefined) setSlug(next.slug)
-    if (next.title !== undefined) setTitle(next.title)
+    let next: Record<string, unknown>
+    if (typeof val === 'function') {
+      next = (val as (c: typeof current) => Record<string, unknown>)(current)
+    } else {
+      next = { ...current, ...(val as Record<string, unknown>) }
+    }
+    if (next.slug !== undefined) setSlug(String(next.slug ?? ''))
+    if (next.title !== undefined) setTitle(String(next.title ?? ''))
     if (next.image_path !== undefined) updateCard(idx, 'image', next.image_path)
     if (next.image_path !== undefined) {
       // ensure card gallery includes this image and main image is set
       setCards(prev => {
         const copy = prev.slice()
-        const card = copy[idx] || { title:'', subtitle:'', content:'', image: next.image_path, images: [] as string[] }
+        const card = copy[idx] || { title:'', subtitle:'', content:'', image: String(next.image_path || ''), images: [] as string[] }
         const imgs = Array.isArray(card.images) ? card.images.slice() : []
-        if (next.image_path && !imgs.includes(next.image_path)) imgs.push(next.image_path)
+        const imgPath = String(next.image_path ?? '')
+        if (imgPath && !imgs.includes(imgPath)) imgs.push(imgPath)
         card.images = imgs
-        card.image = next.image_path
+        card.image = imgPath
         copy[idx] = card
         return copy
       })
-      setImages(prev => { const nextImgs = prev.slice(); if (next.image_path && !nextImgs.includes(next.image_path)) nextImgs.push(next.image_path); return nextImgs })
+      setImages(prev => { const nextImgs = prev.slice(); const imgPath = String(next.image_path ?? ''); if (imgPath && !nextImgs.includes(imgPath)) nextImgs.push(imgPath); return nextImgs })
     }
     if (next.subtitle !== undefined) updateCard(idx, 'subtitle', next.subtitle)
     if (next.details !== undefined) updateCard(idx, 'content', next.details)
@@ -321,7 +340,8 @@ export default function AdminAboutEditor({ params }: { params: any }) {
     if (!deleteModal || !deleteModal.open) return
     try {
       if (deleteModal.mode === 'card') {
-        const idx = deleteModal.idx
+        const idx = Number((deleteModal as Record<string, unknown>)?.idx ?? -1)
+        if (idx < 0) { setDeleteModal({ open: false }); return }
         const res = await fetch(`/api/admin/pages?id=${id}&card=${idx}`, { method: 'DELETE' })
         if (!res.ok) { alert('Delete failed'); return }
         setCards(prev => {
@@ -332,14 +352,14 @@ export default function AdminAboutEditor({ params }: { params: any }) {
         setActiveIdx(i => Math.max(0, Math.min(i, Math.max(0, cards.length - 2))))
         // sync images for new active card
         setImages(() => {
-          const nextCards = cards.slice(); nextCards.splice(deleteModal.idx, 1)
-          const newCard = nextCards[Math.max(0, Math.min(deleteModal.idx, Math.max(0, nextCards.length - 1)))]
+          const nextCards = cards.slice(); nextCards.splice(idx, 1)
+          const newCard = nextCards[Math.max(0, Math.min(idx, Math.max(0, nextCards.length - 1)))]
           if (!newCard) return []
           return (Array.isArray(newCard.images) && newCard.images.length) ? (newCard.images as string[]).slice(0,6) : (newCard.image ? [newCard.image] : [])
         })
         try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
       } else if (deleteModal.mode === 'named') {
-        const key = deleteModal.namedKey
+        const key = String((deleteModal as Record<string, unknown>)?.namedKey || '')
         const res = await fetch(`/api/admin/pages?id=${id}&card=${encodeURIComponent(key)}`, { method: 'DELETE' })
         if (!res.ok) { alert('Delete failed'); return }
         try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
@@ -429,7 +449,7 @@ export default function AdminAboutEditor({ params }: { params: any }) {
     setSaving(true)
     try{
       const safeMetadata = { ...metadata, cards }
-      const payload: any = { id, slug: slug || undefined, title, content: '', metadata: safeMetadata, is_published: isPublished ? 1 : 0 }
+      const payload: Record<string, unknown> = { id, slug: slug || undefined, title, content: '', metadata: safeMetadata, is_published: isPublished ? 1 : 0 }
       const method = id ? 'PUT' : 'POST'
       const res = await fetch('/api/admin/pages', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!res.ok) { const err = await res.json().catch(()=>({})); alert('Save failed: ' + (err?.error || res.status)); return }
@@ -512,9 +532,16 @@ export default function AdminAboutEditor({ params }: { params: any }) {
 
   if (loading) return <div style={{padding:20}}>Loading…</div>
 
+  // Precompute sanitized HTML snippets to avoid complex inline expressions in JSX
+  const sanitizedSummaryHtml = ( (metadata.summary as Record<string, unknown>)?.['text_sanitized'] ?? (purify ? purify.sanitize(String(metadata.summary?.text || '')) : (metadata.summary?.text || '')) ) as string
+  const rawCardContent = ( ((cards[activeIdx] as Record<string, unknown>)?.['content_sanitized']) ?? (purify ? purify.sanitize(String(cards[activeIdx]?.content || '')) : String(cards[activeIdx]?.content || '')) ) as string
+  const previewCardHtml = (typeof rawCardContent === 'string' && rawCardContent.slice)
+    ? rawCardContent.slice(0, 400) + (String(cards[activeIdx]?.content || '').length > 400 ? '…' : '')
+    : (String(cards[activeIdx]?.content || '').slice(0, 400) + (String(cards[activeIdx]?.content || '').length > 400 ? '…' : ''))
+
   return (
     <div>
-      <div style={{marginBottom:12}} className={styles.topTitle}>Edit About — ID: {id ?? idParam} <span style={{marginLeft:8}} className={styles.kbd}>Ctrl/Cmd+S</span></div>
+      <div style={{marginBottom:12}} className={styles.topTitle}>Edit About — ID: {id ?? String(idParam)} <span style={{marginLeft:8}} className={styles.kbd}>Ctrl/Cmd+S</span></div>
       <div style={{marginBottom:12}}>
         <button className={styles.btnGhost} onClick={load}>Refresh</button>
       </div>
@@ -659,7 +686,7 @@ export default function AdminAboutEditor({ params }: { params: any }) {
                 </form>
       )}
       {previewOpen && (
-        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={()=>setPreviewOpen(false)} initialFocusRef={previewCloseRef} titleId="preview-title">
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={()=>setPreviewOpen(false)} initialFocusRef={previewCloseRef as React.RefObject<HTMLElement>} titleId="preview-title">
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
             <div style={{fontWeight:700}}>Preview</div>
             <button ref={previewCloseRef} className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
@@ -674,17 +701,17 @@ export default function AdminAboutEditor({ params }: { params: any }) {
               </div>
               <Card title={cards[activeIdx]?.title || 'About'} subtitle={cards[activeIdx]?.subtitle || ''}>
                 <div className={projectStyles.content} style={{gap:8}}>
-                  <div className={projectStyles.media}>
-                    {cards[activeIdx]?.image ? (
-                      <div className={projectStyles.mainPhotoWrap} style={{maxWidth:320}}>
-                        <img src={cards[activeIdx]?.image} alt={cards[activeIdx]?.title} className={projectStyles.mainPhoto} />
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className={projectStyles.story}>
-                    <div style={{color:'var(--white-95)'}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(metadata.summary?.text || '')) : (metadata.summary?.text || '') }} />
-                    {cards[activeIdx]?.content ? <div style={{marginTop:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(cards[activeIdx]?.content).slice(0,400) + (String(cards[activeIdx]?.content).length > 400 ? '…' : '')) : (String(cards[activeIdx]?.content).slice(0,400) + (String(cards[activeIdx]?.content).length > 400 ? '…' : '')) }} /> : null}
-                  </div>
+                    <div className={projectStyles.media}>
+                      {cards[activeIdx]?.image ? (
+                        <div className={projectStyles.mainPhotoWrap} style={{ maxWidth: 320 }}>
+                          <Image src={String(cards[activeIdx]?.image)} alt={cards[activeIdx]?.title || ''} width={320} height={200} className={projectStyles.mainPhoto} style={{ objectFit: 'cover' }} unoptimized />
+                        </div>
+                      ) : null}
+                    </div>
+                      <div className={projectStyles.story}>
+                      <div style={{ color: 'var(--white-95)' }} dangerouslySetInnerHTML={{ __html: sanitizedSummaryHtml }} />
+                      {cards[activeIdx]?.content ? <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: previewCardHtml }} /> : null}
+                    </div>
                 </div>
               </Card>
             </div>
@@ -692,12 +719,12 @@ export default function AdminAboutEditor({ params }: { params: any }) {
         </Modal>
       )}
       {deleteModal && deleteModal.open ? (
-        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => setDeleteModal({ open: false })} initialFocusRef={deleteCancelRef} titleId="confirm-delete-title" descriptionId="confirm-delete-desc">
+        <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => setDeleteModal({ open: false })} initialFocusRef={deleteCancelRef as React.RefObject<HTMLElement>} titleId="confirm-delete-title" descriptionId="confirm-delete-desc">
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
             <div style={{fontWeight:700}}>Confirm Delete</div>
             <button className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Close</button>
           </div>
-          <div style={{marginBottom:12}}>{deleteModal.message || 'Are you sure?'}</div>
+          <div style={{marginBottom:12}}>{String((deleteModal as Record<string, unknown>)?.message || 'Are you sure?')}</div>
           <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
             <button ref={deleteCancelRef} className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Cancel</button>
             <button className={styles.btnDanger} onClick={confirmDelete}>Delete</button>

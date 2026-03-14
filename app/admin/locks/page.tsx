@@ -1,39 +1,57 @@
 "use client"
 import { useState } from 'react'
 
+type Lock = {
+  key: string
+  ttlMs?: number
+  expiresAt?: string | number
+}
+
 export default function LocksPage() {
   const [adminKey, setAdminKey] = useState('')
   const [adminUser, setAdminUser] = useState('')
   const [adminPass, setAdminPass] = useState('')
-  const [locks, setLocks] = useState<any[]>([])
+  const [locks, setLocks] = useState<Lock[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
     setLoading(true); setError(null)
     try {
-      const headers: any = {}
+      const headers: Record<string, string> = {}
       if (adminKey) headers['x-admin-key'] = adminKey
       else if (adminUser && adminPass) headers['authorization'] = 'Basic ' + btoa(`${adminUser}:${adminPass}`)
       const res = await fetch('/api/admin/auth-locks', { headers })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j?.error || 'Failed')
-      setLocks(j.locks || [])
-    } catch (e: any) { setError(e?.message || String(e)) }
+      const j = (await res.json().catch(() => ({}))) as Record<string, unknown>
+      if (!res.ok) {
+        const msg = j && typeof j === 'object' && 'error' in j ? String((j as Record<string, unknown>)['error']) : 'Failed'
+        throw new Error(msg)
+      }
+      setLocks(((j as Record<string, unknown>)['locks']) as Lock[] || [])
+    } catch (err: unknown) {
+      const e = err as Error
+      setError(e?.message || String(err))
+    }
     setLoading(false)
   }
 
   async function unlock(k: string) {
     setLoading(true); setError(null)
     try {
-      const headers: any = { 'Content-Type': 'application/json' }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (adminKey) headers['x-admin-key'] = adminKey
       else if (adminUser && adminPass) headers['authorization'] = 'Basic ' + btoa(`${adminUser}:${adminPass}`)
       const res = await fetch('/api/admin/auth-locks', { method: 'POST', headers, body: JSON.stringify({ key: k }) })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j?.error || 'Failed')
+      const j = (await res.json().catch(() => ({}))) as Record<string, unknown>
+      if (!res.ok) {
+        const msg = j && typeof j === 'object' && 'error' in j ? String((j as Record<string, unknown>)['error']) : 'Failed'
+        throw new Error(msg)
+      }
       await load()
-    } catch (e: any) { setError(e?.message || String(e)) }
+    } catch (err: unknown) {
+      const e = err as Error
+      setError(e?.message || String(err))
+    }
     setLoading(false)
   }
 

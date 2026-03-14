@@ -1,4 +1,16 @@
-export async function insertAdminAction(details: any) {
+export type AdminActionDetails = {
+  admin_user_id?: number | null
+  actor?: string | null
+  actor_type?: string | null
+  action?: string | null
+  target_key?: string | null
+  details?: string | null
+  meta?: unknown
+  reason?: string | null
+  ip?: string | null
+}
+
+export async function insertAdminAction(details: AdminActionDetails) {
   try {
     const { query } = await import('@/lib/db')
     const metaStr = typeof details?.meta === 'string' ? details.meta : (details?.meta ? JSON.stringify(details.meta) : null)

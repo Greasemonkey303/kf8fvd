@@ -182,6 +182,8 @@ export async function POST(req: Request) {
     const safeName = escapeHtml(name)
     const safeEmail = escapeHtml(email)
     const safeMessage = escapeHtml(message).replace(/\r?\n/g, '<br/>')
+    // plain sanitized text for DB/storage (no <br/> tags)
+    const sanitizedForDb = escapeHtml(message)
 
     const plain = `Name: ${name}\nEmail: ${email}\n\n${message}\n\nSent: ${sentAt}`
     const html = `
@@ -238,7 +240,7 @@ export async function POST(req: Request) {
     try {
       const outDir = './data'
       await fs.mkdir(outDir, { recursive: true })
-      const logLine = JSON.stringify({ name, email, message, attachments: attachments.map(a=>a.filename), ip, userAgent, sentAt: new Date().toISOString() }) + '\n'
+      const logLine = JSON.stringify({ name: safeName, email: safeEmail, message: sanitizedForDb, message_sanitized: safeMessage, attachments: attachments.map(a=>a.filename), ip, userAgent, sentAt: new Date().toISOString() }) + '\n'
       await fs.appendFile(`${outDir}/messages.log`, logLine, 'utf8')
     } catch (e) {
       console.error('[api/contact] failed to write message log', e)
@@ -247,7 +249,8 @@ export async function POST(req: Request) {
     // persist message to database (non-blocking: log errors but don't fail the request)
     try {
       const attachmentsMeta = (savedAttachmentsMeta && savedAttachmentsMeta.length) ? savedAttachmentsMeta : attachments.map(a => ({ filename: a.filename, type: a.type }))
-      await query('INSERT INTO messages (name, email, message, attachments, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)', [name || null, email || null, message || null, JSON.stringify(attachmentsMeta), ip || null, userAgent || null])
+      // store both plain-text `message` and server-safe HTML `message_sanitized` for rendering
+      await query('INSERT INTO messages (name, email, message, message_sanitized, attachments, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)', [name || null, email || null, sanitizedForDb || null, safeMessage || null, JSON.stringify(attachmentsMeta), ip || null, userAgent || null])
     } catch (dbErr) {
       console.error('[api/contact] failed to persist message to DB', dbErr)
     }

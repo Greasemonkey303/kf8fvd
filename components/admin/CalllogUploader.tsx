@@ -27,21 +27,34 @@ export default function CalllogUploader() {
       if (replaceAll) fd.append('replace', '1')
 
       const res = await fetch('/api/admin/calllog', { method: 'POST', body: fd })
-      let j: any = null
+      let j: unknown = null
       try { j = await res.json() } catch (_) { j = null }
 
+      const getNum = (obj: unknown, key: string) => {
+        if (!obj || typeof obj !== 'object') return 0
+        const v = (obj as Record<string, unknown>)[key]
+        if (typeof v === 'number') return v
+        if (typeof v === 'string') return Number(v) || 0
+        return 0
+      }
+      const getStr = (obj: unknown, key: string) => {
+        if (!obj || typeof obj !== 'object') return ''
+        const v = (obj as Record<string, unknown>)[key]
+        return typeof v === 'string' ? v : String(v || '')
+      }
+
       if (!res.ok) {
-        const errMsg = j?.error || res.statusText || 'unknown'
+        const errMsg = getStr(j, 'error') || res.statusText || 'unknown'
         setMessage('Upload failed: ' + errMsg)
         toast?.showToast('Upload failed: ' + errMsg, 'error')
         setResult(null)
       } else {
-        setResult({ inserted: j?.inserted || 0, skipped: j?.skipped || 0, totalParsed: j?.totalParsed || 0 })
+        setResult({ inserted: getNum(j, 'inserted'), skipped: getNum(j, 'skipped'), totalParsed: getNum(j, 'totalParsed') })
         setMessage('Upload complete')
-        toast?.showToast(`Upload complete — inserted ${j?.inserted || 0}, skipped ${j?.skipped || 0}`, 'success')
+        toast?.showToast(`Upload complete — inserted ${getNum(j, 'inserted')}, skipped ${getNum(j, 'skipped')}`, 'success')
       }
-    } catch (err:any) {
-      const em = String(err)
+    } catch (err) {
+      const em = err instanceof Error ? err.message : String(err)
       setMessage('Upload error: ' + em)
       toast?.showToast('Upload error: ' + em, 'error')
       setResult(null)

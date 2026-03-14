@@ -1,11 +1,21 @@
 "use client"
 import { useEffect, useState } from 'react'
 
+type AdminAction = {
+  id?: string | number
+  action?: string
+  actor?: string
+  target_key?: string
+  reason?: string
+  createdAt?: string | number
+  meta?: unknown
+}
+
 export default function AuditPage() {
   const [adminKey, setAdminKey] = useState('')
   const [adminUser, setAdminUser] = useState('')
   const [adminPass, setAdminPass] = useState('')
-  const [actions, setActions] = useState<any[]>([])
+  const [actions, setActions] = useState<AdminAction[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [limit] = useState(50)
@@ -15,29 +25,36 @@ export default function AuditPage() {
   async function load(off = 0) {
     setLoading(true); setError(null)
     try {
-      const headers: any = {}
+      const headers: Record<string, string> = {}
       if (adminKey) headers['x-admin-key'] = adminKey
       else if (adminUser && adminPass) headers['authorization'] = 'Basic ' + btoa(`${adminUser}:${adminPass}`)
       const res = await fetch(`/api/admin/admin-actions?limit=${limit}&offset=${off}`, { headers })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j?.error || 'Failed')
-      setActions(j.actions || [])
-      setTotal(j.total || 0)
+      const j = (await res.json().catch(() => ({}))) as Record<string, unknown>
+      if (!res.ok) {
+        const msg = j && typeof j === 'object' && 'error' in j ? String((j as Record<string, unknown>)['error']) : 'Failed'
+        throw new Error(msg)
+      }
+      setActions(((j as Record<string, unknown>)['actions']) as AdminAction[] || [])
+      setTotal(typeof ((j as Record<string, unknown>)['total']) === 'number' ? Number((j as Record<string, unknown>)['total']) : 0)
       setOffset(off)
-    } catch (e: any) { setError(e?.message || String(e)) }
+    } catch (err: unknown) {
+      const e = err as Error
+      setError(e?.message || String(err))
+    }
     setLoading(false)
   }
 
   async function exportCsv() {
     setLoading(true); setError(null)
     try {
-      const headers: any = {}
+      const headers: Record<string, string> = {}
       if (adminKey) headers['x-admin-key'] = adminKey
       else if (adminUser && adminPass) headers['authorization'] = 'Basic ' + btoa(`${adminUser}:${adminPass}`)
       const res = await fetch(`/api/admin/admin-actions?limit=${limit}&offset=${offset}&format=csv`, { headers })
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        throw new Error(j?.error || 'Failed to export')
+        const j = (await res.json().catch(() => ({}))) as Record<string, unknown>
+        const msg = j && typeof j === 'object' && 'error' in j ? String((j as Record<string, unknown>)['error']) : 'Failed to export'
+        throw new Error(msg)
       }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -48,7 +65,10 @@ export default function AuditPage() {
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
-    } catch (e: any) { setError(e?.message || String(e)) }
+    } catch (err: unknown) {
+      const e = err as Error
+      setError(e?.message || String(err))
+    }
     setLoading(false)
   }
 
@@ -90,7 +110,7 @@ export default function AuditPage() {
                 <div style={{ color: '#666' }}>{a.reason || ''}</div>
                 <div style={{ marginLeft: 'auto', color: '#666' }}>{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</div>
               </div>
-              {a.meta && <pre style={{ marginTop: 6, background: '#f7f7f7', padding: 8, borderRadius: 4 }}>{JSON.stringify(a.meta, null, 2)}</pre>}
+              {a.meta ? <pre style={{ marginTop: 6, background: '#f7f7f7', padding: 8, borderRadius: 4 }}>{JSON.stringify(a.meta, null, 2)}</pre> : null}
             </li>
           ))}
         </ul>

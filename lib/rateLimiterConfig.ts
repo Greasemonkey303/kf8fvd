@@ -12,11 +12,11 @@ export function getRateLockMs(): number {
 }
 
 export function getRedisUrl(): string {
-  return (
-    process.env.REDIS_URL ||
-    (process.env.REDIS_HOST ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}` : '') ||
-    ''
-  )
+  const envRedis = process.env.REDIS_URL || (process.env.REDIS_HOST ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}` : '') || ''
+  if (!envRedis && process.env.NODE_ENV === 'production') {
+    throw new Error('REDIS_URL is required in production for the rate limiter; set REDIS_URL to your Redis connection string.')
+  }
+  return envRedis
 }
 
 export function getMetricsPrefix(): string {

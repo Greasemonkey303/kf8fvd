@@ -73,8 +73,8 @@ export default function AdminPage() {
         const r = await fetch('/api/hero')
         const j = await r.json()
         const h = j?.hero || null
-        const imgs = Array.isArray(j?.images) ? j.images : []
-        const f = imgs.find((i:any) => Number(i.is_featured) === 1) || imgs[0] || null
+        const imgs = Array.isArray(j?.images) ? (j.images as Array<Record<string, unknown>>) : []
+        const f = imgs.find((i) => Number((i as Record<string, unknown>).is_featured) === 1) || imgs[0] || null
         if (f) setFeaturedHero({ url: f.url, title: h?.title || '' })
       } catch {}
     })()
@@ -83,7 +83,7 @@ export default function AdminPage() {
     fetchOnAir()
   }, [])
 
-  function getPreviewSrc(urlVal: any) {
+  function getPreviewSrc(urlVal: unknown) {
     if (!urlVal) return ''
     const u = String(urlVal)
     if (u.startsWith('/')) return u

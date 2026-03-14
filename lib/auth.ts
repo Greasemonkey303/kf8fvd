@@ -1,10 +1,11 @@
 import { getServerSession } from 'next-auth/next'
+import type { NextAuthOptions } from 'next-auth'
 import { authOptions } from '../app/api/auth/[...nextauth]/route'
 import { query } from './db'
 
-export async function getSessionServer(): Promise<unknown> {
-  const session = await getServerSession(authOptions as any)
-  return session as unknown
+export async function getSessionServer(): Promise<Record<string, unknown> | null> {
+  const session = await getServerSession(authOptions as NextAuthOptions)
+  return session as Record<string, unknown> | null
 }
 
 export async function requireAdmin() {

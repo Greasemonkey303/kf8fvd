@@ -8,8 +8,8 @@ export async function POST(req: Request) {
     const { hero_id, url, alt, is_featured, sort_order } = body || {}
     if (!hero_id || !url) return NextResponse.json({ error: 'hero_id and url required' }, { status: 400 })
     // insert and capture insertId if available
-    const insertRes: any = await query('INSERT INTO hero_image (hero_id, url, alt, is_featured, sort_order) VALUES (?, ?, ?, ?, ?)', [hero_id, url, alt || '', is_featured ? 1 : 0, sort_order || 0])
-    const insertedId = insertRes && insertRes.insertId ? insertRes.insertId : undefined
+    const insertRes = await query('INSERT INTO hero_image (hero_id, url, alt, is_featured, sort_order) VALUES (?, ?, ?, ?, ?)', [hero_id, url, alt || '', is_featured ? 1 : 0, sort_order || 0])
+    const insertedId = (insertRes as unknown as { insertId?: number })?.insertId ?? undefined
 
     // if is_featured set, unset others
     if (is_featured) {
@@ -46,23 +46,24 @@ export async function POST(req: Request) {
         })
 
         // fetch object into a buffer
-        try {
-          const objStream: any = await minioClient.getObject(bucket, objectKey)
+          try {
+          const objStream = await minioClient.getObject(bucket, objectKey) as unknown
           const chunks: Buffer[] = []
           if (Buffer.isBuffer(objStream)) {
             chunks.push(objStream)
           } else {
-            for await (const chunk of objStream) {
-              chunks.push(Buffer.from(chunk))
+            for await (const chunk of objStream as AsyncIterable<unknown>) {
+              chunks.push(Buffer.from(chunk as ArrayBufferLike))
             }
           }
           const sourceBuffer = Buffer.concat(chunks)
 
           // dynamic require of sharp to avoid bundler issues if not installed
-          let sharpLib: any = null
+          type SharpFunc = (input: Buffer) => { webp: (opts?: { quality?: number }) => { toBuffer: () => Promise<Buffer> } }
+          let sharpLib: SharpFunc | null = null
           try {
             // eslint-disable-next-line @typescript-eslint/no-var-requires
-            sharpLib = require('sharp')
+            sharpLib = require('sharp') as unknown as SharpFunc
           } catch (e) {
             sharpLib = null
           }
@@ -79,8 +80,8 @@ export async function POST(req: Request) {
 
               // ensure `variants` column exists (best-effort, avoid ALTER syntax incompatible with older MySQL)
               try {
-                const info = await query<any[]>('SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['hero_image', 'variants'])
-                const cnt = Array.isArray(info) && info.length ? Number((info[0] as any).cnt || 0) : 0
+                const info = await query<Record<string, unknown>[]>('SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['hero_image', 'variants'])
+                const cnt = Array.isArray(info) && info.length ? Number((info[0] as Record<string, unknown>).cnt || 0) : 0
                 if (!cnt) {
                   await query('ALTER TABLE hero_image ADD COLUMN variants JSON DEFAULT NULL')
                 }
@@ -90,7 +91,9 @@ export async function POST(req: Request) {
 
               // update row with variants JSON
               try {
-                const targetId = insertedId || (await query<any[]>('SELECT id FROM hero_image WHERE hero_id = ? AND url = ? ORDER BY created_at DESC LIMIT 1', [hero_id, url]))?.[0]?.id
+                const potential = await query<Record<string, unknown>[]>('SELECT id FROM hero_image WHERE hero_id = ? AND url = ? ORDER BY created_at DESC LIMIT 1', [hero_id, url])
+                const potentialId = (potential && potential[0] && (potential[0] as Record<string, unknown>).id) || undefined
+                const targetId = insertedId || potentialId
                 if (targetId) {
                   await query('UPDATE hero_image SET variants = ? WHERE id = ?', [JSON.stringify({ webp: webpKey }), targetId])
                 }
@@ -117,7 +120,7 @@ export async function POST(req: Request) {
       console.error('variant generation error', e)
     }
 
-    const rows = await query<any[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
+    const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
     return NextResponse.json({ images: rows })
   } catch (err: unknown) {
     // eslint-disable-next-line no-console
@@ -131,11 +134,11 @@ export async function PATCH(req: Request) {
     const body = await req.json()
     const { id, set_featured, sort_order, alt, url } = body || {}
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-    const r = await query<any[]>('SELECT * FROM hero_image WHERE id = ?', [id])
+    const r = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE id = ?', [id])
     if (!r || r.length === 0) return NextResponse.json({ error: 'not found' }, { status: 404 })
     const row = r[0]
     if (set_featured) {
-      await transaction(async (conn: any) => {
+      await transaction(async (conn: { execute: (...args: unknown[]) => Promise<unknown> }) => {
         await conn.execute('UPDATE hero_image SET is_featured = 0 WHERE hero_id = ?', [row.hero_id])
         await conn.execute('UPDATE hero_image SET is_featured = 1 WHERE id = ?', [id])
       })
@@ -149,7 +152,7 @@ export async function PATCH(req: Request) {
     if (url !== undefined) {
       await query('UPDATE hero_image SET url = ? WHERE id = ?', [String(url || ''), id])
     }
-    const images = await query<any[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [row.hero_id])
+    const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [row.hero_id])
     return NextResponse.json({ images })
   } catch (err: unknown) {
     // eslint-disable-next-line no-console
@@ -163,7 +166,7 @@ export async function DELETE(req: Request) {
     const url = new URL(req.url)
     const id = url.searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-    const r = await query<any[]>('SELECT * FROM hero_image WHERE id = ?', [Number(id)])
+    const r = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE id = ?', [Number(id)])
     if (!r || r.length === 0) return NextResponse.json({ error: 'not found' }, { status: 404 })
     const row = r[0]
     const hero_id = row.hero_id
@@ -213,7 +216,7 @@ export async function DELETE(req: Request) {
     }
 
     await query('DELETE FROM hero_image WHERE id = ?', [Number(id)])
-    const images = await query<any[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
+    const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
     return NextResponse.json({ images })
   } catch (err: unknown) {
     // eslint-disable-next-line no-console

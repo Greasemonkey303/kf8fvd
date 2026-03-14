@@ -5,8 +5,8 @@ import styles from './credentials.module.css'
 import SectionGrid from '@/components/credentials/SectionGrid'
 
 export default function CredentialsClient() {
-  const [sections, setSections] = useState<Record<string, any[]>>({})
-  const [sectionMeta, setSectionMeta] = useState<Record<string, any>>({})
+  const [sections, setSections] = useState<Record<string, Record<string, unknown>[]>>({})
+  const [sectionMeta, setSectionMeta] = useState<Record<string, { name?: string; subtitle?: string }>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -16,8 +16,8 @@ export default function CredentialsClient() {
         const res = await fetch('/api/credentials')
         const data = await res.json()
         if (!mounted) return
-        setSections(data.sections || {})
-        setSectionMeta(data.section_meta || {})
+        setSections((data as Record<string, unknown>)['sections'] as Record<string, Record<string, unknown>[]> || {})
+        setSectionMeta((data as Record<string, unknown>)['section_meta'] as Record<string, { name?: string; subtitle?: string }> || {})
       } catch (e) {
         console.error('fetch credentials error', e)
       } finally { if (mounted) setLoading(false) }

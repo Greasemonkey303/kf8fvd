@@ -32,7 +32,7 @@ export default function LicenseCard(){
       <div className={styles.mediaRow}>
         <button className={styles.thumbWrap} onClick={() => setOpen(err ? fallback : src)} aria-label="Open Station License preview">
           {err ? (
-            <img src={fallback} alt="Station License unavailable" className={styles.licenseThumb} />
+            <Image src={fallback} alt="Station License unavailable" width={1200} height={800} className={styles.licenseThumb} unoptimized />
           ) : (
             <Image src={src} alt="Station License" width={1200} height={800} className={styles.licenseThumb} onError={() => setErr(true)} />
           )}

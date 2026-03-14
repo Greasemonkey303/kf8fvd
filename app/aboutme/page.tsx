@@ -19,7 +19,7 @@ export default async function Page() {
     // Projects list loads multiple records.
     // Only include published pages so toggling "Published" in admin hides sections from the public site.
     // Include all published pages (do not restrict by slug) so sections aren't filtered out
-    const rows = await query<any[]>(`SELECT id, slug, title, content, metadata, is_published, updated_at FROM pages WHERE is_published = 1 ORDER BY updated_at DESC`)
+    const rows = await query<Record<string, unknown>[]>(`SELECT id, slug, title, content, metadata, is_published, updated_at FROM pages WHERE is_published = 1 ORDER BY updated_at DESC`)
     if (!rows || rows.length === 0) {
       const data = {
         summary: {
@@ -36,8 +36,8 @@ export default async function Page() {
     const primary = rows.find(r => String(r.slug) === 'about') || rows[0]
 
     const dom = new JSDOM('')
-    const DOMPurify = createDOMPurify(dom.window as any)
-    const sanitize = (s: any) => { if (!s) return ''; return DOMPurify.sanitize(String(s)) }
+    const DOMPurify = createDOMPurify(dom.window as unknown as Window & typeof globalThis)
+    const sanitize = (s: unknown) => { if (!s) return ''; return DOMPurify.sanitize(String(s)) }
     const isJsonString = (s: string) => {
       if (!s) return false
       try { JSON.parse(s); return true } catch { return false }
@@ -58,11 +58,12 @@ export default async function Page() {
     }
 
     // Parse primary metadata
-    let primaryMeta: any = {}
+    type AboutCard = { title?: string; subtitle?: string; content?: string; image?: string; templateLarge?: string; templateSmall?: string; position?: number }
+    let primaryMeta: Record<string, unknown> = {}
     try { primaryMeta = primary.metadata ? (typeof primary.metadata === 'string' ? JSON.parse(primary.metadata) : primary.metadata) : {} } catch { primaryMeta = {} }
 
     // helper: convert presigned S3/MinIO URLs to proxied API GET (same-origin)
-    const toPublicUrl = (p: any) => {
+    const toPublicUrl = (p: unknown) => {
       if (!p) return '/headshot.jpg'
       const s = String(p)
       if (s.indexOf('X-Amz-Algorithm') !== -1 || s.indexOf('minio') !== -1 || s.indexOf('127.0.0.1') !== -1 || s.indexOf('amazonaws.com') !== -1) {
@@ -80,46 +81,48 @@ export default async function Page() {
     }
 
     // Start with any cards defined on the primary page (preferred)
-    let mergedCards: any[] = []
-    if (Array.isArray(primaryMeta?.cards) && primaryMeta.cards.length) {
-      mergedCards = primaryMeta.cards.map((c: any) => {
-        const content = sanitize(c?.content || '')
+    let mergedCards: AboutCard[] = []
+    if (Array.isArray(primaryMeta?.cards) && (primaryMeta.cards as unknown[]).length) {
+      mergedCards = (primaryMeta.cards as unknown[]).map((c: unknown) => {
+        const card = c as Record<string, unknown>
+        const content = sanitize(card['content'] ?? '')
         const cleaned = removeDebugBlock(content)
-        const pos = (c && typeof c.position === 'number') ? c.position : undefined
-        return { title: c?.title || '', subtitle: c?.subtitle || '', content: cleaned, image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '', position: pos }
+        const pos = typeof card['position'] === 'number' ? (card['position'] as number) : undefined
+        return { title: String(card['title'] ?? ''), subtitle: String(card['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(card['image'] ?? '/headshot.jpg'), templateLarge: String(card['templateLarge'] ?? ''), templateSmall: String(card['templateSmall'] ?? ''), position: pos }
       })
     } else if (primaryMeta?.aboutCard) {
       // Backwards-compatible: if primary page uses legacy aboutCard, include it
-      const c = primaryMeta.aboutCard
-      const content = sanitize(c?.content || '')
+      const c = primaryMeta.aboutCard as Record<string, unknown>
+      const content = sanitize(c['content'] ?? '')
       const cleaned = removeDebugBlock(content)
-      const pos = (c && typeof c.position === 'number') ? c.position : undefined
-      mergedCards.push({ title: c?.title || primary.title || '', subtitle: c?.subtitle || '', content: cleaned, image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '', position: pos })
+      const pos = typeof c['position'] === 'number' ? (c['position'] as number) : undefined
+      mergedCards.push({ title: String(c['title'] ?? primary.title ?? ''), subtitle: String(c['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(c['image'] ?? '/headshot.jpg'), templateLarge: String(c['templateLarge'] ?? ''), templateSmall: String(c['templateSmall'] ?? ''), position: pos })
     }
 
     // Merge in any additional about-* pages (append their aboutCard or cards)
     for (const row of rows) {
       if (!row || String(row.slug) === String(primary.slug)) continue
-      let otherMeta: any = {}
+      let otherMeta: Record<string, unknown> = {}
       try { otherMeta = row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : {} } catch { otherMeta = {} }
-      if (Array.isArray(otherMeta.cards) && otherMeta.cards.length) {
-        for (const c of otherMeta.cards) {
-          const content = sanitize(c?.content || '')
+      if (Array.isArray(otherMeta['cards']) && (otherMeta['cards'] as unknown[]).length) {
+        for (const c of otherMeta['cards'] as unknown[]) {
+          const card = c as Record<string, unknown>
+          const content = sanitize(card['content'] ?? '')
           const cleaned = removeDebugBlock(content)
-          const pos = (c && typeof c.position === 'number') ? c.position : undefined
-          mergedCards.push({ title: c?.title || '', subtitle: c?.subtitle || '', content: cleaned, image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '', position: pos })
+          const pos = typeof card['position'] === 'number' ? (card['position'] as number) : undefined
+          mergedCards.push({ title: String(card['title'] ?? ''), subtitle: String(card['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(card['image'] ?? '/headshot.jpg'), templateLarge: String(card['templateLarge'] ?? ''), templateSmall: String(card['templateSmall'] ?? ''), position: pos })
         }
-      } else if (otherMeta?.aboutCard) {
-        const c = otherMeta.aboutCard
-        const content = sanitize(c?.content || '')
+      } else if (otherMeta['aboutCard']) {
+        const c = otherMeta['aboutCard'] as Record<string, unknown>
+        const content = sanitize(c['content'] ?? '')
         const cleaned = removeDebugBlock(content)
-        const pos = (c && typeof c.position === 'number') ? c.position : undefined
-        mergedCards.push({ title: c?.title || row.title || '', subtitle: c?.subtitle || '', content: cleaned, image: toPublicUrl(c?.image || '/headshot.jpg'), templateLarge: c?.templateLarge || '', templateSmall: c?.templateSmall || '', position: pos })
+        const pos = typeof c['position'] === 'number' ? (c['position'] as number) : undefined
+        mergedCards.push({ title: String(c['title'] ?? row.title ?? ''), subtitle: String(c['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(c['image'] ?? '/headshot.jpg'), templateLarge: String(c['templateLarge'] ?? ''), templateSmall: String(c['templateSmall'] ?? ''), position: pos })
       }
     }
 
     // If any cards have explicit positions, sort by them; otherwise preserve current merge order
-    mergedCards.sort((a: any, b: any) => {
+    mergedCards.sort((a, b) => {
       const pa = (typeof a.position === 'number') ? a.position : null
       const pb = (typeof b.position === 'number') ? b.position : null
       if (pa !== null && pb !== null) return pa - pb
@@ -128,17 +131,17 @@ export default async function Page() {
       return 0
     })
 
-    let summaryText = sanitize(primaryMeta?.summary?.text || '')
+    let summaryText = sanitize(String((primaryMeta?.summary as Record<string, unknown>)?.['text'] || ''))
     summaryText = removeDebugBlock(summaryText)
     if (isJsonString(summaryText)) summaryText = ''
 
     const data = {
       summary: {
-        title: primary.title || primaryMeta?.summary?.title || "Hi — I\'m Zachary (KF8FVD)",
+        title: String(((primary as Record<string, unknown>)['title']) || ((primaryMeta?.summary as Record<string, unknown>)?.['title']) || "Hi - I\'m Zachary (KF8FVD)"),
         text: summaryText,
         cta: {
-          label: primaryMeta?.summary?.cta?.label || 'Contact Me',
-          href: primaryMeta?.summary?.cta?.href || '/contactme'
+          label: String(((primaryMeta?.summary as Record<string, unknown>)?.['cta'] as Record<string, unknown>)?.['label'] || 'Contact Me'),
+          href: String(((primaryMeta?.summary as Record<string, unknown>)?.['cta'] as Record<string, unknown>)?.['href'] || '/contactme')
         }
       },
       // prefer cards array (merged from primary + any about-* pages)

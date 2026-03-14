@@ -2,6 +2,7 @@
 
 import styles from '../../../app/admin/admin.module.css'
 import { buildPublicUrl } from '@/lib/s3'
+import Image from 'next/image'
 
 function IconList() {
   return (
@@ -111,8 +112,7 @@ export default function ProjectsList({ items, loading, title, editPathPrefix, sh
                 ) : null}
 
                 {i.image_path ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={getImageSrc(i.image_path)} style={{width:64, height:48, objectFit:'cover', borderRadius:6}} alt="" />
+                  <Image src={getImageSrc(i.image_path) as string} width={64} height={48} style={{objectFit:'cover', borderRadius:6}} alt="" unoptimized />
                 ) : (
                   <div style={{width:64, height:48, background:'rgba(255,255,255,0.03)', borderRadius:6}} />
                 )}

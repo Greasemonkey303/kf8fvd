@@ -25,8 +25,9 @@ export default function ForgotPasswordPage() {
       const j = await res.json()
       if (!res.ok) setError(j?.error || 'Request failed')
       else setMessage('If that address exists we sent reset instructions.')
-    } catch (err: any) {
-      setError(err?.message || String(err))
+    } catch (err: unknown) {
+      const e = err as Error
+      setError(e?.message || String(err))
     } finally { setLoading(false) }
   }
 

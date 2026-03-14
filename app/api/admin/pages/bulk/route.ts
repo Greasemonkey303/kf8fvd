@@ -12,8 +12,8 @@ export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await req.json().catch(()=>({}))
-  const idsRaw = Array.isArray(body?.ids) ? body.ids : []
-  const ids: number[] = idsRaw.map((v: any) => Number(v)).filter((n: number) => !Number.isNaN(n))
+  const idsRaw = Array.isArray(body?.ids) ? (body.ids as unknown[]) : []
+  const ids: number[] = idsRaw.map(v => Number(v)).filter((n: number) => !Number.isNaN(n))
   const action = String(body?.action || '').toLowerCase()
   if (!ids.length) return NextResponse.json({ error: 'Missing ids' }, { status: 400 })
 
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     if (action === 'delete') {
       // retrieve rows to return deleted items to client (for undo buffer)
-      const rows = await query<any[]>(`SELECT id, slug, title, content, metadata, is_published FROM pages WHERE id IN (${placeholders})`, ids)
+      const rows = await query<Record<string, unknown>[]>(`SELECT id, slug, title, content, metadata, is_published FROM pages WHERE id IN (${placeholders})`, ids)
 
       const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
       if (bucket) {
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
             try {
               const stream = minioClient.listObjectsV2(bucket, candidate, true)
               for await (const obj of stream) {
-                if (obj && obj.name) objs.push(obj.name)
+                if (obj && (obj as { name?: string }).name) objs.push((obj as { name?: string }).name as string)
               }
             } catch (e) {
               // ignore prefix-specific errors

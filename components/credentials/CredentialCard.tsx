@@ -3,9 +3,10 @@
 import React, { useState } from 'react'
 import styles from '../../app/credentials/credentials.module.css'
 import ImageModal from '../modal/ImageModal'
+import Image from 'next/image'
 import createDOMPurify from 'dompurify'
 
-type Item = {
+export type Item = {
   id: number
   section?: string
   slug?: string
@@ -15,12 +16,13 @@ type Item = {
   authority?: string
   image_path?: string | null
   description?: string | null
+  description_sanitized?: string | null
 }
 
 export default function CredentialCard({ item }: { item: Item }) {
   const [imgOpen, setImgOpen] = useState(false)
   const src = item.image_path || null
-  const purify = typeof window !== 'undefined' ? createDOMPurify(window as any) : null
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
 
   return (
     <div className={styles.innerCardWrapper}>
@@ -33,9 +35,9 @@ export default function CredentialCard({ item }: { item: Item }) {
         </div>
 
         <div className={styles.mediaRow}>
-          <div className={styles.thumbWrap} role="button" tabIndex={0} aria-label={src ? `Open ${item.title}` : 'No image'} onClick={()=>{ if (src) setImgOpen(true) }} onKeyDown={(e:any)=>{ if (e.key === 'Enter' || e.key === ' ') { if (src) setImgOpen(true) } }}>
+          <div className={styles.thumbWrap} role="button" tabIndex={0} aria-label={src ? `Open ${item.title}` : 'No image'} onClick={()=>{ if (src) setImgOpen(true) }} onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>)=>{ if (e.key === 'Enter' || e.key === ' ') { if (src) setImgOpen(true) } }}>
             {src ? (
-              <img className={styles.licenseThumb} src={src} alt={item.title || ''} />
+              <Image className={styles.licenseThumb} src={src} alt={item.title || ''} width={280} height={160} unoptimized={String(src).startsWith('data:') || String(src).startsWith('blob:')} />
             ) : (
               <div className={styles.licenseThumb} style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>Coming soon</div>
             )}
@@ -48,8 +50,8 @@ export default function CredentialCard({ item }: { item: Item }) {
               </div>
             ) : null}
 
-            {item.description ? (
-              <div className={styles.description} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(item.description || '')) : (item.description || '') }} />
+            {(item.description || item.description_sanitized) ? (
+              <div className={styles.description} dangerouslySetInnerHTML={{ __html: (item.description_sanitized ?? (purify ? purify.sanitize(String(item.description || '')) : (item.description || ''))) }} />
             ) : null}
 
             <div className={styles.actions}>

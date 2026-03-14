@@ -13,7 +13,7 @@ async function verifyTurnstileToken(token?: string) {
     const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ secret, response: token }) as any,
+      body: new URLSearchParams({ secret, response: token }),
     })
     const j = await res.json()
     return !!j?.success
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       if (!ok) return NextResponse.json({ error: 'Captcha validation failed' }, { status: 400 })
     }
 
-    const rows = await query<any[]>('SELECT id, email, name, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [email])
+    const rows = await query<Record<string, unknown>[]>('SELECT id, email, name, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [email])
     const user = Array.isArray(rows) && rows.length ? rows[0] : null
     if (!user) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     if (!user.is_active) return NextResponse.json({ error: 'Account inactive' }, { status: 403 })

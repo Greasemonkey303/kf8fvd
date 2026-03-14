@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   const safeSubtitle = subtitle ? DOMPurify.sanitize(subtitle) : null
 
   const res = await query('INSERT INTO credential_sections (slug, name, subtitle, image_path, sort_order) VALUES (?, ?, ?, ?, ?)', [slug, name, safeSubtitle, image_path || null, body.sort_order || 0])
-  const id = (res as any)?.insertId ?? null
+  const id = (res as unknown as { insertId?: number })?.insertId ?? null
   return NextResponse.json({ ok: true, id })
 }
 

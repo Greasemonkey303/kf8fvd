@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { tlog } from '@/lib/turnstileDebug'
 import { loadTurnstileScript, waitForTurnstileReady } from '@/lib/turnstileLoader'
 import Modal from '@/components/modal/Modal'
+import Image from 'next/image'
 import styles from './contact.module.css'
 import { Card } from '@/components'
 
@@ -72,11 +73,9 @@ export default function Contact() {
         const container = document.getElementById('cf-turnstile-container')
         if (!container) { tlog('contact: container missing after ready'); return }
         try {
-          // @ts-ignore
-          const id = (window as any).turnstile.render(container, {
-            sitekey,
-            callback: (token: string) => setCfToken(token),
-          })
+          type Turnstile = { render?: (el: HTMLElement, opts: { sitekey?: string; callback?: (token: string)=>void }) => unknown; reset?: (id: number) => void }
+          const win = window as unknown as Window & { turnstile?: Turnstile }
+          const id = win.turnstile && typeof win.turnstile.render === 'function' ? win.turnstile.render(container, { sitekey, callback: (token: string) => setCfToken(token) }) : undefined
           setCfWidgetId(typeof id === 'number' ? id : null)
           ;(container as HTMLElement).dataset.turnstileRendered = '1'
           tlog('contact render success', { id })
@@ -217,15 +216,22 @@ export default function Contact() {
           xhrRef.current = null
           try {
             const raw = xhr.responseText || ''
-            let data: any
-            try { data = raw ? JSON.parse(raw) : undefined } catch (e) { data = undefined }
+            let parsed: unknown
+            try { parsed = raw ? JSON.parse(raw) : undefined } catch { parsed = undefined }
+            const parsedObj = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : undefined
             if (xhr.status < 200 || xhr.status >= 300) {
-              console.error('API /api/contact error', { status: xhr.status, responseText: raw, parsed: data })
-              const errMsg = data?.details || data?.error?.message || data?.error || raw || 'Send failed'
+              console.error('API /api/contact error', { status: xhr.status, responseText: raw, parsed: parsedObj })
+              const errMsg = parsedObj && typeof parsedObj.details === 'string'
+                ? parsedObj.details
+                : parsedObj && typeof parsedObj.error === 'string'
+                  ? parsedObj.error
+                  : parsedObj && parsedObj.error && typeof (parsedObj.error as Record<string, unknown>).message === 'string'
+                    ? (parsedObj.error as Record<string, unknown>).message
+                    : raw || 'Send failed'
               return reject(new Error(errMsg))
             }
             resolve()
-          } catch (err) { reject(err as any) }
+          } catch (err) { reject(err instanceof Error ? err : new Error(String(err))) }
         }
         xhr.onerror = () => { xhrRef.current = null; reject(new Error('Network error')) }
         xhr.onabort = () => { xhrRef.current = null; reject(new Error('Upload canceled')) }
@@ -239,8 +245,8 @@ export default function Contact() {
       setUploadProgress(null)
       // reset turnstile widget to avoid reusing token
       try {
-        // @ts-ignore
-        if ((window as any).turnstile && cfWidgetId != null) (window as any).turnstile.reset(cfWidgetId)
+        const win = window as unknown as Window & { turnstile?: { reset?: (id:number)=>void } }
+        if (win.turnstile && cfWidgetId != null && typeof win.turnstile.reset === 'function') win.turnstile.reset(cfWidgetId)
         setCfToken(null)
       } catch {}
 
@@ -251,7 +257,7 @@ export default function Contact() {
       setConfirmOpen(false)
     } catch (err) {
       console.error('contact send error', err)
-      const msg = (err as any)?.message || 'Send failed'
+      const msg = err instanceof Error ? err.message : String(err || 'Send failed')
       setConfirmError(msg)
       setErrors(prev => ({ ...prev, _global: msg }))
     } finally {
@@ -342,7 +348,7 @@ export default function Contact() {
                     {files.map((f,i)=> (
                       <div key={i} className={styles.fileItem}>
                         {f.type.startsWith('image/') && (
-                          <img onClick={()=> openPreview(f)} src={URL.createObjectURL(f)} alt={f.name} className={styles.fileThumb} />
+                          <Image onClick={()=> openPreview(f)} src={URL.createObjectURL(f)} alt={f.name} className={styles.fileThumb} width={96} height={72} unoptimized style={{cursor:'pointer'}} />
                         )}
                         <div className={styles.fileMeta}>
                           <div className={styles.fileName}>{f.name}</div>
@@ -432,7 +438,7 @@ export default function Contact() {
               {previewSrc && (
         <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modal} onClose={closePreview} titleId="preview-title">
           <h4 id="preview-title">{previewName}</h4>
-          <img src={previewSrc} alt={previewName || 'preview'} className={styles.previewImg} />
+          <Image src={previewSrc as string} alt={previewName || 'preview'} className={styles.previewImg} width={800} height={600} unoptimized />
           <div className="flex justify-end mt-8">
               <button onClick={closePreview}>Close</button>
           </div>

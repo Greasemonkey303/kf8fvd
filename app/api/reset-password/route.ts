@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     const tokenHash = sha256(token)
     // find token row
-    const rows = await query<any[]>('SELECT * FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1', [tokenHash])
+    const rows = await query<Record<string, unknown>[]>('SELECT * FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1', [tokenHash])
     const trow = Array.isArray(rows) && rows.length ? rows[0] : null
     if (!trow) return NextResponse.json({ error: 'Invalid or expired token' }, { status: 400 })
 

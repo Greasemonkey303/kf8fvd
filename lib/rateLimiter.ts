@@ -15,27 +15,45 @@ type Entry = {
 
 const store = new Map<string, Entry>()
 
+// Minimal shape of the Redis client features this module uses. Keep narrow to
+// avoid relying on the full ioredis types and to satisfy eslint rules.
+type RedisLike = {
+  on?: (event: string, handler: (...args: unknown[]) => void) => void
+  pttl?: (key: string) => Promise<number>
+  eval?: (script: string, numKeys: number, ...args: unknown[]) => Promise<unknown>
+  incr?: (key: string) => Promise<number>
+  expire?: (key: string, seconds: number) => Promise<number>
+  get?: (key: string) => Promise<string | null>
+  del?: (...keys: string[]) => Promise<number>
+  exists?: (key: string) => Promise<number>
+  decr?: (key: string) => Promise<number>
+}
+
 function now() { return Date.now() }
 
 function metricKey(name: string) {
   return `metrics:${getMetricsPrefix()}:${name}`
 }
 
-const DISABLE_DB_FALLBACK = !!process.env.DISABLE_DB_FALLBACK
+const DISABLE_DB_FALLBACK = process.env.DISABLE_DB_FALLBACK
+  ? (process.env.DISABLE_DB_FALLBACK === '1' || process.env.DISABLE_DB_FALLBACK === 'true')
+  : (process.env.NODE_ENV === 'production')
 
-let _redis: any | null = null
+let _redis: RedisLike | null = null
 export async function getRedis() {
   if (_redis) return _redis
   const url = getRedisUrl()
   if (!url) return null
   try {
     const mod = await import('ioredis')
-    const Redis = (mod && (mod.default || mod)) as any
-    _redis = new Redis(url)
-    _redis.on && _redis.on('error', (e: any) => { try { console.warn('[rateLimiter] redis error', e) } catch (_) {} })
+    const RedisCtor = (mod && (mod.default || mod)) as unknown as { new(...args: unknown[]): RedisLike }
+    _redis = new RedisCtor(url)
+    if (_redis && typeof _redis.on === 'function') {
+      _redis.on('error', (e: unknown) => { try { console.warn('[rateLimiter] redis error', e) } catch {} })
+    }
     return _redis
   } catch (e) {
-    try { console.warn('[rateLimiter] failed to initialize redis', e) } catch (_) {}
+    try { console.warn('[rateLimiter] failed to initialize redis', e) } catch {}
     return null
   }
 }
@@ -47,20 +65,22 @@ export async function isLocked(key: string) {
   if (r) {
     try {
       const lockKey = `rl:lock:${encodeKey(key)}`
-      const ttl = await r.pttl(lockKey)
-      if (typeof ttl === 'number' && ttl > 0) return true
+      if (typeof r.pttl === 'function') {
+        const ttl = await r.pttl(lockKey)
+        if (typeof ttl === 'number' && ttl > 0) return true
+      }
     } catch (e) {
-      try { console.warn('[rateLimiter] redis isLocked error', e) } catch (_) {}
+      try { console.warn('[rateLimiter] redis isLocked error', e) } catch {}
     }
   }
   // DB fallback: check auth_locks table
   if (!DISABLE_DB_FALLBACK) {
     try {
       const { query } = await import('./db')
-      const rows: any = await query('SELECT UNIX_TIMESTAMP(locked_until) * 1000 as locked_until_ms FROM auth_locks WHERE key_name = ? AND locked_until > NOW() LIMIT 1', [key])
+      const rows = await query<Array<Record<string, unknown>>>('SELECT UNIX_TIMESTAMP(locked_until) * 1000 as locked_until_ms FROM auth_locks WHERE key_name = ? AND locked_until > NOW() LIMIT 1', [key])
       if (Array.isArray(rows) && rows.length) return true
     } catch (e) {
-      try { console.warn('[rateLimiter] db isLocked check failed', e) } catch (_) {}
+      try { console.warn('[rateLimiter] db isLocked check failed', e) } catch {}
     }
   }
   const e = store.get(key)
@@ -95,17 +115,18 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         end
         return {cnt, lockTtl}
       `
-      const res = await r.eval(lua, 2, countKey, lockKey, windowMs, max, lockMs)
-      const cur = Number(res && res[0] ? res[0] : 0)
-      const lockTtl = Number(res && res[1] ? res[1] : -1)
+      const evalRes = (typeof r.eval === 'function') ? await r.eval(lua, 2, countKey, lockKey, windowMs, max, lockMs) : null
+      const resArr = Array.isArray(evalRes) ? (evalRes as unknown[]) : []
+      const cur = Number(resArr[0] ?? 0)
+      const lockTtl = Number(resArr[1] ?? -1)
 
       // increment a cumulative metric for total login attempts (namespaced)
       try {
         const mkey = metricKey('login_attempts_total')
-        await r.incr(mkey)
-        try { await r.expire(mkey, getMetricsTtlSec()) } catch (_) {}
+        if (typeof r.incr === 'function') await r.incr(mkey)
+        if (typeof r.expire === 'function') try { await r.expire(mkey, getMetricsTtlSec()) } catch {}
       } catch (err) {
-        try { console.warn('[rateLimiter] redis metrics incr failed', err) } catch (_) {}
+        try { console.warn('[rateLimiter] redis metrics incr failed', err) } catch {}
       }
 
       // audit
@@ -118,7 +139,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
           await query('INSERT INTO login_attempts (email, ip, success, reason) VALUES (?, ?, ?, ?)', [email, ip, 0, opts?.reason || 'rate_limit'])
         }
       } catch (err) {
-        try { console.warn('[rateLimiter] audit insert failed', err) } catch (_) {}
+        try { console.warn('[rateLimiter] audit insert failed', err) } catch {}
       }
 
       if (cur >= max) {
@@ -128,33 +149,33 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
           const { query } = await import('./db')
           await query('INSERT INTO auth_locks (key_name, locked_until, reason) VALUES (?, FROM_UNIXTIME(?/1000), ?) ON DUPLICATE KEY UPDATE locked_until = VALUES(locked_until), reason = VALUES(reason)', [key, until, opts?.reason || 'too_many_attempts'])
         } catch (err) {
-          try { console.warn('[rateLimiter] auth_locks insert failed', err) } catch (_) {}
+          try { console.warn('[rateLimiter] auth_locks insert failed', err) } catch {}
         }
         // increment lock metrics (namespaced); also set TTL
         try {
           const mTotal = metricKey('auth_locks_total')
           const mActive = metricKey('auth_locks_active')
-          await r.incr(mTotal)
-          try { await r.expire(mTotal, getMetricsTtlSec()) } catch (_) {}
+          if (typeof r.incr === 'function') await r.incr(mTotal)
+          if (typeof r.expire === 'function') try { await r.expire(mTotal, getMetricsTtlSec()) } catch {}
           // track current active locks as a gauge (increment on lock)
-          await r.incr(mActive)
-          try { await r.expire(mActive, getMetricsTtlSec()) } catch (_) {}
+          if (typeof r.incr === 'function') await r.incr(mActive)
+          if (typeof r.expire === 'function') try { await r.expire(mActive, getMetricsTtlSec()) } catch {}
         } catch (err) {
-          try { console.warn('[rateLimiter] redis metrics incr failed', err) } catch (_) {}
+          try { console.warn('[rateLimiter] redis metrics incr failed', err) } catch {}
         }
         return { locked: true, remaining: 0, lockedUntil: Date.now() + lockMs }
       }
       return { locked: false, remaining: Math.max(0, max - cur), redisTtl: lockTtl }
     } catch (err) {
-      try { console.warn('[rateLimiter] redis increment error', err) } catch (_) {}
+      try { console.warn('[rateLimiter] redis increment error', err) } catch {}
     }
   }
 
   // DB fallback (attempt persistent counter in DB)
   if (!DISABLE_DB_FALLBACK) {
     try {
-      const { transaction } = await import('./db')
-      const res = await transaction(async (conn: any) => {
+        const { transaction } = await import('./db')
+        const res = await transaction(async (conn) => {
       // use SELECT ... FOR UPDATE to atomically inspect and change
       const [rows] = await conn.execute('SELECT `count`, UNIX_TIMESTAMP(expires_at) * 1000 as expires_at_ms FROM rate_limiter_counts WHERE key_name = ? FOR UPDATE', [key])
       const nowMs = Date.now()
@@ -162,7 +183,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         // insert initial counter
         await conn.execute('INSERT INTO rate_limiter_counts (key_name, `count`, expires_at) VALUES (?, ?, FROM_UNIXTIME(?/1000))', [key, 1, nowMs + windowMs])
         // audit best-effort
-        try { if (key.startsWith('email:') || key.startsWith('ip:')) { const parts = key.split(':'); const email = parts[0] === 'email' ? parts.slice(1).join(':') : null; const ip = parts[0] === 'ip' ? parts.slice(1).join(':') : null; await conn.execute('INSERT INTO login_attempts (email, ip, success, reason) VALUES (?, ?, ?, ?)', [email, ip, 0, opts?.reason || 'rate_limit']) } } catch (_) {}
+        try { if (key.startsWith('email:') || key.startsWith('ip:')) { const parts = key.split(':'); const email = parts[0] === 'email' ? parts.slice(1).join(':') : null; const ip = parts[0] === 'ip' ? parts.slice(1).join(':') : null; await conn.execute('INSERT INTO login_attempts (email, ip, success, reason) VALUES (?, ?, ?, ?)', [email, ip, 0, opts?.reason || 'rate_limit']) } } catch {}
         return { locked: false, remaining: Math.max(0, max - 1), cur: 1 }
       }
       const row = rows[0]
@@ -170,7 +191,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       if (expiresAtMs <= nowMs) {
         // reset window
         await conn.execute('UPDATE rate_limiter_counts SET `count` = 1, expires_at = FROM_UNIXTIME(?/1000) WHERE key_name = ?', [nowMs + windowMs, key])
-        try { if (key.startsWith('email:') || key.startsWith('ip:')) { const parts = key.split(':'); const email = parts[0] === 'email' ? parts.slice(1).join(':') : null; const ip = parts[0] === 'ip' ? parts.slice(1).join(':') : null; await conn.execute('INSERT INTO login_attempts (email, ip, success, reason) VALUES (?, ?, ?, ?)', [email, ip, 0, opts?.reason || 'rate_limit']) } } catch (_) {}
+        try { if (key.startsWith('email:') || key.startsWith('ip:')) { const parts = key.split(':'); const email = parts[0] === 'email' ? parts.slice(1).join(':') : null; const ip = parts[0] === 'ip' ? parts.slice(1).join(':') : null; await conn.execute('INSERT INTO login_attempts (email, ip, success, reason) VALUES (?, ?, ?, ?)', [email, ip, 0, opts?.reason || 'rate_limit']) } } catch {}
         return { locked: false, remaining: Math.max(0, max - 1), cur: 1 }
       }
       // otherwise increment
@@ -182,7 +203,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         const until = Date.now() + lockMs
         try {
           await conn.execute('INSERT INTO auth_locks (key_name, locked_until, reason) VALUES (?, FROM_UNIXTIME(?/1000), ?) ON DUPLICATE KEY UPDATE locked_until = VALUES(locked_until), reason = VALUES(reason)', [key, until, opts?.reason || 'too_many_attempts'])
-        } catch (err) { /* best-effort */ }
+        } catch { /* best-effort */ }
         return { locked: true, remaining: 0, lockedUntil: Date.now() + lockMs, cur }
       }
       return { locked: false, remaining: Math.max(0, max - cur), cur }
@@ -194,14 +215,14 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         if (rr) {
           const mkey = metricKey('login_attempts_total')
           await rr.incr(mkey)
-          try { await rr.expire(mkey, getMetricsTtlSec()) } catch (_) {}
+          try { await rr.expire(mkey, getMetricsTtlSec()) } catch {}
         }
-      } catch (_) {}
+      } catch {}
       if (res.locked) return { locked: true, remaining: 0, lockedUntil: res.lockedUntil }
       return { locked: false, remaining: res.remaining }
       }
     } catch (e) {
-      try { console.warn('[rateLimiter] db fallback failed', e) } catch (_) {}
+      try { console.warn('[rateLimiter] db fallback failed', e) } catch {}
     }
   }
 
@@ -220,7 +241,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         await query('INSERT INTO login_attempts (email, ip, success, reason) VALUES (?, ?, ?, ?)', [email, ip, 0, opts?.reason || 'rate_limit'])
       }
     } catch (err) {
-      try { console.warn('[rateLimiter] audit insert failed', err) } catch (_) {}
+      try { console.warn('[rateLimiter] audit insert failed', err) } catch {}
     }
     return { locked: false, remaining: Math.max(0, max - 1) }
   }
@@ -240,7 +261,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       const { query } = await import('./db')
       await query('INSERT INTO auth_locks (key_name, locked_until, reason) VALUES (?, FROM_UNIXTIME(?/1000), ?) ON DUPLICATE KEY UPDATE locked_until = VALUES(locked_until), reason = VALUES(reason)', [key, e.lockedUntil, opts?.reason || 'too_many_attempts'])
     } catch (err) {
-      try { console.warn('[rateLimiter] auth_locks insert failed', err) } catch (_) {}
+      try { console.warn('[rateLimiter] auth_locks insert failed', err) } catch {}
     }
     return { locked: true, remaining: 0, lockedUntil: e.lockedUntil }
   }
@@ -259,15 +280,15 @@ export async function resetKey(key: string) {
         const hadLock = await r.exists(lockKey)
         await r.del(countKey, lockKey)
         if (hadLock) {
-          try { await r.decr(metricKey('auth_locks_active')) } catch (_) {}
+          try { await r.decr(metricKey('auth_locks_active')) } catch {}
         }
-      } catch (e) {
+      } catch {
         // best-effort: still delete keys
-        try { await r.del(countKey, lockKey) } catch (_) {}
+        try { await r.del(countKey, lockKey) } catch {}
       }
-      try { const { query } = await import('./db'); await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch (_) {}
+      try { const { query } = await import('./db'); await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch {}
     } catch (err) {
-      try { console.warn('[rateLimiter] redis resetKey failed', err) } catch (_) {}
+      try { console.warn('[rateLimiter] redis resetKey failed', err) } catch {}
     }
   }
   // also remove any DB fallback counters
@@ -275,8 +296,8 @@ export async function resetKey(key: string) {
     try {
       const { query } = await import('./db')
       await query('DELETE FROM rate_limiter_counts WHERE key_name = ?', [key])
-      try { await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch (_) {}
-    } catch (_) {}
+      try { await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch {}
+    } catch {}
   }
   store.delete(key)
 }
@@ -292,7 +313,7 @@ export async function getInfo(key: string) {
       const lockedUntil = (typeof ttl === 'number' && ttl > 0) ? Date.now() + ttl : undefined
       return { count, lockedUntil }
     } catch (err) {
-      try { console.warn('[rateLimiter] redis getInfo failed', err) } catch (_) {}
+      try { console.warn('[rateLimiter] redis getInfo failed', err) } catch {}
     }
   }
   // DB fallback: query rate_limiter_counts and auth_locks
@@ -300,15 +321,15 @@ export async function getInfo(key: string) {
     try {
       const { query } = await import('./db')
       try {
-        const rows: any = await query('SELECT `count`, UNIX_TIMESTAMP(expires_at) * 1000 as expires_at_ms FROM rate_limiter_counts WHERE key_name = ? LIMIT 1', [key])
-        const lockRows: any = await query('SELECT UNIX_TIMESTAMP(locked_until) * 1000 as locked_until_ms FROM auth_locks WHERE key_name = ? AND locked_until > NOW() LIMIT 1', [key])
+        const rows = await query<Array<Record<string, unknown>>>('SELECT `count`, UNIX_TIMESTAMP(expires_at) * 1000 as expires_at_ms FROM rate_limiter_counts WHERE key_name = ? LIMIT 1', [key])
+        const lockRows = await query<Array<Record<string, unknown>>>('SELECT UNIX_TIMESTAMP(locked_until) * 1000 as locked_until_ms FROM auth_locks WHERE key_name = ? AND locked_until > NOW() LIMIT 1', [key])
         const count = Array.isArray(rows) && rows.length ? Number(rows[0].count || 0) : undefined
         const lockedUntil = Array.isArray(lockRows) && lockRows.length ? Number(lockRows[0].locked_until_ms) : undefined
         return { count, lockedUntil }
       } catch (e) {
-        try { console.warn('[rateLimiter] db getInfo failed', e) } catch (_) {}
+        try { console.warn('[rateLimiter] db getInfo failed', e) } catch {}
       }
-    } catch (_) {}
+    } catch {}
   }
   return store.get(key) || null
 }

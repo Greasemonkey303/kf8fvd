@@ -24,14 +24,15 @@ export async function POST(req: Request) {
   if (pageIds.length === 0) return NextResponse.json({ ok: true })
 
   try {
-    await transaction(async (connection: any) => {
+    await transaction(async (connection: { execute: (...args: unknown[]) => Promise<unknown> }) => {
       const placeholders = pageIds.map(() => '?').join(',')
-      const [rows]: any = await connection.execute(`SELECT id, metadata FROM pages WHERE id IN (${placeholders})`, pageIds)
-      const rowsById: Record<number, any> = {}
-      for (const r of rows) rowsById[Number(r.id)] = r
+      const res = await connection.execute(`SELECT id, metadata FROM pages WHERE id IN (${placeholders})`, pageIds)
+      const rows = (res as unknown as [Array<Record<string, unknown>>, unknown])[0] || []
+      const rowsById: Record<number, Record<string, unknown>> = {}
+      for (const r of rows) rowsById[Number((r as Record<string, unknown>).id)] = r as Record<string, unknown>
 
       // prepare a map of updated metadata per page so we only persist once per page
-      const updatedMeta: Record<number, any> = {}
+      const updatedMeta: Record<number, Record<string, unknown>> = {}
 
       for (const entry of entries) {
         if (!entry.parsed) continue

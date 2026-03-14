@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
 
-type ReqBody = { key?: string; contentType?: string; slug?: string; filename?: string }
+type ReqBody = { key?: string; contentType?: string; slug?: string; filename?: string; size?: number; prefix?: string; prefixOverride?: string }
 
 export async function POST(req: Request) {
   try {
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     const maxSize = Number(process.env.MAX_UPLOAD_BYTES || 50 * 1024 * 1024) // default 50MB
-    const providedSize = (body as any).size ? Number((body as any).size) : undefined
+    const providedSize = body.size ? Number(body.size) : undefined
     if (providedSize !== undefined && providedSize > maxSize) {
       return NextResponse.json({ error: 'File too large' }, { status: 400 })
     }
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     if (!key) {
       if (!body.slug || !body.filename) return NextResponse.json({ error: 'slug and filename required when key not provided' }, { status: 400 })
       // allow caller to request a specific prefix (e.g. credentials/)
-      const prefixOverride = (body as any).prefix || (body as any).prefixOverride || undefined
+      const prefixOverride = body.prefix || body.prefixOverride || undefined
       key = await getUploadKey(body.slug, body.filename, prefixOverride)
     }
 
@@ -65,7 +65,6 @@ export async function POST(req: Request) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
-    // eslint-disable-next-line no-console
     console.log('uploads.presign (minio): bucket=', bucket, 'key=', key, 'contentType=', body.contentType)
 
     // MinIO presigned PUT
@@ -81,10 +80,9 @@ export async function POST(req: Request) {
       const u = new URL(url)
       const cred = u.searchParams.get('X-Amz-Credential')
       const signedHeaders = u.searchParams.get('X-Amz-SignedHeaders')
-      if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
         const maskedCred = cred ? (cred.slice(0, 6) + '...' + cred.slice(-6)) : null
         debug = { maskedCred, signedHeaders }
-        // eslint-disable-next-line no-console
         console.log('uploads.presign debug', debug)
       }
     } catch (_e: unknown) {
@@ -93,7 +91,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json(Object.assign({ url, key, publicUrl }, debug ? { _debug: debug } : {}))
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('upload presign error', err)
     let msg = 'Unknown error'
     if (typeof err === 'object' && err !== null) {

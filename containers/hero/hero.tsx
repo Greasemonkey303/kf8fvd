@@ -2,38 +2,14 @@ import React from 'react'
 import styles from './hero.module.css'
 import { buildPublicUrl } from '@/lib/s3'
 import { query } from '@/lib/db'
-/* eslint-disable @typescript-eslint/no-var-requires */
-let DOMPurify: any = null
-try {
-  // require is synchronous and avoids static bundler resolution failures
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  DOMPurify = require('isomorphic-dompurify')
-} catch (e) {
-  DOMPurify = null
-}
-
-const sanitizeHtml = (input: string) => {
-  if (!input) return ''
-  try {
-    if (DOMPurify && typeof DOMPurify.sanitize === 'function') {
-      return DOMPurify.sanitize(input, { USE_PROFILES: { html: true } })
-    }
-  } catch (e) {
-    // fall through to regex fallback
-  }
-  // fallback to a minimal regex sanitizer if DOMPurify isn't available
-  let s = String(input).replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-  s = s.replace(/\son\w+=["'][\s\S]*?["']/gi, '')
-  s = s.replace(/javascript:[^"'\s>]+/gi, '#')
-  return s
-}
+import { sanitizeHtmlServer } from '@/lib/sanitize'
 
 async function fetchHero() {
   try {
-    const heroes = await query<any[]>('SELECT * FROM hero ORDER BY id ASC LIMIT 1')
+    const heroes = await query<Record<string, unknown>[]>('SELECT * FROM hero ORDER BY id ASC LIMIT 1')
     const hero = Array.isArray(heroes) && heroes.length ? heroes[0] : null
     if (!hero) return { hero: null, images: [] }
-    const images = await query<any[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero.id])
+    const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero.id])
     return { hero, images }
   } catch (err: unknown) {
     // eslint-disable-next-line no-console
@@ -119,7 +95,7 @@ export default async function Hero() {
       <div className={styles.inner}>
         <h1 id="hero-title">{hero?.title || 'KF8FVD - Amateur Radio'}</h1>
         {hero && hero.content && String(hero.content).trim() ? (
-          <div className={styles.content} dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(hero.content)) }} />
+          <div className={styles.content} dangerouslySetInnerHTML={{ __html: sanitizeHtmlServer(String(hero.content)) }} />
         ) : (
           <p className={styles.lead}>{hero?.subtitle || 'Welcome to my ham radio site. Explore HF bands, equipment, and more.'}</p>
         )}

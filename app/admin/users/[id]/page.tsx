@@ -6,9 +6,8 @@ import styles from '../../admin.module.css'
 import Modal from '@/components/modal/Modal'
 
 export default function UserEditor({ params }: { params: { id: string } }) {
-  // `params` may be a Promise in the App Router — unwrap with React.use when available
-  const resolvedParams: any = (React as any).use ? (React as any).use(params) : params
-  const id = resolvedParams && resolvedParams.id
+  type UserListItem = { id?: string | number; name?: string; email?: string; is_active?: boolean; roles?: string[] }
+  const id = (params as { id?: string }).id
   const router = useRouter()
   const [form, setForm] = useState({ id: 0, name: '', email: '', password: '', is_active: true, roles: [] as string[] })
   const [loading, setLoading] = useState(true)
@@ -17,9 +16,10 @@ export default function UserEditor({ params }: { params: { id: string } }) {
   useEffect(() => {
     (async () => {
       const res = await fetch('/api/admin/users?page=1&limit=1000')
-      const data = await res.json()
-      const found = (data.items || []).find((u: any) => String(u.id) === String(id))
-      if (found) setForm({ id: found.id, name: found.name || '', email: found.email, password: '', is_active: !!found.is_active, roles: found.roles || [] })
+      const data = await res.json().catch(() => ({} as unknown))
+      const items = (data as { items?: unknown }).items as UserListItem[] | undefined
+      const found = items?.find(u => String(u.id) === String(id))
+      if (found) setForm({ id: found.id as number, name: found.name || '', email: found.email || '', password: '', is_active: !!found.is_active, roles: found.roles || [] })
       setLoading(false)
     })()
   }, [id])

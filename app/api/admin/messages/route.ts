@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ unread })
   }
 
-  const rows = await query<any[]>(`SELECT id, name, email, message, attachments, ip, user_agent, is_read, created_at FROM messages WHERE is_deleted=0 ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`)
+  const rows = await query<Array<Record<string, unknown>>>(`SELECT id, name, email, message, message_sanitized, attachments, ip, user_agent, is_read, created_at FROM messages WHERE is_deleted=0 ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`)
   const totalRows = await query<{ total: number }[]>('SELECT COUNT(*) as total FROM messages WHERE is_deleted=0')
   const unreadRows = await query<{ unread: number }[]>('SELECT COUNT(*) as unread FROM messages WHERE is_deleted=0 AND is_read=0')
   const total = totalRows && totalRows[0] ? totalRows[0].total : 0
@@ -28,16 +28,19 @@ export async function GET(req: Request) {
     id: r.id,
     name: r.name,
     email: r.email,
-    message: r.message,
-    attachments: ((): any[] => {
+    // keep raw message available for plain-text previews, expose sanitized HTML separately
+    message: String(r.message || ''),
+    message_sanitized: (r.message_sanitized && String(r.message_sanitized).length) ? String(r.message_sanitized) : null,
+    attachments: ((): Array<Record<string, unknown>> => {
       const parsed = typeof r.attachments === 'string' ? JSON.parse(r.attachments || '[]') : (r.attachments || [])
-      return (parsed || []).map((a: any) => {
+      return (parsed || []).map((a: unknown) => {
         try {
-          if (a && a.dir && a.filename) {
-            return { ...a, url: `/api/admin/messages/attachments/${encodeURIComponent(a.dir)}/${encodeURIComponent(a.filename)}` }
+          if (a && typeof a === 'object' && (a as Record<string, unknown>).dir && (a as Record<string, unknown>).filename) {
+            const obj = a as Record<string, unknown>
+            return { ...obj, url: `/api/admin/messages/attachments/${encodeURIComponent(String(obj.dir))}/${encodeURIComponent(String(obj.filename))}` }
           }
         } catch (_) {}
-        return a
+        return a as Record<string, unknown>
       })
     })(),
     ip: r.ip,

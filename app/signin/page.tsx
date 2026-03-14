@@ -31,6 +31,8 @@ export default function SignInPage() {
   const [otp, setOtp] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
 
+  const getTurnstile = () => (typeof window !== 'undefined' ? (window as unknown as { turnstile?: { render?: (el: HTMLElement, opts?: { sitekey?: string; callback?: (token: string) => void }) => number | string; reset?: (id: number) => void } }).turnstile : undefined)
+
   useEffect(()=>{
     const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
     tlog('signin loader start', { sitekeyPresent: !!sitekey })
@@ -45,8 +47,8 @@ export default function SignInPage() {
         const container = document.getElementById('cf-turnstile-container')
         if (!container) { tlog('signin: container missing after ready'); return }
         try {
-          // @ts-ignore
-          const id = (window as any).turnstile.render(container, {
+          const turn = getTurnstile()
+          const id = turn && typeof turn.render === 'function' ? turn.render(container, {
             sitekey,
             callback: (token: string) => {
               tlog('signin callback token', token)
@@ -56,7 +58,7 @@ export default function SignInPage() {
                 if (inp) inp.value = token
               } catch {}
             }
-          })
+          }) : undefined
           tlog('signin render success', { id })
           setCfWidgetId(typeof id === 'number' ? id : null)
           ;(container as HTMLElement).dataset.turnstileRendered = '1'
@@ -121,22 +123,23 @@ export default function SignInPage() {
     // Request a 2FA code to be emailed.
     setLoading(true)
     try {
-      const payload: any = { email, password }
+      const payload: Record<string, unknown> = { email, password }
       if (cfTokenVal) payload.cf_turnstile_response = cfTokenVal
       if (useBypass) payload._bypass = '1'
       const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await res.json()
       if (!res.ok || j?.error) {
         setError(j?.error || 'Sign in request failed')
-        try { if ((window as any).turnstile && cfWidgetId != null) (window as any).turnstile.reset(cfWidgetId) } catch {}
+        try { const t = getTurnstile(); if (t && cfWidgetId != null && typeof t.reset === 'function') t.reset(cfWidgetId) } catch {}
         setCfToken(null)
         return
       }
       setCodeRequested(true)
       setResendCooldown(45)
       try { if (remember) localStorage.setItem('kf8fvd_remember_email', email) } catch {}
-    } catch (err: any) {
-      setError(err?.message || 'Request failed')
+    } catch (err) {
+      if (err instanceof Error) setError(err.message)
+      else setError('Request failed')
     } finally { setLoading(false) }
   }
 
@@ -161,7 +164,7 @@ export default function SignInPage() {
       }
       try { if (remember) localStorage.setItem('kf8fvd_remember_email', email) } catch {}
       router.push(callback)
-    } catch (err:any) { setError(err?.message || 'Verification failed') }
+    } catch (err) { if (err instanceof Error) setError(err.message); else setError('Verification failed') }
     finally { setLoading(false) }
   }
 
@@ -169,14 +172,14 @@ export default function SignInPage() {
     if (resendCooldown > 0) return
     setLoading(true)
     try {
-      const payload: any = { email, password }
+      const payload: Record<string, unknown> = { email, password }
       if (cfToken) payload.cf_turnstile_response = cfToken
       else if (isDev) payload._bypass = '1'
       const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await res.json()
       if (!res.ok || j?.error) return setError(j?.error || 'Resend failed')
       setResendCooldown(45)
-    } catch (e:any) { setError(e?.message || 'Resend failed') }
+    } catch (e) { if (e instanceof Error) setError(e.message); else setError('Resend failed') }
     finally { setLoading(false) }
   }
 

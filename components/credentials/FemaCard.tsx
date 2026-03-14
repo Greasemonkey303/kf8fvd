@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { ImageModal } from '@/components'
+import Image from 'next/image'
 import styles from '../../app/credentials/credentials.module.css'
 
 function getCssVar(name: string, fallback: string) {
@@ -34,8 +35,8 @@ export default function FemaCard(){
       <p className={styles.lead}>Introduction to Incident Command System (IS-100.C).</p>
 
       <div className={styles.mediaRow}>
-        <button className={styles.thumbWrap} onClick={() => setOpen(src)} aria-label="Open FEMA IS-100.C preview">
-          <img src={src} alt="FEMA IS-100.C preview" className={styles.licenseThumb} />
+          <button className={styles.thumbWrap} onClick={() => setOpen(src)} aria-label="Open FEMA IS-100.C preview">
+          <Image src={src} alt="FEMA IS-100.C preview" className={styles.licenseThumb} width={280} height={160} unoptimized={String(src).startsWith('data:') || String(src).startsWith('blob:')} />
           <div className={styles.overlay} aria-hidden>
             <span className={styles.overlayTitle}>IS-100.C</span>
           </div>

@@ -6,6 +6,7 @@ import ProjectsList from '../../../components/admin/projects/ProjectsList'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
 import createDOMPurify from 'dompurify'
+import Image from 'next/image'
 
 type ProjectItem = { id: number; slug: string; title: string; subtitle?: string; image_path?: string; description?: string; external_link?: string; is_published: number }
 
@@ -13,7 +14,7 @@ export default function AdminProjects() {
   const [items, setItems] = useState<ProjectItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<(string|number)[]>([])
-  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<any | null>(null)
+  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<{ items?: Record<string, unknown>[] } | null>(null)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState(query)
   const [slugEdited, setSlugEdited] = useState(false)
@@ -36,7 +37,7 @@ export default function AdminProjects() {
 
   useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t) }, [])
   const toast = useToast()
-  const purify = typeof window !== 'undefined' ? createDOMPurify(window as any) : null
+  const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
 
   const getErrMsg = (err: unknown) => {
     if (err instanceof Error) return err.message
@@ -276,7 +277,7 @@ export default function AdminProjects() {
     if (!selectedIds || selectedIds.length === 0) return
     try {
       if (action === 'delete') {
-        const deleted: any[] = []
+      const deleted: Record<string, unknown>[] = []
         // fetch full rows so we can offer undo
         for (const id of selectedIds) {
           try {
@@ -477,12 +478,12 @@ export default function AdminProjects() {
                       </div>
                     )}
                     <div style={{display:'flex', gap:8, marginTop:8, flexWrap:'wrap'}}>
-                      {detailImages.map((src, idx)=> (
-                        <div key={idx} style={{position:'relative'}}>
-                            <img src={src} alt="" style={{width:96, height:72, objectFit:'cover', borderRadius:6}} />
-                              <button type="button" className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{position:'absolute', right:4, top:4}} onClick={()=>{ setDetailImages(prev=> prev.filter((_,i)=>i!==idx)) }}>×</button>
-                        </div>
-                      ))}
+                        {detailImages.map((src, idx) => (
+                          <div key={idx} style={{ position: 'relative' }}>
+                            <Image src={String(src)} alt="" width={96} height={72} style={{ objectFit: 'cover', borderRadius: 6 }} unoptimized />
+                            <button type="button" className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{ position: 'absolute', right: 4, top: 4 }} onClick={() => { setDetailImages(prev => prev.filter((_, i) => i !== idx)) }}>×</button>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 </label>
@@ -556,11 +557,17 @@ export default function AdminProjects() {
                     <div style={{maxWidth:520}}>
                       <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
                         <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
-                          <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
-                            {form.image_path ? <img src={form.image_path} alt={form.title || ''} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : (detailImages[0] ? <img src={detailImages[0]} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>)}
-                          </div>
-                          <div style={{flex:1}}>
-                            <div style={{color:'var(--white-95)', marginBottom:8}} dangerouslySetInnerHTML={{ __html: purify ? purify.sanitize(String(form.description || '')) : (form.description || '') }} />
+                              <div style={{ width: 140, height: 100, background: '#061426', borderRadius: 8, overflow: 'hidden', flex: '0 0 140px' }}>
+                                {form.image_path ? (
+                                  <Image src={String(form.image_path)} alt={form.title || ''} width={140} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} unoptimized />
+                                ) : detailImages[0] ? (
+                                  <Image src={String(detailImages[0])} alt={form.title || ''} width={140} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} unoptimized />
+                                ) : (
+                                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9fb7d6' }}>No image</div>
+                                )}
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: (form.description_sanitized ?? (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))) }} />
                             {(() => {
                               const generated = form.createDetails && form.slug ? `/projects/${form.slug}` : null
                               const linkUrl = form.external_link || generated

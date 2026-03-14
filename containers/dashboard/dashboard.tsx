@@ -18,12 +18,15 @@ function Clock() {
     // Defer creating a Date / reading window until after mount so
     // the server-rendered HTML (placeholder) matches the client's
     // initial render and avoids hydration mismatches.
-    setNow(new Date());
-    setWidth(window.innerWidth);
+    // Make initial updates async to avoid synchronous setState in effect
+    const init = setTimeout(() => {
+      setNow(new Date());
+      setWidth(window.innerWidth);
+    }, 0);
     const id = setInterval(() => setNow(new Date()), 1000);
     const onResize = () => setWidth(window.innerWidth);
     window.addEventListener('resize', onResize);
-    return () => { clearInterval(id); window.removeEventListener('resize', onResize); };
+    return () => { clearInterval(id); clearTimeout(init); window.removeEventListener('resize', onResize); };
   }, []);
 
   const cities = [
@@ -160,6 +163,15 @@ export default function Dashboard() {
   const [bandLastUpdated, setBandLastUpdated] = useState<number | null>(null);
   const [propLastUpdated, setPropLastUpdated] = useState<number | null>(null);
 
+  // deterministic pseudo-random opacity so server/client render match
+  function getOpacity(band: string, col: number) {
+    let seed = 0;
+    for (let i = 0; i < band.length; i++) seed = (seed * 31 + band.charCodeAt(i)) >>> 0;
+    seed = (seed + col * 997) >>> 0;
+    const v = Math.abs(Math.sin(seed * 0.0001));
+    return v * 0.7 + 0.15;
+  }
+
   useEffect(() => {
     let mounted = true;
     const readCache = (k: string) => {
@@ -168,27 +180,38 @@ export default function Dashboard() {
     const writeCache = (k: string, v: unknown) => {
       try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore quota errors */ }
     };
+    let hydrateTimerSpace: ReturnType<typeof setTimeout> | null = null;
+    let hydrateTimerLog: ReturnType<typeof setTimeout> | null = null;
+    let fetchTimerSpace: ReturnType<typeof setTimeout> | null = null;
+    let fetchTimerLog: ReturnType<typeof setTimeout> | null = null;
+    let fetchTimerFeatured: ReturnType<typeof setTimeout> | null = null;
 
     // hydrate from cache first for faster UI
     try {
       const cachedSpace = readCache('kf8fvd-spaceweather-v1');
       if (cachedSpace && mounted) {
-        setSpace(cachedSpace.data || cachedSpace);
-        setBandLastUpdated(cachedSpace.ts || Date.now());
-        setPropLastUpdated(cachedSpace.ts || Date.now());
+        hydrateTimerSpace = setTimeout(() => {
+          if (!mounted) return;
+          setSpace(cachedSpace.data || cachedSpace);
+          setBandLastUpdated(cachedSpace.ts || Date.now());
+          setPropLastUpdated(cachedSpace.ts || Date.now());
+        }, 0);
       }
       const cachedLog = readCache('kf8fvd-logbook-v1');
       if (cachedLog && mounted) {
         const j = cachedLog.data || cachedLog;
-        if (j.source === 'qrz' && j.raw) {
-          const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
-          const matches = rawMatches.slice(0,5).map((m) => m[1]);
-          setQsos(matches.length ? matches : []);
-        } else if (j.entries && Array.isArray(j.entries)) {
-          setQsos(j.entries.slice(0,6));
-        } else {
-          setQsos([]);
-        }
+        hydrateTimerLog = setTimeout(() => {
+          if (!mounted) return;
+          if (j.source === 'qrz' && j.raw) {
+            const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
+            const matches = rawMatches.slice(0,5).map((m) => m[1]);
+            setQsos(matches.length ? matches : []);
+          } else if (j.entries && Array.isArray(j.entries)) {
+            setQsos(j.entries.slice(0,6));
+          } else {
+            setQsos([]);
+          }
+        }, 0);
       }
     } catch { /* ignore cache errors */ }
 
@@ -196,29 +219,32 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((j) => {
         if (mounted) {
-          setSpace(j);
           const now = Date.now();
-          setBandLastUpdated(now);
-          setPropLastUpdated(now);
-          try { writeCache('kf8fvd-spaceweather-v1', { data: j, ts: now }); } catch { }
-          // derive band activity grid from space weather
-          try {
-            const bands = ['2m','70cm','20m','40m'];
-            const f = typeof j.f107 === 'number' ? j.f107 : (parseFloat(String(j.f107)) || 92);
-            const k = typeof j.kIndex === 'number' ? j.kIndex : (parseFloat(String(j.kIndex)) || 3);
-            const fNorm = Math.max(0, Math.min(1, (f - 60) / 140));
-            const kMod = Math.max(0.3, 1 - (k / 9));
-            const grid: Record<string, number[]> = {};
-            bands.forEach((band) => {
-              const base = band === '2m' ? 0.65 : band === '70cm' ? 0.5 : band === '20m' ? 0.55 : 0.45;
-              grid[band] = Array.from({ length: 4 }).map((_, i) => {
-                const seasonal = getOpacity(band, i); // deterministic variation
-                const v = base * (0.35 + 0.65 * fNorm) * kMod * seasonal;
-                return Math.max(0.15, Math.min(0.95, v));
+          fetchTimerSpace = setTimeout(() => {
+            if (!mounted) return;
+            setSpace(j);
+            setBandLastUpdated(now);
+            setPropLastUpdated(now);
+            try { writeCache('kf8fvd-spaceweather-v1', { data: j, ts: now }); } catch { }
+            // derive band activity grid from space weather
+            try {
+              const bands = ['2m','70cm','20m','40m'];
+              const f = typeof j.f107 === 'number' ? j.f107 : (parseFloat(String(j.f107)) || 92);
+              const k = typeof j.kIndex === 'number' ? j.kIndex : (parseFloat(String(j.kIndex)) || 3);
+              const fNorm = Math.max(0, Math.min(1, (f - 60) / 140));
+              const kMod = Math.max(0.3, 1 - (k / 9));
+              const grid: Record<string, number[]> = {};
+              bands.forEach((band) => {
+                const base = band === '2m' ? 0.65 : band === '70cm' ? 0.5 : band === '20m' ? 0.55 : 0.45;
+                grid[band] = Array.from({ length: 4 }).map((_, i) => {
+                  const seasonal = getOpacity(band, i); // deterministic variation
+                  const v = base * (0.35 + 0.65 * fNorm) * kMod * seasonal;
+                  return Math.max(0.15, Math.min(0.95, v));
+                });
               });
-            });
-            setBandGrid(grid);
+              setBandGrid(grid);
             } catch { setBandGrid(null); }
+          }, 0);
         }
       })
       .catch(() => { if (mounted) setSpace({kIndex:3,f107:92,source:'fallback'}) });
@@ -228,16 +254,19 @@ export default function Dashboard() {
       .then((j) => {
         if (!mounted) return;
         try { writeCache('kf8fvd-logbook-v1', { data: j, ts: Date.now() }); } catch { }
-        if (j.source === 'qrz' && j.raw) {
-          // naive extract of some call signs from XML for display
-          const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
-          const matches = rawMatches.slice(0,5).map((m) => m[1]);
-          setQsos(matches.length ? matches : []);
-        } else if (j.entries && Array.isArray(j.entries)) {
-          setQsos(j.entries.slice(0,6));
-        } else {
-          setQsos([]);
-        }
+        fetchTimerLog = setTimeout(() => {
+          if (!mounted) return;
+          if (j.source === 'qrz' && j.raw) {
+            // naive extract of some call signs from XML for display
+            const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
+            const matches = rawMatches.slice(0,5).map((m) => m[1]);
+            setQsos(matches.length ? matches : []);
+          } else if (j.entries && Array.isArray(j.entries)) {
+            setQsos(j.entries.slice(0,6));
+          } else {
+            setQsos([]);
+          }
+        }, 0);
       })
       .catch(() => { if (mounted) setQsos([]) });
 
@@ -246,26 +275,28 @@ export default function Dashboard() {
       .then(r => r.json())
       .then(j => {
         if (!mounted) return
-        const h = j?.hero || null
-        const imgs = Array.isArray(j?.images) ? j.images : []
-        const f = imgs.find((i:any) => Number(i.is_featured) === 1) || imgs[0] || null
-        if (f) setFeatured({ url: f.url, title: h?.title || '' })
-        else setFeatured(null)
+        fetchTimerFeatured = setTimeout(() => {
+          if (!mounted) return
+          const h = j?.hero || null
+          const imgs = Array.isArray(j?.images) ? j.images : []
+          const f = imgs.find((i:any) => Number(i.is_featured) === 1) || imgs[0] || null
+          if (f) setFeatured({ url: f.url, title: h?.title || '' })
+          else setFeatured(null)
+        }, 0)
       })
       .catch(()=>{})
 
-    return () => { mounted = false };
+    return () => {
+      mounted = false;
+      if (hydrateTimerSpace) clearTimeout(hydrateTimerSpace);
+      if (hydrateTimerLog) clearTimeout(hydrateTimerLog);
+      if (fetchTimerSpace) clearTimeout(fetchTimerSpace);
+      if (fetchTimerLog) clearTimeout(fetchTimerLog);
+      if (fetchTimerFeatured) clearTimeout(fetchTimerFeatured);
+    };
   }, []);
 
-  // deterministic pseudo-random opacity so server/client render match
-  const getOpacity = (band: string, col: number) => {
-    let seed = 0;
-    for (let i = 0; i < band.length; i++) seed = (seed * 31 + band.charCodeAt(i)) >>> 0;
-    seed = (seed + col * 997) >>> 0;
-    // use sine to expand to [0,1]
-    const v = Math.abs(Math.sin(seed * 0.0001));
-    return v * 0.7 + 0.15;
-  };
+  
 
   return (
     <section className={styles.dashboard} aria-label="Dashboard">

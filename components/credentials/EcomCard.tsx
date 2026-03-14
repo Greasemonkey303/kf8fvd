@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { ImageModal } from '@/components'
+import Image from 'next/image'
 import styles from '../../app/credentials/credentials.module.css'
 
 function getCssVar(name: string, fallback: string) {
@@ -34,7 +35,7 @@ export default function EcomCard(){
 
         <div className={styles.mediaRow}>
           <button className={styles.thumbWrap} onClick={() => setOpen(src)} aria-label="Open Emergency Communications preview">
-          <img src={src} alt="Emergency Communications preview" className={styles.licenseThumb} />
+          <Image src={src} alt="Emergency Communications preview" className={styles.licenseThumb} width={280} height={160} unoptimized={String(src).startsWith('data:') || String(src).startsWith('blob:')} />
           <div className={styles.overlay} aria-hidden>
             <span className={styles.overlayTitle}>Emergency Communications</span>
           </div>

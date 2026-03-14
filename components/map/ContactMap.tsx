@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
@@ -19,9 +20,9 @@ function loadScript(src: string) {
 function parseAdif(txt: string) {
   try {
     const body = txt.replace(/\r/g,'\n').split(/<EOR>|<eor>/).map(s=>s.trim()).filter(Boolean);
-    const entries: any[] = [];
+    const entries: Record<string,string>[] = [];
     for (const rec of body) {
-      const e: any = {};
+      const e: Record<string,string> = {};
       const matches = rec.match(/<([^:>]+)(?::(\d+))?>\s*([^<]*)/g) || [];
       for (const m of matches) {
         const mm = m.match(/<([^:>]+)(?::(\d+))?>\s*([^<]*)/);
@@ -48,17 +49,17 @@ function parseAdif(txt: string) {
 
 export default function ContactMap(){
   const ref = useRef<HTMLDivElement|null>(null);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<unknown|null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [days, setDays] = useState(0); // 0 = all time
 
-  const entriesRef = useRef<any[]>([]);
-  const locationsRef = useRef<Record<string, any[]>>({});
+  const entriesRef = useRef<Record<string,unknown>[]>([]);
+  const locationsRef = useRef<Record<string, Record<string,unknown>[]>>({});
   const resultsRef = useRef<Record<string,Geo|null>>({});
-  const markersLayerRef = useRef<any|null>(null);
-  const heatLayerRef = useRef<any|null>(null);
-  const LRef = useRef<any|null>(null);
+  const markersLayerRef = useRef<unknown|null>(null);
+  const heatLayerRef = useRef<unknown|null>(null);
+  const LRef = useRef<unknown|null>(null);
   const [showSliderPanel, setShowSliderPanel] = useState(false);
   const [showLegendPanel, setShowLegendPanel] = useState(false);
   const [modeFilters, setModeFilters] = useState<{[k:string]:boolean}>({ FM:true, DSTAR:true, DMR:true, OTHER:true });
@@ -80,7 +81,7 @@ export default function ContactMap(){
     return new Date(t);
   }
 
-  function withinDays(entry:any, days:number) {
+  function withinDays(entry: Record<string, unknown>, days:number) {
     if (!days || days<=0) return true;
     const dStr = entry.qso_date || entry.date || entry.qsoDate || entry.DATE || entry.QSO_DATE;
     const dt = parseDateString(dStr);
@@ -127,17 +128,17 @@ export default function ContactMap(){
         return modeFilters.OTHER;
       });
       if (!include) continue;
-      const modes = Array.from(new Set(groupEntries.map((x:any)=> (x.mode||'').toString()))).filter(Boolean);
+      const modes = Array.from(new Set(groupEntries.map((x)=> String(x['mode'] || '')))).filter(Boolean);
       const fm = getCssVar('--color-success', '#16a34a');
       const dstar = getCssVar('--color-accent-1', '#60a5fa');
       const otherCol = getCssVar('--color-other', '#94a3b8');
       const color = modes.map(m=>m.toUpperCase()).includes('FM') ? fm : (modes.map(m=>m.toUpperCase()).includes('DSTAR') ? dstar : otherCol);
       const m = L.circleMarker([g.lat, g.lon], { radius:8, color: getCssVar('--white-100','#fff'), weight:1, fillColor: color, fillOpacity:0.95 });
-      const popup = `<div><strong>${k}</strong><br/>${groupEntries.slice(0,6).map((x:any)=>x.call||'').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
+      const popup = `<div><strong>${k}</strong><br/>${groupEntries.slice(0,6).map((x)=>x['call'] || '').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
       m.bindPopup(popup);
       // tooltip on hover with callsign(s) and location
       try {
-        const calls = groupEntries.map((x:any)=> x.call || '').filter(Boolean).slice(0,6).join(', ');
+        const calls = groupEntries.map((x)=> x['call'] || '').filter(Boolean).slice(0,6).join(', ');
         const tooltip = `${calls || 'Unknown'} — ${k}`;
         m.bindTooltip(tooltip, { direction: 'top', offset: [0, -8] });
       } catch(e) {}
@@ -167,7 +168,7 @@ export default function ContactMap(){
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(mapRef.current);
 
       setStatus('Loading server logbook...');
-      let entries: any[] = [];
+      let entries: Record<string, unknown>[] = [];
       try {
         const r = await fetch('/api/logbook');
         const j = await r.json();
@@ -186,9 +187,9 @@ export default function ContactMap(){
       setStatus(`Found ${entries.length} entries`);
 
       // group by location string
-      const locations: Record<string, any[]> = {};
-      entries.forEach((e:any)=>{
-        const loc = (e.city || e.qth || '').trim() || ((e.state||'') + (e.country?(', '+e.country):'')).trim();
+      const locations: Record<string, Record<string, unknown>[]> = {};
+      entries.forEach((e)=>{
+        const loc = String(e['city'] || e['qth'] || '').trim() || (String(e['state'] || '') + (e['country'] ? (', ' + String(e['country'])) : '')).trim();
         if (!loc) return; const k = loc.trim(); if (!locations[k]) locations[k]=[]; locations[k].push(e);
       });
       locationsRef.current = locations;

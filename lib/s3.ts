@@ -6,22 +6,35 @@ export async function getUploadKey(slug: string, filename: string, prefixOverrid
     if (prefixOverride && typeof prefixOverride === 'string') {
       prefix = prefixOverride
     } else {
-      const s = String(slug || '')
+      const s = String(slug || '').toLowerCase()
       // If slug looks like an About page (starts with "about"), store under about/
-      if (/^about($|[-_])/i.test(s) || s.toLowerCase() === 'about') {
+      if (/^about($|[-_])/i.test(s) || s === 'about') {
         prefix = 'about/'
       }
       // If the slug appears to be credentials scoped, store under credentials/
-      if (/^credentials($|[\/\-_])/i.test(s) || s.toLowerCase().startsWith('credentials/')) {
+      if (/^credentials($|[\/\-_])/i.test(s) || s.startsWith('credentials/')) {
         prefix = 'credentials/'
       }
     }
   } catch {
     // keep default
   }
-  const cleanFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_')
+
+  // normalize prefix to end with '/'
+  if (!prefix.endsWith('/')) prefix = prefix + '/'
+
+  // sanitize slug to avoid directory traversal and unsafe characters
+  let rawSlug = String(slug || '')
+  rawSlug = rawSlug.replace(/^\/+/, '') // strip leading slashes
+  rawSlug = rawSlug.replace(/\.\./g, '') // remove parent traversal
+  rawSlug = rawSlug.replace(/\/+/g, '/') // normalize repeated slashes
+  rawSlug = rawSlug.replace(/[^a-zA-Z0-9\/_-]/g, '_') // restrict chars
+  rawSlug = rawSlug.replace(/\/$/, '') // remove trailing slash
+
+  const cleanFilename = String(filename || '').replace(/[^a-zA-Z0-9._-]/g, '_')
   const ts = Date.now()
-  return `${prefix}${slug}/${ts}-${cleanFilename}`
+  if (!rawSlug) return `${prefix}${ts}-${cleanFilename}`
+  return `${prefix}${rawSlug}/${ts}-${cleanFilename}`
 }
 
 export function buildPublicUrl(key: string) {

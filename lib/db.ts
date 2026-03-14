@@ -18,7 +18,6 @@ const dbConfig = {
 // In development, reuse the pool across module reloads to avoid creating
 // multiple pools which exhaust connections.
 declare global {
-  // eslint-disable-next-line no-var
   var __mysqlPool__: mysql.Pool | undefined;
 }
 
@@ -30,12 +29,10 @@ async function testConnection() {
   if (process.env.NODE_ENV === 'production') return;
   try {
     const connection = await pool.getConnection();
-    // eslint-disable-next-line no-console
     console.log('Connected to MySQL database successfully');
     connection.release();
     return true;
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Error connecting to MySQL database:', error);
     return false;
   }
@@ -53,13 +50,11 @@ export async function query<T>(sql: string, params?: unknown[]): Promise<T> {
   try {
     const safeParams = Array.isArray(params) ? params.map(p => p === undefined ? null : p) : []
     if (process.env.DEBUG_DB) {
-      // eslint-disable-next-line no-console
       console.log('[db] executing', { sql, params: safeParams, types: safeParams.map(p => (p === null ? 'null' : typeof p)) })
     }
-    const [rows] = await pool.execute(sql, safeParams as any)
+    const [rows] = await pool.execute(sql, safeParams)
     return rows as T
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Database query error:', error)
     throw error
   }

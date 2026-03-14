@@ -12,7 +12,7 @@ const getErrMsg = (err: unknown) => {
 }
 
 // Remove known debug HTML block inserted during earlier testing
-const removeDebugBlockFromHtml = (s: any) => {
+const removeDebugBlockFromHtml = (s: unknown) => {
   if (!s) return s
   try {
     const raw = String(s)
@@ -51,14 +51,14 @@ export async function POST(req: Request) {
   let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
   if (sanitized) sanitized = removeDebugBlockFromHtml(sanitized)
   // sanitize known metadata HTML fields to avoid storing unsafe markup
-  let safeMetadata = metadata ? { ...metadata } : {}
+  let safeMetadata: Record<string, unknown> = metadata ? { ...metadata } : {}
     try {
-    if (safeMetadata?.summary?.text) safeMetadata.summary.text = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.summary.text)))
+    if ((safeMetadata['summary'] as Record<string, unknown>)?.text) (safeMetadata['summary'] as Record<string, unknown>).text = removeDebugBlockFromHtml(DOMPurify.sanitize(String((safeMetadata['summary'] as Record<string, unknown>).text)))
     // If authors are using a cards array, sanitize each card's title, subtitle, and content
     if (Array.isArray(safeMetadata?.cards)) {
-      safeMetadata.cards = safeMetadata.cards.map((c: any) => {
+      safeMetadata.cards = (safeMetadata.cards as unknown[]).map((c: unknown) => {
         if (!c || typeof c !== 'object') return c
-        const copy: any = { ...c }
+        const copy = { ...(c as Record<string, unknown>) } as Record<string, unknown>
         if (copy.title) copy.title = DOMPurify.sanitize(String(copy.title))
         if (copy.subtitle) copy.subtitle = DOMPurify.sanitize(String(copy.subtitle))
         if (copy.content) copy.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(copy.content)))
@@ -66,9 +66,9 @@ export async function POST(req: Request) {
       })
     } else {
       // Backwards compatible: sanitize old-style named cards
-      if (safeMetadata?.aboutCard?.content) safeMetadata.aboutCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.aboutCard.content)))
-      if (safeMetadata?.topologyCard?.content) safeMetadata.topologyCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.topologyCard.content)))
-      if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.hamshackCard.content)))
+      if ((safeMetadata['aboutCard'] as Record<string, unknown>)?.content) (safeMetadata['aboutCard'] as Record<string, unknown>).content = removeDebugBlockFromHtml(DOMPurify.sanitize(String((safeMetadata['aboutCard'] as Record<string, unknown>).content)))
+      if ((safeMetadata['topologyCard'] as Record<string, unknown>)?.content) (safeMetadata['topologyCard'] as Record<string, unknown>).content = removeDebugBlockFromHtml(DOMPurify.sanitize(String((safeMetadata['topologyCard'] as Record<string, unknown>).content)))
+      if ((safeMetadata['hamshackCard'] as Record<string, unknown>)?.content) (safeMetadata['hamshackCard'] as Record<string, unknown>).content = removeDebugBlockFromHtml(DOMPurify.sanitize(String((safeMetadata['hamshackCard'] as Record<string, unknown>).content)))
     }
   } catch (e) {
     safeMetadata = metadata ? { ...metadata } : {}
@@ -88,14 +88,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: insertId, ok: true })
   } catch (e: unknown) {
     // handle duplicate-slug by merging metadata into existing page
-    const err: any = e as any
+    const errObj = e as unknown
     // If concurrent insertion caused a duplicate entry, try to merge/patch existing page as a fallback
-    if (err && (err.code === 'ER_DUP_ENTRY' || String(err).toLowerCase().includes('duplicate'))) {
+    const dup = (typeof errObj === 'object' && errObj !== null && ((errObj as Record<string, unknown>)['code'] === 'ER_DUP_ENTRY')) || String(e).toLowerCase().includes('duplicate')
+    if (dup) {
       try {
         const rows = await query<{ id: number; metadata?: string }[]>('SELECT id, metadata FROM pages WHERE slug = ?', [slug])
         if (rows && rows.length > 0) {
           const existing = rows[0]
-          let meta: any = {}
+          let meta: Record<string, unknown> = {}
           try { meta = existing.metadata ? (typeof existing.metadata === 'string' ? JSON.parse(existing.metadata) : existing.metadata) : {} } catch { meta = {} }
 
           // Fallback: append any new cards if safeMetadata contains them
@@ -104,13 +105,13 @@ export async function POST(req: Request) {
           } else if (safeMetadata?.aboutCard) {
             const newCard = safeMetadata.aboutCard
             if (!Array.isArray(meta.cards)) {
-              const converted: any[] = []
-              if (meta.aboutCard) converted.push(meta.aboutCard)
-              if (meta.topologyCard) converted.push(meta.topologyCard)
-              if (meta.hamshackCard) converted.push(meta.hamshackCard)
+              const converted: Record<string, unknown>[] = []
+              if ((meta as Record<string, unknown>)['aboutCard']) converted.push((meta as Record<string, unknown>)['aboutCard'] as Record<string, unknown>)
+              if ((meta as Record<string, unknown>)['topologyCard']) converted.push((meta as Record<string, unknown>)['topologyCard'] as Record<string, unknown>)
+              if ((meta as Record<string, unknown>)['hamshackCard']) converted.push((meta as Record<string, unknown>)['hamshackCard'] as Record<string, unknown>)
               meta.cards = converted
             }
-            meta.cards.push(newCard)
+            ;(meta.cards as unknown[]).push(newCard as unknown)
             delete meta.aboutCard; delete meta.topologyCard; delete meta.hamshackCard
           }
 
@@ -143,9 +144,9 @@ export async function PUT(req: Request) {
     if (safeMetadata?.summary?.text) safeMetadata.summary.text = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.summary.text)))
     // If a cards array is provided, sanitize each card entry
     if (Array.isArray(safeMetadata?.cards)) {
-      safeMetadata.cards = safeMetadata.cards.map((c: any) => {
+      safeMetadata.cards = (safeMetadata.cards as unknown[]).map((c: unknown) => {
         if (!c || typeof c !== 'object') return c
-        const copy: any = { ...c }
+        const copy = { ...(c as Record<string, unknown>) } as Record<string, unknown>
         if (copy.title) copy.title = DOMPurify.sanitize(String(copy.title))
         if (copy.subtitle) copy.subtitle = DOMPurify.sanitize(String(copy.subtitle))
         if (copy.content) copy.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(copy.content)))
@@ -172,7 +173,7 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   const cardParam = url.searchParams.get('card')
   // Helper to extract an S3 object key from various URL forms stored in metadata
-  const extractKey = (val: any): string | null => {
+  const extractKey = (val: unknown): string | null => {
     if (!val) return null
     try {
       const s = String(val)
@@ -209,11 +210,11 @@ export async function DELETE(req: Request) {
     const rows = await query<{ metadata?: string | null, slug?: string }[]>('SELECT metadata, slug FROM pages WHERE id = ?', [id])
     if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const row = rows[0]
-    let meta: any = {}
+    let meta: Record<string, unknown> = {}
     try { meta = row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : {} } catch { meta = {} }
 
     // cardParam numeric -> treat as index in meta.cards
-    const numeric = parseInt(cardParam as any, 10)
+    const numeric = parseInt(String(cardParam), 10)
     if (!Number.isNaN(numeric)) {
       const idx = numeric
       if (!Array.isArray(meta.cards) || idx < 0 || idx >= meta.cards.length) return NextResponse.json({ error: 'Invalid card index' }, { status: 400 })

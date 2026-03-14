@@ -44,28 +44,35 @@ export async function GET(req: Request) {
 
     try {
       const { query } = await import('@/lib/db')
-      const params: any[] = []
+      const params: unknown[] = []
       let where = ''
       if (filterAction) { where += (where ? ' AND ' : 'WHERE ') + 'action = ?'; params.push(filterAction) }
       if (filterActor) { where += (where ? ' AND ' : 'WHERE ') + 'actor = ?'; params.push(filterActor) }
-
-      const countRows: any = await query(`SELECT COUNT(*) as cnt FROM admin_actions ${where}`, params)
+      const countRows = await query<Array<Record<string, unknown>>>(`SELECT COUNT(*) as cnt FROM admin_actions ${where}`, params)
       const total = Array.isArray(countRows) && countRows[0] && typeof countRows[0].cnt !== 'undefined' ? Number(countRows[0].cnt) : 0
 
       const limitVal = Number(limit)
       const offsetVal = Number(offset)
-      const rows: any[] = await query(`SELECT id, actor, actor_type, action, target_key, reason, ip, meta, UNIX_TIMESTAMP(created_at) * 1000 as created_at_ms FROM admin_actions ${where} ORDER BY created_at DESC LIMIT ${limitVal} OFFSET ${offsetVal}`, params)
-      const actions = Array.isArray(rows) ? rows.map((r: any) => ({
-        id: r.id,
-        actor: r.actor,
-        actor_type: r.actor_type,
-        action: r.action,
-        target_key: r.target_key,
-        reason: r.reason,
-        ip: r.ip,
-        meta: (() => { try { return JSON.parse(r.meta || '{}') } catch (_) { return r.meta } })(),
-        createdAt: r.created_at_ms
-      })) : []
+      const rows = await query<Array<Record<string, unknown>>>(`SELECT id, actor, actor_type, action, target_key, reason, ip, meta, UNIX_TIMESTAMP(created_at) * 1000 as created_at_ms FROM admin_actions ${where} ORDER BY created_at DESC LIMIT ${limitVal} OFFSET ${offsetVal}`, params)
+      const actions = Array.isArray(rows) ? rows.map((r: Record<string, unknown>) => {
+        const metaRaw = r.meta
+        let metaVal: unknown = {}
+        try {
+          if (typeof metaRaw === 'string') metaVal = JSON.parse(metaRaw || '{}')
+          else metaVal = metaRaw ?? {}
+        } catch (_) { metaVal = metaRaw }
+        return {
+          id: r.id,
+          actor: r.actor,
+          actor_type: r.actor_type,
+          action: r.action,
+          target_key: r.target_key,
+          reason: r.reason,
+          ip: r.ip,
+          meta: metaVal,
+          createdAt: r.created_at_ms
+        }
+      }) : []
 
       if (format === 'csv') {
         // log export action
@@ -76,7 +83,7 @@ export async function GET(req: Request) {
         } catch (_) {}
         // Build CSV header
         const cols = ['id', 'createdAt', 'actor', 'actor_type', 'action', 'target_key', 'reason', 'ip', 'meta']
-        function esc(v: any) {
+        function esc(v: unknown) {
           if (v === null || typeof v === 'undefined') return ''
           const s = typeof v === 'string' ? v : String(v)
           return '"' + s.replace(/"/g, '""') + '"'

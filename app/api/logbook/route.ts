@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
     // Try to read recent entries from DB (call_logs table) first
     try {
-      const rows = await query<any[]>('SELECT `call`, DATE_FORMAT(qso_date, "%Y%m%d") AS date, TIME_FORMAT(time_on, "%H:%i:%s") AS time, band, mode, qth, city, state, country, lat, lon FROM call_logs ORDER BY COALESCE(qso_datetime, created_at) DESC LIMIT 200')
+      const rows = await query<Record<string, unknown>[]>('SELECT `call`, DATE_FORMAT(qso_date, "%Y%m%d") AS date, TIME_FORMAT(time_on, "%H:%i:%s") AS time, band, mode, qth, city, state, country, lat, lon FROM call_logs ORDER BY COALESCE(qso_datetime, created_at) DESC LIMIT 200')
       if (Array.isArray(rows) && rows.length > 0) {
         const entries = rows.map(r => ({
           call: r.call,

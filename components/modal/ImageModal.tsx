@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react'
 import styles from './imageModal.module.css'
 import { createPortal } from 'react-dom'
+import Image from 'next/image'
 
 type Props = {
   src: string | null
@@ -59,9 +60,9 @@ export default function ImageModal({ src, alt = '', onClose }: Props) {
   const node = (typeof document !== 'undefined') ? document.body : null
   const modal = (
     <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true">
-      <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
         <button className={styles.close} onClick={onClose} aria-label="Close image">✕</button>
-        <img src={src} alt={alt} className={styles.image} />
+        <Image src={src} alt={alt} width={1200} height={800} className={styles.image} unoptimized={String(src).startsWith('data:') || String(src).startsWith('blob:')} />
       </div>
     </div>
   )

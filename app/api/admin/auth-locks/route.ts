@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getRedis, resetKey } from '@/lib/rateLimiter'
+import type { AdminActionDetails } from '@/lib/adminActions'
 
 // Use shared admin action helper
-async function tryInsertAdminAction(details: any) {
+async function tryInsertAdminAction(details: AdminActionDetails | unknown) {
   try {
     const { insertAdminAction } = await import('@/lib/adminActions')
-    await insertAdminAction(details)
+    await insertAdminAction(details as AdminActionDetails)
   } catch (e) {
     try { console.warn('[admin] failed to write admin_actions', e) } catch (_) {}
   }
@@ -52,7 +53,7 @@ export async function GET(req: Request) {
     if (r) {
       // list locks from redis keys rl:lock:*
       const keys = await r.keys('rl:lock:*')
-      const locks = [] as any[]
+      const locks: Array<{ key: string; redisKey?: string; ttlMs?: number | null; expiresAt?: number | null }> = []
       for (const k of keys) {
         try {
           const ttl = await r.pttl(k)
@@ -64,8 +65,9 @@ export async function GET(req: Request) {
     }
     // fallback to DB
     try {
-      const rows = await query('SELECT key_name, UNIX_TIMESTAMP(locked_until) * 1000 as locked_at_ms FROM auth_locks WHERE locked_until > NOW()')
-      const locks = Array.isArray(rows) ? rows.map((r: any) => ({ key: r.key_name, expiresAt: r.locked_at_ms })) : []
+      const { query } = await import('@/lib/db')
+      const rows = await query<Array<Record<string, unknown>>>('SELECT key_name, UNIX_TIMESTAMP(locked_until) * 1000 as locked_at_ms FROM auth_locks WHERE locked_until > NOW()')
+      const locks = Array.isArray(rows) ? rows.map((r: Record<string, unknown>) => ({ key: r.key_name, expiresAt: r.locked_at_ms })) : []
       return NextResponse.json({ ok: true, source: 'db', locks })
     } catch (e) {
       return NextResponse.json({ ok: true, source: 'none', locks: [] })

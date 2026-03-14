@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await req.json()
   const action = body && body.action ? String(body.action) : null
-  const ids = Array.isArray(body && body.ids) ? body.ids.map((v: any) => Number(v)).filter((n: number) => Number.isFinite(n) && n > 0) : []
+  const ids = Array.isArray(body && body.ids) ? (body.ids as unknown[]).map(v => Number(v)).filter((n: number) => Number.isFinite(n) && n > 0) : []
   if (!action || ids.length === 0) return NextResponse.json({ error: 'Missing action or ids' }, { status: 400 })
   if (!['publish','unpublish','delete'].includes(action)) return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
           try {
             const stream = minioClient.listObjectsV2(bucket, `${prefix}/`, true)
             for await (const obj of stream) {
-              if (obj && (obj as any).name) objs.push((obj as any).name)
+              if (obj && (obj as { name?: string }).name) objs.push((obj as { name?: string }).name as string)
             }
           } catch (e: unknown) {
             // listObjects failed for this prefix; continue

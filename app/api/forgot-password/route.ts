@@ -15,7 +15,8 @@ export async function POST(req: Request) {
     if (!email) return NextResponse.json({ error: 'Missing email' }, { status: 400 })
 
     // Find user (if any)
-    const users = await query<any[]>('SELECT id, name, email FROM users WHERE email = ? LIMIT 1', [email])
+    type UserRow = { id: number; name?: string | null; email: string }
+    const users = await query<UserRow[]>('SELECT id, name, email FROM users WHERE email = ? LIMIT 1', [email])
     const user = Array.isArray(users) && users.length ? users[0] : null
 
     // Always respond 200 to avoid account enumeration, but only create/send token if user exists
@@ -59,13 +60,14 @@ export async function POST(req: Request) {
         headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyReq)
       })
-    } catch (e) {
+    } catch (err: unknown) {
       // log but don't surface to caller
-      console.warn('[api/forgot-password] sendgrid error', e)
+      try { console.warn('[api/forgot-password] sendgrid error', err) } catch {}
     }
 
     return NextResponse.json({ ok: true })
-  } catch (e) {
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') console.error('[api/forgot-password] error', err)
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }

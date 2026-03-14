@@ -26,8 +26,9 @@ async function main() {
   })
 
   try {
-    const [result] = await pool.query('INSERT INTO messages (name, email, message, attachments, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
-      ['Smoke Tester', 'smoke@example.com', 'This is an automated smoke test message', JSON.stringify(attachmentsMeta), '127.0.0.1', 'smoke-agent/1.0'])
+    const sanitized = String('This is an automated smoke test message').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+    const [result] = await pool.query('INSERT INTO messages (name, email, message, message_sanitized, attachments, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['Smoke Tester', 'smoke@example.com', 'This is an automated smoke test message', sanitized, JSON.stringify(attachmentsMeta), '127.0.0.1', 'smoke-agent/1.0'])
     console.log('Inserted message id:', result.insertId)
     console.log('Upload dir:', uploadDir)
   } catch (e) {

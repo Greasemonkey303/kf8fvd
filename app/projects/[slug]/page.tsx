@@ -1,6 +1,7 @@
 import React from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Card } from '@/components'
 import ProjectMediaWrapper from '@/components/projects/ProjectMediaWrapper'
 import * as Minio from 'minio'
@@ -8,8 +9,7 @@ import { buildPublicUrl } from '@/lib/s3'
 import styles from '../hotspot/hotspot.module.css'
 import { HotspotGallery } from '@/components'
 import { query } from '@/lib/db'
-import createDOMPurify from 'dompurify'
-import { JSDOM } from 'jsdom'
+import { sanitizeHtmlServer } from '@/lib/sanitize'
 
 type Props = { params: { slug: string } | Promise<{ slug: string }> }
 
@@ -123,10 +123,7 @@ export default async function Page({ params }: Props){
   let detailsHtml: string | null = null
   try {
     if (md && (md as Record<string, unknown>).details) {
-      const dom = new JSDOM('')
-      const windowForPurify = dom.window as unknown as Window & typeof globalThis
-      const DOMPurify = createDOMPurify(windowForPurify)
-      detailsHtml = DOMPurify.sanitize(String((md as Record<string, unknown>).details))
+      detailsHtml = sanitizeHtmlServer(String((md as Record<string, unknown>).details))
     }
   } catch {
     detailsHtml = md && (md as Record<string, unknown>).details ? String((md as Record<string, unknown>).details) : null
@@ -135,10 +132,7 @@ export default async function Page({ params }: Props){
   // sanitize description as a safety measure (server-side)
   let safeDescriptionHtml = ''
   try {
-    const dom = new JSDOM('')
-    const windowForPurify = dom.window as unknown as Window & typeof globalThis
-    const DOMPurify = createDOMPurify(windowForPurify)
-    safeDescriptionHtml = DOMPurify.sanitize(String(project.description || ''))
+    safeDescriptionHtml = sanitizeHtmlServer(String(project.description || ''))
   } catch {
     safeDescriptionHtml = String(project.description || '')
   }
@@ -152,7 +146,7 @@ export default async function Page({ params }: Props){
               <HotspotGallery images={[ '/hotspot/hotspot-1.jpg', '/hotspot/hotspot-2.jpg', '/hotspot/hotspot-3.jpg' ]} />
             ) : (
               <>
-                {mainImg ? <div className={styles.mainPhotoWrap}><img src={mainImgSrc} alt={String(project.title || '')} className={styles.mainPhoto} /></div> : null}
+                {mainImg ? <div className={styles.mainPhotoWrap}><Image src={mainImgSrc} alt={String(project.title || '')} className={styles.mainPhoto} width={1200} height={700} unoptimized={typeof mainImgSrc === 'string' && (String(mainImgSrc).startsWith('data:') || String(mainImgSrc).startsWith('blob:') || String(mainImgSrc).indexOf('X-Amz-Algorithm') !== -1 || String(mainImgSrc).indexOf('minio') !== -1 || String(mainImgSrc).indexOf('127.0.0.1') !== -1)} /></div> : null}
                 <ProjectMediaWrapper images={allImgs.slice(0,6)} title={String(project.title || '')} />
               </>
             )}

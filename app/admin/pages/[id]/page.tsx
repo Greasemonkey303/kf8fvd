@@ -27,8 +27,11 @@ export default function PageEditor({ params }: { params: { id: string } }) {
     (async () => {
       const res = await fetch('/api/admin/pages?page=1&limit=1000')
       const data = await res.json()
-      const found = (data.items || []).find((p: any) => String(p.id) === String(id))
-      if (found) setForm({ id: found.id, slug: found.slug, title: found.title, content: found.content || '', is_published: !!found.is_published })
+      const found = (data.items || []).find((p: unknown) => String((p as Record<string, unknown>).id) === String(id))
+      if (found) {
+        const ff = found as Record<string, unknown>
+        setForm({ id: Number(ff.id as number) || 0, slug: String(ff.slug || ''), title: String(ff.title || ''), content: String(ff.content || ''), is_published: !!ff.is_published })
+      }
       setLoading(false)
     })()
   }, [id])

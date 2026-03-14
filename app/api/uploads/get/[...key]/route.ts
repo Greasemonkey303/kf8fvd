@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
 import crypto from 'crypto'
 
-export async function GET(req: Request, ctx: any) {
+export async function GET(req: Request, ctx: { params?: unknown }) {
   try {
     const url = new URL(req.url)
     // accept ?key=... or path segments /api/uploads/get/<encodedKey>
@@ -10,13 +10,13 @@ export async function GET(req: Request, ctx: any) {
 
     // `ctx.params` can sometimes be a Promise in Next.js route handlers; unwrap if necessary
     let params = ctx && ctx.params ? ctx.params : undefined
-    if (params && typeof (params as any).then === 'function') {
-      params = await params
+    if (params && typeof (params as { then?: unknown }).then === 'function') {
+      params = await (params as Promise<Record<string, unknown>>)
     }
 
-    if (!key && params && Array.isArray(params.key) && params.key.length) {
+    if (!key && params && Array.isArray((params as Record<string, unknown>)['key']) && ((params as Record<string, unknown>)['key'] as unknown[]).length) {
       // params.key may be an array of path segments; join and decode
-      try { key = decodeURIComponent(params.key.join('/')) } catch { key = params.key.join('/') }
+      try { key = decodeURIComponent(((params as Record<string, unknown>)['key'] as unknown[]).join('/')) } catch { key = ((params as Record<string, unknown>)['key'] as unknown[]).join('/') }
     }
     if (!key) return NextResponse.json({ error: 'key required' }, { status: 400 })
 
