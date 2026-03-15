@@ -83,7 +83,8 @@ export default function ContactMap(){
 
   function withinDays(entry: Record<string, unknown>, days:number) {
     if (!days || days<=0) return true;
-    const dStr = entry.qso_date || entry.date || entry.qsoDate || entry.DATE || entry.QSO_DATE;
+    const raw = (entry.qso_date ?? entry.date ?? entry.qsoDate ?? entry.DATE ?? entry.QSO_DATE) as unknown;
+    const dStr = typeof raw === 'string' ? raw : (typeof raw === 'number' ? String(raw) : undefined);
     const dt = parseDateString(dStr);
     if (!dt || isNaN(dt.getTime())) return false;
     const cutoff = Date.now() - (days*24*3600*1000);

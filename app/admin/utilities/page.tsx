@@ -32,6 +32,14 @@ export default function UtilitiesLanding() {
             <Link href="/admin/utilities/call-log" className={styles.btnGhost}>Manage call log</Link>
           </div>
         </div>
+
+        <div className={styles.adminSectionCard}>
+          <h3 style={{margin:0}}>Create User</h3>
+          <p className={styles.smallMuted}>Create new administrative or editorial users (admin-only).</p>
+          <div className={styles.controls}>
+            <Link href="/admin/utilities/create-user" className={styles.btnGhost}>Create user</Link>
+          </div>
+        </div>
       </div>
     </main>
   )

@@ -49,21 +49,21 @@ export default async function Page() {
               </thead>
               <tbody>
                 {rows.map(r => (
-                  <tr key={r.id}>
-                    <td>{r.call}</td>
-                    <td>{r.qso_date || ''}</td>
-                    <td>{r.time_on || ''}</td>
-                    <td>{r.band || ''}</td>
-                    <td>{r.mode || ''}</td>
-                    <td>{[r.qth, r.city, r.state, r.country].filter(Boolean).join(', ')}</td>
+                  <tr key={String(r.id)}>
+                    <td>{String(r.call || '')}</td>
+                    <td>{String(r.qso_date || '')}</td>
+                    <td>{String(r.time_on || '')}</td>
+                    <td>{String(r.band || '')}</td>
+                    <td>{String(r.mode || '')}</td>
+                    <td>{[r.qth, r.city, r.state, r.country].filter(Boolean).map(String).join(', ')}</td>
                     <td>
                       <details>
                         <summary>View ADIF</summary>
-                        <pre style={{whiteSpace:'pre-wrap', maxWidth:800}}>{r.raw_entry}</pre>
-                        {r.adif_tags && <pre style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(r.adif_tags, null, 2)}</pre>}
+                        <pre style={{whiteSpace:'pre-wrap', maxWidth:800}}>{String(r.raw_entry || '')}</pre>
+                        {Boolean(r.adif_tags) && <pre style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(r.adif_tags, null, 2)}</pre>}
                       </details>
                     </td>
-                    <td>{new Date(r.created_at).toLocaleString()}</td>
+                    <td>{new Date(String(r.created_at || '')).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

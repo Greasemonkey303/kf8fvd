@@ -177,7 +177,8 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         const { transaction } = await import('./db')
         const res = await transaction(async (conn) => {
       // use SELECT ... FOR UPDATE to atomically inspect and change
-      const [rows] = await conn.execute('SELECT `count`, UNIX_TIMESTAMP(expires_at) * 1000 as expires_at_ms FROM rate_limiter_counts WHERE key_name = ? FOR UPDATE', [key])
+      const execRes = await conn.execute('SELECT `count`, UNIX_TIMESTAMP(expires_at) * 1000 as expires_at_ms FROM rate_limiter_counts WHERE key_name = ? FOR UPDATE', [key]) as unknown as [Array<Record<string, unknown>>, any[]]
+      const rows = execRes[0]
       const nowMs = Date.now()
       if (!rows || rows.length === 0) {
         // insert initial counter
@@ -187,7 +188,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         return { locked: false, remaining: Math.max(0, max - 1), cur: 1 }
       }
       const row = rows[0]
-      const expiresAtMs = row.expires_at_ms || 0
+      const expiresAtMs = Number(row.expires_at_ms || 0)
       if (expiresAtMs <= nowMs) {
         // reset window
         await conn.execute('UPDATE rate_limiter_counts SET `count` = 1, expires_at = FROM_UNIXTIME(?/1000) WHERE key_name = ?', [nowMs + windowMs, key])
@@ -196,8 +197,9 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       }
       // otherwise increment
       await conn.execute('UPDATE rate_limiter_counts SET `count` = `count` + 1 WHERE key_name = ?', [key])
-      const [[updated]] = await conn.execute('SELECT `count` FROM rate_limiter_counts WHERE key_name = ?', [key])
-      const cur = updated && updated.count ? Number(updated.count) : 0
+      const execRes2 = await conn.execute('SELECT `count` FROM rate_limiter_counts WHERE key_name = ?', [key]) as unknown as [Array<Record<string, unknown>>, any[]]
+      const updated = execRes2[0] && execRes2[0][0]
+      const cur = updated && (updated as Record<string, unknown>).count ? Number((updated as Record<string, unknown>).count) : 0
       // if threshold reached, add auth_locks
       if (cur >= max) {
         const until = Date.now() + lockMs
@@ -214,8 +216,8 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         const rr = await getRedis()
         if (rr) {
           const mkey = metricKey('login_attempts_total')
-          await rr.incr(mkey)
-          try { await rr.expire(mkey, getMetricsTtlSec()) } catch {}
+          if (typeof rr.incr === 'function') await rr.incr(mkey)
+          try { if (typeof rr.expire === 'function') await rr.expire(mkey, getMetricsTtlSec()) } catch {}
         }
       } catch {}
       if (res.locked) return { locked: true, remaining: 0, lockedUntil: res.lockedUntil }
@@ -277,14 +279,14 @@ export async function resetKey(key: string) {
       const lockKey = `rl:lock:${encodeKey(key)}`
       // if a lock existed, decrement the active-locks gauge
       try {
-        const hadLock = await r.exists(lockKey)
-        await r.del(countKey, lockKey)
+        const hadLock = (typeof r.exists === 'function') ? await r.exists(lockKey) : 0
+        if (typeof r.del === 'function') await r.del(countKey, lockKey)
         if (hadLock) {
-          try { await r.decr(metricKey('auth_locks_active')) } catch {}
+          try { if (typeof r.decr === 'function') await r.decr(metricKey('auth_locks_active')) } catch {}
         }
       } catch {
         // best-effort: still delete keys
-        try { await r.del(countKey, lockKey) } catch {}
+        try { if (typeof r.del === 'function') await r.del(countKey, lockKey) } catch {}
       }
       try { const { query } = await import('./db'); await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch {}
     } catch (err) {
@@ -308,7 +310,9 @@ export async function getInfo(key: string) {
     try {
       const countKey = `rl:count:${encodeKey(key)}`
       const lockKey = `rl:lock:${encodeKey(key)}`
-      const [countRaw, ttl] = await Promise.all([r.get(countKey), r.pttl(lockKey)])
+      const getPromise = (typeof r.get === 'function') ? r.get(countKey) : Promise.resolve(null as string | null)
+      const pttlPromise = (typeof r.pttl === 'function') ? r.pttl(lockKey) : Promise.resolve(-1)
+      const [countRaw, ttl] = await Promise.all([getPromise, pttlPromise])
       const count = countRaw ? Number(countRaw) : 0
       const lockedUntil = (typeof ttl === 'number' && ttl > 0) ? Date.now() + ttl : undefined
       return { count, lockedUntil }

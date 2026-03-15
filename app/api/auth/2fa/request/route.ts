@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     if (!user.is_active) return NextResponse.json({ error: 'Account inactive' }, { status: 403 })
 
-    const valid = user.hashed_password ? bcrypt.compareSync(password, user.hashed_password) : false
+    const valid = user.hashed_password ? bcrypt.compareSync(password, String(user.hashed_password)) : false
     if (!valid) {
       // record failures for IP and email
       try { await incrementFailure(ipKey, { reason: 'invalid_password' }) } catch (_) {}

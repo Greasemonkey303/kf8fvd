@@ -32,7 +32,7 @@ export default async function LoginAttemptsPage({ searchParams }: { searchParams
   // Debug: log the built query parameters to server console to help diagnose DB errors
   console.log('[admin:login-attempts] query params', { where, params, pageSize, page })
   const countRows = await query<Record<string, unknown>[]>('SELECT COUNT(*) as cnt FROM login_attempts la LEFT JOIN users u ON u.id = la.user_id WHERE ' + where, params)
-  const total = (Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0
+  const total = Number((Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0)
 
   const offset = (page - 1) * pageSize
   // Ensure numeric values are passed for LIMIT/OFFSET
@@ -68,12 +68,12 @@ export default async function LoginAttemptsPage({ searchParams }: { searchParams
           </thead>
           <tbody>
             {rows.map(r => (
-              <tr key={r.id}>
-                <td>{new Date(r.created_at).toLocaleString()}</td>
-                <td>{r.user_email || r.email}</td>
-                <td>{r.ip}</td>
-                <td>{r.success ? 'Yes' : 'No'}</td>
-                <td>{r.reason}</td>
+              <tr key={String(r.id)}>
+                <td>{new Date(String(r.created_at || '')).toLocaleString()}</td>
+                <td>{String(r.user_email || r.email || '')}</td>
+                <td>{String(r.ip || '')}</td>
+                <td>{Boolean(r.success) ? 'Yes' : 'No'}</td>
+                <td>{String(r.reason || '')}</td>
               </tr>
             ))}
           </tbody>

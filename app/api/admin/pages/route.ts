@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
-  if (sanitized) sanitized = removeDebugBlockFromHtml(sanitized)
+  if (sanitized) sanitized = String(removeDebugBlockFromHtml(sanitized))
   // sanitize known metadata HTML fields to avoid storing unsafe markup
   let safeMetadata: Record<string, unknown> = metadata ? { ...metadata } : {}
     try {
@@ -137,7 +137,7 @@ export async function PUT(req: Request) {
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
-  if (sanitized) sanitized = removeDebugBlockFromHtml(sanitized)
+  if (sanitized) sanitized = String(removeDebugBlockFromHtml(sanitized))
   // sanitize known metadata HTML fields
   let safeMetadata = metadata ? { ...metadata } : {}
     try {
@@ -222,12 +222,13 @@ export async function DELETE(req: Request) {
       // collect keys referenced by this card
       const keysToDelete: string[] = []
       if (card) {
-        if (card.image) {
-          const k = extractKey(card.image)
+        const cardRec = card as Record<string, unknown>
+        if (cardRec.image) {
+          const k = extractKey(cardRec.image)
           if (k) keysToDelete.push(k)
         }
-        if (Array.isArray(card.images)) {
-          for (const im of card.images) {
+        if (Array.isArray(cardRec.images)) {
+          for (const im of cardRec.images as unknown[]) {
             const k = extractKey(im)
             if (k) keysToDelete.push(k)
           }
@@ -268,12 +269,13 @@ export async function DELETE(req: Request) {
       const card = meta[keyName]
       if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 })
       const keysToDelete: string[] = []
-      if (card.image) {
-        const k = extractKey(card.image)
+      const cardRec = card as Record<string, unknown>
+      if (cardRec.image) {
+        const k = extractKey(cardRec.image)
         if (k) keysToDelete.push(k)
       }
-      if (Array.isArray(card.images)) {
-        for (const im of card.images) {
+      if (Array.isArray(cardRec.images)) {
+        for (const im of cardRec.images as unknown[]) {
           const k = extractKey(im)
           if (k) keysToDelete.push(k)
         }

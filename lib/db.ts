@@ -48,7 +48,7 @@ void testConnection();
  */
 export async function query<T>(sql: string, params?: unknown[]): Promise<T> {
   try {
-    const safeParams = Array.isArray(params) ? params.map(p => p === undefined ? null : p) : []
+    const safeParams = (Array.isArray(params) ? params.map(p => p === undefined ? null : p) : []) as any[]
     if (process.env.DEBUG_DB) {
       console.log('[db] executing', { sql, params: safeParams, types: safeParams.map(p => (p === null ? 'null' : typeof p)) })
     }

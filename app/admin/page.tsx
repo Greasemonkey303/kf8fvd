@@ -75,7 +75,11 @@ export default function AdminPage() {
         const h = j?.hero || null
         const imgs = Array.isArray(j?.images) ? (j.images as Array<Record<string, unknown>>) : []
         const f = imgs.find((i) => Number((i as Record<string, unknown>).is_featured) === 1) || imgs[0] || null
-        if (f) setFeaturedHero({ url: f.url, title: h?.title || '' })
+        if (f) {
+          const url = String((f as Record<string, unknown>).url || '')
+          const title = String(h?.title || '')
+          setFeaturedHero({ url, title })
+        }
       } catch {}
     })()
 

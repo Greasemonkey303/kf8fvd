@@ -228,7 +228,7 @@ export default function Contact() {
                   : parsedObj && parsedObj.error && typeof (parsedObj.error as Record<string, unknown>).message === 'string'
                     ? (parsedObj.error as Record<string, unknown>).message
                     : raw || 'Send failed'
-              return reject(new Error(errMsg))
+              return reject(new Error(String(errMsg)))
             }
             resolve()
           } catch (err) { reject(err instanceof Error ? err : new Error(String(err))) }
@@ -384,7 +384,7 @@ export default function Contact() {
               )}
 
                 <div className={styles.actions}>
-                  <button ref={submitButtonRef} type="submit" disabled={loading || uploadProgress !== null || (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && !cfToken)} aria-busy={loading}>
+                  <button ref={submitButtonRef} type="submit" disabled={loading || uploadProgress !== null || (Boolean(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) && !cfToken)} aria-busy={loading}>
                     {loading ? (
                       <>
                         <span className={styles.spinner} aria-hidden></span>
@@ -407,7 +407,7 @@ export default function Contact() {
       </div>
 
       {confirmOpen && (
-        <Modal overlayClassName={styles.confirmOverlay} contentClassName={styles.confirmModal} onClose={() => setConfirmOpen(false)} initialFocusRef={confirmCancelRef} titleId="confirm-title" descriptionId="confirm-desc">
+        <Modal overlayClassName={styles.confirmOverlay} contentClassName={styles.confirmModal} onClose={() => setConfirmOpen(false)} initialFocusRef={confirmCancelRef as unknown as React.RefObject<HTMLElement>} titleId="confirm-title" descriptionId="confirm-desc">
           <h4 id="confirm-title">Confirm message</h4>
           <p><strong>Name:</strong> {name || '—'}</p>
           <p><strong>Email:</strong> {email || '—'}</p>
@@ -430,7 +430,7 @@ export default function Contact() {
 
           <div className={styles.confirmActions}>
             <button ref={confirmCancelRef} onClick={() => { if (uploadProgress !== null) cancelUpload(); else setConfirmOpen(false) }}>Cancel</button>
-            <button onClick={confirmSend} disabled={loading || uploadProgress !== null || (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && !cfToken)} aria-disabled={loading || uploadProgress !== null}>{loading ? 'Sending…' : 'Confirm & Send'}</button>
+            <button onClick={confirmSend} disabled={loading || uploadProgress !== null || (Boolean(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) && !cfToken)} aria-disabled={loading || uploadProgress !== null}>{loading ? 'Sending…' : 'Confirm & Send'}</button>
           </div>
         </Modal>
       )}

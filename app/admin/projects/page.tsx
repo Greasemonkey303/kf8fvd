@@ -567,7 +567,12 @@ export default function AdminProjects() {
                                 )}
                               </div>
                               <div style={{ flex: 1 }}>
-                                <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: (form.description_sanitized ?? (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))) }} />
+                                {(() => {
+                                  const meta = form as unknown as Record<string, unknown>
+                                  const sanitized = meta.description_sanitized
+                                  const descHtml = sanitized ? (purify ? purify.sanitize(String(sanitized)) : String(sanitized)) : (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))
+                                  return <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: descHtml }} />
+                                })()}
                             {(() => {
                               const generated = form.createDetails && form.slug ? `/projects/${form.slug}` : null
                               const linkUrl = form.external_link || generated

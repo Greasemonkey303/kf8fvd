@@ -93,11 +93,11 @@ export default async function Hero() {
         <img src={fallbackSrc} alt={altText} className={styles.bgImg} />
       </picture>
       <div className={styles.inner}>
-        <h1 id="hero-title">{hero?.title || 'KF8FVD - Amateur Radio'}</h1>
+        <h1 id="hero-title">{String(hero?.title || 'KF8FVD - Amateur Radio')}</h1>
         {hero && hero.content && String(hero.content).trim() ? (
           <div className={styles.content} dangerouslySetInnerHTML={{ __html: sanitizeHtmlServer(String(hero.content)) }} />
         ) : (
-          <p className={styles.lead}>{hero?.subtitle || 'Welcome to my ham radio site. Explore HF bands, equipment, and more.'}</p>
+          <p className={styles.lead}>{String(hero?.subtitle || 'Welcome to my ham radio site. Explore HF bands, equipment, and more.')}</p>
         )}
         <div className={styles.heroCtaWrap}>
           <a href="/contactme" className={styles.heroBtn} aria-label="Contact Me">Contact Me</a>

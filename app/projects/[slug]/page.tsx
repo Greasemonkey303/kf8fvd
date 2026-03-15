@@ -146,7 +146,7 @@ export default async function Page({ params }: Props){
               <HotspotGallery images={[ '/hotspot/hotspot-1.jpg', '/hotspot/hotspot-2.jpg', '/hotspot/hotspot-3.jpg' ]} />
             ) : (
               <>
-                {mainImg ? <div className={styles.mainPhotoWrap}><Image src={mainImgSrc} alt={String(project.title || '')} className={styles.mainPhoto} width={1200} height={700} unoptimized={typeof mainImgSrc === 'string' && (String(mainImgSrc).startsWith('data:') || String(mainImgSrc).startsWith('blob:') || String(mainImgSrc).indexOf('X-Amz-Algorithm') !== -1 || String(mainImgSrc).indexOf('minio') !== -1 || String(mainImgSrc).indexOf('127.0.0.1') !== -1)} /></div> : null}
+                {mainImg ? <div className={styles.mainPhotoWrap}><Image src={String(mainImgSrc)} alt={String(project.title || '')} className={styles.mainPhoto} width={1200} height={700} unoptimized={typeof mainImgSrc === 'string' && (String(mainImgSrc).startsWith('data:') || String(mainImgSrc).startsWith('blob:') || String(mainImgSrc).indexOf('X-Amz-Algorithm') !== -1 || String(mainImgSrc).indexOf('minio') !== -1 || String(mainImgSrc).indexOf('127.0.0.1') !== -1)} /></div> : null}
                 <ProjectMediaWrapper images={allImgs.slice(0,6)} title={String(project.title || '')} />
               </>
             )}

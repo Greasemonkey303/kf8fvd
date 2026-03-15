@@ -124,7 +124,7 @@ export const authOptions: NextAuthOptions = {
           const codeRow = Array.isArray(codes) && codes.length ? codes[0] : null
           try { console.log('[auth] verifying otp for user', user.id, { foundCode: !!codeRow }) } catch (_) {}
           if (!codeRow) return null
-          const ok = bcrypt.compareSync(String(otp), codeRow.code_hash)
+          const ok = bcrypt.compareSync(String(otp), String(codeRow.code_hash))
           try { console.log('[auth] otp compare result', !!ok) } catch (_) {}
           if (!ok) {
             try { await incrementFailure(emailKey, { reason: 'invalid_otp' }) } catch (_) {}
@@ -147,7 +147,7 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt', maxAge: 24 * 60 * 60 },
   // custom JWT encode/decode so we can set per-login expiration when "remember" is used
   jwt: {
-    encode: async ({ token, secret, maxAge }: { token: Record<string, unknown>; secret: string; maxAge?: number }) => {
+    encode: async ({ token, secret, maxAge }) => {
       try {
         const now = Math.floor(Date.now() / 1000)
         const tkn = token as Record<string, unknown>
@@ -156,7 +156,7 @@ export const authOptions: NextAuthOptions = {
         return jwt.sign(payload as Record<string, unknown>, secret, { algorithm: 'HS256' })
       } catch (_e) { return '' }
     },
-    decode: async ({ token, secret }: { token?: string; secret: string }) => {
+    decode: async ({ token, secret }) => {
       try {
         const decoded = jwt.verify(token || '', secret, { algorithms: ['HS256'] })
         return typeof decoded === 'object' ? (decoded as Record<string, unknown>) : null
@@ -186,19 +186,19 @@ export const authOptions: NextAuthOptions = {
     }
   },
   callbacks: {
-    async jwt({ token, user }: { token: Record<string, unknown>; user?: Record<string, unknown> }) {
+    async jwt({ token, user }) {
       const tk = token as Record<string, unknown>
       if (user) {
-        tk.user = user
-        if ((user as Record<string, unknown>).remember) tk.remember = true
+        tk.user = user as unknown as Record<string, unknown>
+        if ((user as unknown as Record<string, unknown>).remember) tk.remember = true
       }
       return tk
     },
-    async session({ session, token }: { session: Record<string, unknown>; token: Record<string, unknown> }) {
-      if ((token as Record<string, unknown>).user) (session as Record<string, unknown>).user = (token as Record<string, unknown>).user
+    async session({ session, token }) {
+      if ((token as Record<string, unknown>).user) (session as any).user = (token as Record<string, unknown>).user
       // expose remember flag to client if present
-      if ((token as Record<string, unknown>).remember) (session as Record<string, unknown>).remember = true
-      return session as unknown as Record<string, unknown>
+      if ((token as Record<string, unknown>).remember) (session as any).remember = true
+      return session
     }
   },
   secret: process.env.NEXTAUTH_SECRET,

@@ -138,9 +138,9 @@ export async function PATCH(req: Request) {
     if (!r || r.length === 0) return NextResponse.json({ error: 'not found' }, { status: 404 })
     const row = r[0]
     if (set_featured) {
-      await transaction(async (conn: { execute: (...args: unknown[]) => Promise<unknown> }) => {
-        await conn.execute('UPDATE hero_image SET is_featured = 0 WHERE hero_id = ?', [row.hero_id])
-        await conn.execute('UPDATE hero_image SET is_featured = 1 WHERE id = ?', [id])
+      await transaction(async (conn) => {
+        await conn.execute('UPDATE hero_image SET is_featured = 0 WHERE hero_id = ?', [Number((row as Record<string, unknown>).hero_id || 0)])
+        await conn.execute('UPDATE hero_image SET is_featured = 1 WHERE id = ?', [Number(id)])
       })
     }
     if (sort_order !== undefined) {

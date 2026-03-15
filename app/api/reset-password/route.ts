@@ -58,8 +58,8 @@ export async function POST(req: Request) {
     // update password and mark token used in a transaction
     await transaction(async (conn) => {
       const hashed = bcrypt.hashSync(password, 10)
-      await conn.execute('UPDATE users SET hashed_password = ? WHERE id = ?', [hashed, trow.user_id])
-      await conn.execute('UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE id = ?', [trow.id])
+      await conn.execute('UPDATE users SET hashed_password = ? WHERE id = ?', [hashed, Number((trow as Record<string, unknown>).user_id || 0)])
+      await conn.execute('UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE id = ?', [Number((trow as Record<string, unknown>).id || 0)])
     })
 
     return NextResponse.json({ ok: true })

@@ -41,9 +41,7 @@ export default function ResetPasswordClient({ token: initialToken = '' }: Props)
       const p = password || ''
       if (!p) { setStrengthScore(null); setStrengthFeedback(null); setPwnedCount(null); return }
         try {
-          // @ts-expect-error dynamic import of optional dev dependency
-          const zx = (await import('zxcvbn')).default
-          // @ts-expect-error unknown lib shape
+          const zx = (await import('zxcvbn')).default as any
           const res = zx(p)
           setStrengthScore(res.score)
           const msg = (res.feedback && (res.feedback.warning || '') + ' ' + (res.feedback.suggestions || []).join(' ')) || ''

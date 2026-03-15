@@ -51,14 +51,17 @@ export async function GET(req: Request) {
   try {
     const r = await getRedis()
     if (r) {
-      // list locks from redis keys rl:lock:*
-      const keys = await r.keys('rl:lock:*')
+      // list locks from redis keys rl:lock:* (guard if client doesn't expose `keys`)
+      const keys = (typeof (r as any).keys === 'function') ? await (r as any).keys('rl:lock:*') : []
       const locks: Array<{ key: string; redisKey?: string; ttlMs?: number | null; expiresAt?: number | null }> = []
       for (const k of keys) {
         try {
-          const ttl = await r.pttl(k)
-          const name = decodeURIComponent(k.slice('rl:lock:'.length))
-          locks.push({ key: name, redisKey: k, ttlMs: ttl > 0 ? ttl : null, expiresAt: ttl > 0 ? Date.now() + ttl : null })
+          let ttl: number | null = null
+          if (typeof (r as any).pttl === 'function') {
+            try { ttl = await (r as any).pttl(k) } catch (_) { ttl = null }
+          }
+          const name = decodeURIComponent(String(k).slice('rl:lock:'.length))
+          locks.push({ key: name, redisKey: k, ttlMs: (typeof ttl === 'number' && ttl > 0) ? ttl : null, expiresAt: (typeof ttl === 'number' && ttl > 0) ? Date.now() + ttl : null })
         } catch (_) {}
       }
       return NextResponse.json({ ok: true, source: 'redis', locks })

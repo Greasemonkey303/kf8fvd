@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (pageIds.length === 0) return NextResponse.json({ ok: true })
 
   try {
-    await transaction(async (connection: { execute: (...args: unknown[]) => Promise<unknown> }) => {
+    await transaction(async (connection) => {
       const placeholders = pageIds.map(() => '?').join(',')
       const res = await connection.execute(`SELECT id, metadata FROM pages WHERE id IN (${placeholders})`, pageIds)
       const rows = (res as unknown as [Array<Record<string, unknown>>, unknown])[0] || []
@@ -48,12 +48,20 @@ export async function POST(req: Request) {
 
         if (entry.parsed.kind === 'card') {
           const idx = entry.parsed.index ?? 0
-          if (!Array.isArray(meta.cards)) meta.cards = meta.cards || []
-          if (meta.cards[idx]) meta.cards[idx].position = entry.pos
+          if (!Array.isArray(meta.cards)) meta.cards = []
+          const cards = meta.cards as Array<Record<string, unknown>>
+          if (!cards[idx]) continue
+          const existing = cards[idx] as Record<string, unknown>
+          existing.position = entry.pos
+          cards[idx] = existing
         } else if (entry.parsed.kind === 'named') {
           const name = String(entry.parsed.name)
           const key = name + 'Card'
-          if (meta[key]) meta[key].position = entry.pos
+          if (meta[key]) {
+            const obj = meta[key] as Record<string, unknown>
+            obj.position = entry.pos
+            meta[key] = obj
+          }
         }
       }
 

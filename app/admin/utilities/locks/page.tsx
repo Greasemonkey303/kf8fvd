@@ -17,7 +17,7 @@ export default async function LocksPage({ searchParams }: { searchParams?: { pag
   if (q) { where += ' AND key_name LIKE ?'; params.push(`%${q}%`) }
 
   const countRows = await query<Record<string, unknown>[]>('SELECT COUNT(*) as cnt FROM auth_locks WHERE ' + where, params)
-  const total = (Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0
+  const total = Number((Array.isArray(countRows) && countRows.length) ? (countRows[0].cnt || 0) : 0)
 
   const offset = (page - 1) * pageSize
   const limitVal = Number(pageSize)
@@ -47,12 +47,12 @@ export default async function LocksPage({ searchParams }: { searchParams?: { pag
           </thead>
           <tbody>
             {rows.map(r => (
-              <tr key={r.id}>
-                <td>{r.key_name}</td>
-                <td>{new Date(r.locked_until).toLocaleString()}</td>
-                <td>{r.reason}</td>
+              <tr key={String(r.id)}>
+                <td>{String(r.key_name || '')}</td>
+                <td>{new Date(String(r.locked_until || '')).toLocaleString()}</td>
+                <td>{String(r.reason || '')}</td>
                 <td>
-                  <UnlockButton keyName={r.key_name} />
+                  <UnlockButton keyName={String(r.key_name || '')} />
                 </td>
               </tr>
             ))}

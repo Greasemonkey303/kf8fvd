@@ -171,6 +171,11 @@
 .btnDanger { background:#7b1f1f; color:#fff; padding:8px 12px; border-radius:8px; border:none; cursor:pointer; transition: transform .08s ease, box-shadow .12s ease, background .12s ease }
 .btnDanger:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(123,31,31,0.18) }
 .btnDanger:focus { outline: 3px solid rgba(123,31,31,0.14); outline-offset:2px }
+/* Primary button for admin actions */
+.btnPrimary { background: linear-gradient(90deg,#16a34a,#10b981); color:#fff; padding:10px 14px; border-radius:10px; border:none; cursor:pointer; font-weight:700; box-shadow: 0 10px 30px rgba(16,185,129,0.12); transition: transform .08s ease, box-shadow .12s ease }
+.btnPrimary:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(16,185,129,0.18) }
+.btnPrimary:focus { outline: 3px solid rgba(16,185,129,0.12); outline-offset:2px }
+.formActions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; align-items:center }
 /* Toggle switch */
 .switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer }
 .switch input { display:none }
@@ -250,6 +255,12 @@
 .checkboxInput:focus + .checkboxBox { outline: 3px solid rgba(11,132,255,0.18); outline-offset: 2px }
 .checkboxInput:checked + .checkboxBox { background: linear-gradient(90deg,#164f2a,#0f6b37); border-color: rgba(22,163,74,0.12); color: #fff; box-shadow: 0 8px 20px rgba(22,163,74,0.08); transform: translateY(-1px) }
 .checkboxInput:checked + .checkboxBox svg { opacity:1 }
+
+/* Role chips for multi-select in admin create user */
+.roleChips { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px }
+.roleChip { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); color:#cfe8ff; cursor:pointer; transition: transform .08s ease, box-shadow .12s ease }
+.roleChipSelected { background: linear-gradient(90deg,#164f2a,#0f6b37); color:#fff; border-color: rgba(22,163,74,0.12); box-shadow: 0 8px 20px rgba(22,163,74,0.06); transform: translateY(-1px) }
+
 
 /* small spinner used in admin save controls */
 .spinner { display:inline-block; border:2px solid rgba(255,255,255,0.16); border-top-color: currentColor; border-radius:50%; animation: spin .9s linear infinite }

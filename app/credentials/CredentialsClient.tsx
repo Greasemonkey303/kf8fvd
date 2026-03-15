@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import styles from './credentials.module.css'
 import SectionGrid from '@/components/credentials/SectionGrid'
+import type { Item } from '@/components/credentials/CredentialCard'
 
 export default function CredentialsClient() {
   const [sections, setSections] = useState<Record<string, Record<string, unknown>[]>>({})
@@ -37,7 +38,7 @@ export default function CredentialsClient() {
         {loading ? <div className="center-max">Loading credentials…</div> : null}
         {orderedSlugs.map((sec) => (
           <div key={sec} style={{ marginBottom: 18 }}>
-            <SectionGrid title={sectionMeta[sec]?.name || sec} subtitle={sectionMeta[sec]?.subtitle || ''} items={sections[sec] || []} />
+            <SectionGrid title={sectionMeta[sec]?.name || sec} subtitle={sectionMeta[sec]?.subtitle || ''} items={(sections[sec] || []) as unknown as Item[]} />
           </div>
         ))}
       </section>

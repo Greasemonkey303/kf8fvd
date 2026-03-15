@@ -143,7 +143,8 @@ export async function POST(req: Request) {
             adif_json
           ]
           const [res] = await conn.execute(sql, params)
-          const affected = (res && typeof (res as Record<string, unknown>).affectedRows === 'number') ? Number((res as Record<string, unknown>).affectedRows) : 0
+          const resObj = res as unknown as Record<string, unknown>
+          const affected = (res && typeof resObj.affectedRows === 'number') ? Number(resObj.affectedRows) : 0
           if (affected > 0) inserted++
           else skipped++
           // no-op: rely on returned counts only

@@ -87,7 +87,7 @@ export default function UserEditor({ params }: { params: { id: string } }) {
             </form>
           )}
           {showDeleteConfirm && (
-            <Modal overlayClassName="modal-overlay" contentClassName="modal card" onClose={() => setShowDeleteConfirm(false)} initialFocusRef={deleteCancelRef} titleId="user-delete-title">
+            <Modal overlayClassName="modal-overlay" contentClassName="modal card" onClose={() => setShowDeleteConfirm(false)} initialFocusRef={deleteCancelRef as unknown as React.RefObject<HTMLElement>} titleId="user-delete-title">
               <h4 id="user-delete-title">Confirm delete</h4>
               <p>Are you sure you want to delete this user? This action cannot be undone.</p>
               <div className="flex gap-2">
