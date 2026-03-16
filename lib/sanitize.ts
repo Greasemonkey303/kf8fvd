@@ -1,6 +1,10 @@
-/* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports */
 // Server-side sanitization helpers. Prefer `isomorphic-dompurify` when available,
 // fall back to JSDOM + dompurify, and finally to a conservative regex/escape.
+import isomorphicDompurify from 'isomorphic-dompurify'
+import createDOMPurify from 'dompurify'
+import { JSDOM } from 'jsdom'
+
+type DomPurifyLike = { sanitize?: (input: string) => string }
 export function escapeHtml(input: string) {
   return String(input || '')
     .replace(/&/g, '&amp;')
@@ -13,9 +17,9 @@ export function escapeHtml(input: string) {
 export function sanitizeHtmlServer(input: string): string {
   const s = String(input || '')
   if (!s) return ''
-  // try synchronous isomorphic-dompurify first (works in Node)
+  // try isomorphic-dompurify first (works in Node)
   try {
-    const iso = require('isomorphic-dompurify')
+    const iso = isomorphicDompurify as unknown as DomPurifyLike
     if (iso && typeof iso.sanitize === 'function') {
       try { return iso.sanitize(s) } catch { /* fallthrough */ }
     }
@@ -25,10 +29,9 @@ export function sanitizeHtmlServer(input: string): string {
 
   // try jsdom + dompurify
   try {
-    const createDOMPurify = require('dompurify')
-    const { JSDOM } = require('jsdom')
     const window = (new JSDOM('')).window
-    const DOMPurify = createDOMPurify(window)
+    const createDP = createDOMPurify as unknown as (win: unknown) => DomPurifyLike
+    const DOMPurify = createDP(window)
     if (DOMPurify && typeof DOMPurify.sanitize === 'function') {
       try { return DOMPurify.sanitize(s) } catch { /* fallthrough */ }
     }
