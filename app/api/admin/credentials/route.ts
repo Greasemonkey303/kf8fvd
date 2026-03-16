@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'A credential with this section and slug already exists' }, { status: 409 })
     }
   } catch (e) {
-    // continue — uniqueness check failed
+    void e // continue — uniqueness check failed
   }
 
   // sanitize description server-side
@@ -66,8 +66,9 @@ export async function POST(req: Request) {
     try {
       const metaObj = typeof body.metadata === 'string' ? JSON.parse(body.metadata) : body.metadata
       metadata = JSON.stringify(metaObj)
-    } catch (_e) {
-      try { metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata) } catch (_err) { metadata = null }
+    } catch (e) {
+      void e
+      try { metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata) } catch (err) { void err; metadata = null }
     }
   }
 
@@ -108,8 +109,9 @@ export async function PUT(req: Request) {
     try {
       const metaObj = typeof metadata === 'string' ? JSON.parse(metadata) : metadata
       metaStr = JSON.stringify(metaObj)
-    } catch (_e) {
-      try { metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata) } catch (_err) { metaStr = null }
+    } catch (e) {
+      void e
+      try { metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata) } catch (err) { void err; metaStr = null }
     }
     await query('UPDATE credentials SET section = ?, slug = ?, s3_prefix = ?, title = ?, tag = ?, authority = ?, image_path = ?, description = ?, metadata = ?, is_published = ?, sort_order = ? WHERE id = ?', [section, slug, s3PrefixFinal || null, title, tag || null, authority || null, image_path || null, safeDescription, metaStr, is_published ? 1 : 0, sort_order || 0, id])
   } else {

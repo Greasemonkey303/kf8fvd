@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   if (typeof title !== 'string' || title.length > 255) return NextResponse.json({ error: 'Invalid title' }, { status: 400 })
   if (image_path && image_path.length > 1024) return NextResponse.json({ error: 'Invalid image_path' }, { status: 400 })
   if (external_link) {
-    try { new URL(external_link, 'http://example.com') } catch (_e) { return NextResponse.json({ error: 'Invalid external_link' }, { status: 400 }) }
+    try { new URL(external_link, 'http://example.com') } catch (e) { void e; return NextResponse.json({ error: 'Invalid external_link' }, { status: 400 }) }
   }
 
   // sanitize description server-side
@@ -70,9 +70,10 @@ export async function POST(req: Request) {
         ;(metaObj as Record<string, unknown>).details = DOMPurify.sanitize(String(d))
       }
       metadata = JSON.stringify(metaObj)
-    } catch (_e) {
+    } catch (e) {
+      void e
       // fall back to stringified value
-      try { metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata) } catch (_err) { metadata = null }
+      try { metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata) } catch (err) { void err; metadata = null }
     }
   }
 
@@ -110,8 +111,9 @@ export async function PUT(req: Request) {
         ;(metaObj as Record<string, unknown>).details = DOMPurify.sanitize(String(d))
       }
       metaStr = JSON.stringify(metaObj)
-    } catch (_e) {
-      try { metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata) } catch (_err) { metaStr = null }
+    } catch (e) {
+      void e
+      try { metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata) } catch (err) { void err; metaStr = null }
     }
     await query('UPDATE projects SET slug = ?, title = ?, subtitle = ?, image_path = ?, description = ?, external_link = ?, metadata = ?, is_published = ?, sort_order = ? WHERE id = ?', [slug, title, subtitle || null, image_path || null, safeDescription, external_link || null, metaStr, is_published ? 1 : 0, sort_order || 0, id])
   } else {

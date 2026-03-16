@@ -27,7 +27,7 @@ export function getMetricsTtlSec(): number {
   return Number(process.env.METRICS_TTL_SEC ?? 30 * 24 * 3600)
 }
 
-export default {
+const rateLimiterConfig = {
   getRateWindowMs,
   getRateMax,
   getRateLockMs,
@@ -35,3 +35,4 @@ export default {
   getMetricsPrefix,
   getMetricsTtlSec,
 }
+export default rateLimiterConfig

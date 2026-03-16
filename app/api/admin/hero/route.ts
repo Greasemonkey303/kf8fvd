@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { query, transaction } from '@/lib/db'
+import { query } from '@/lib/db'
 
 type Body = { id?: number; title?: string; subtitle?: string; content?: string }
 
@@ -14,7 +14,6 @@ export async function GET(req: Request) {
     const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero ORDER BY id ASC')
     return NextResponse.json({ items: rows })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('api/admin/hero GET error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
@@ -34,7 +33,6 @@ export async function POST(req: Request) {
     const [newRow] = await query<Record<string, unknown>[]>('SELECT * FROM hero ORDER BY id DESC LIMIT 1')
     return NextResponse.json({ item: newRow })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('api/admin/hero POST error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
@@ -57,7 +55,6 @@ export async function PUT(req: Request) {
     const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero WHERE id = ?', [body.id])
     return NextResponse.json({ item: rows[0] })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('api/admin/hero PUT error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }

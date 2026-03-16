@@ -39,13 +39,13 @@ function getImageSrc(pathIn?: string) {
         const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
         if (bucket && p.startsWith(bucket + '/')) p = p.slice(bucket.length + 1)
         return buildPublicUrl(p)
-      } catch (e) {
+      } catch {
         return buildPublicUrl(path)
       }
     }
     if (path.startsWith('http') || path.startsWith('/')) return path
     return buildPublicUrl(path)
-  } catch (e) {
+  } catch {
     return path
   }
 }
@@ -94,7 +94,6 @@ export default function ProjectsList({ items, loading, title, editPathPrefix, sh
                       onChange={(e) => {
                         if (!onSelectionChange) return
                         const checked = e.currentTarget.checked
-                        const isChecked = Array.isArray(selectedIds) && selectedIds.some(s => String(s) === String(i.id))
                         const next = checked ? ([...(selectedIds || []), i.id]) : ((selectedIds || []).filter(s => String(s) !== String(i.id)))
                         // dedupe
                         const dedup = Array.from(new Set(next.map(s => String(s)))).map(s => {
@@ -124,7 +123,7 @@ export default function ProjectsList({ items, loading, title, editPathPrefix, sh
                   </div>
                 </div>
 
-                {(i as any).is_published === 1 ? <span className={styles.statusBadge}>Published</span> : <span className={styles.statusBadgeDraft}>Draft</span>}
+                {i.is_published === 1 ? <span className={styles.statusBadge}>Published</span> : <span className={styles.statusBadgeDraft}>Draft</span>}
               </div>
 
               <div className="flex gap-2">

@@ -63,7 +63,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ key, publicUrl })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('direct upload error', err)
     let msg = 'Unknown error'
     const payload: Record<string, unknown> = {}

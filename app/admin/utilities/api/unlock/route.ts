@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   try {
     await query('INSERT INTO admin_actions (admin_user_id, action, target_key) VALUES (?, ?, ?)', [admin.id, 'unlock', key])
   } catch (err) {
-    try { console.warn('[admin/utilities] failed to insert admin_actions', err) } catch (_) {}
+    try { console.warn('[admin/utilities] failed to insert admin_actions', err) } catch (e) { void e }
   }
   return NextResponse.json({ ok: true })
 }

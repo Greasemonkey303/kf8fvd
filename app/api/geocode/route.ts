@@ -9,6 +9,7 @@ async function ensureCache(): Promise<Record<string, { lat:number; lon:number }>
     const txt = await fs.readFile(CACHE_PATH, 'utf8');
     return JSON.parse(txt);
   } catch (e) {
+    void e
     await fs.mkdir(path.dirname(CACHE_PATH), { recursive: true });
     await fs.writeFile(CACHE_PATH, JSON.stringify({}), 'utf8');
     return {};
@@ -28,6 +29,7 @@ async function geocodeOne(q: string): Promise<{ lat:number; lon:number } | null>
     if (!Array.isArray(js) || js.length === 0) return null;
     return { lat: parseFloat(js[0].lat), lon: parseFloat(js[0].lon) };
   } catch (e) {
+    void e
     return null;
   }
 }
@@ -60,6 +62,7 @@ export async function POST(request: Request) {
     await saveCache(cache);
     return NextResponse.json({ ok: true, results: result });
   } catch (e) {
+    void e
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
 }

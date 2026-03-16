@@ -54,7 +54,7 @@ export default function PrivacyPage() {
 
       <h2>Local caching</h2>
       <p>
-        For performance, some site features use your browser's localStorage to
+        For performance, some site features use your browser&apos;s localStorage to
         cache data (for example, certain dashboard widgets). This cached data
         stays on your device and is not shared with third parties.
       </p>

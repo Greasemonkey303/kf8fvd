@@ -41,7 +41,6 @@ export async function GET(req: Request) {
 
     return new NextResponse(new Uint8Array(buffer), { status: 200, headers: { 'Content-Type': contentType } })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('uploads.get error', err)
     let msg = 'Unknown error'
     if (err instanceof Error) msg = err.message

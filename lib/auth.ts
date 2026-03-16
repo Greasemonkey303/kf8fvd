@@ -29,4 +29,5 @@ export async function isAdminEmail(email: string) {
   return Array.isArray(rows) && rows.length > 0
 }
 
-export default { getSessionServer, requireAdmin, isAdminEmail }
+const auth = { getSessionServer, requireAdmin, isAdminEmail }
+export default auth

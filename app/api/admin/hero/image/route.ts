@@ -46,7 +46,7 @@ export async function POST(req: Request) {
         })
 
         // fetch object into a buffer
-          try {
+              try {
           const objStream = await minioClient.getObject(bucket, objectKey) as unknown
           const chunks: Buffer[] = []
           if (Buffer.isBuffer(objStream)) {
@@ -58,13 +58,14 @@ export async function POST(req: Request) {
           }
           const sourceBuffer = Buffer.concat(chunks)
 
-          // dynamic require of sharp to avoid bundler issues if not installed
+          // dynamic import of sharp to avoid bundler issues if not installed
           type SharpFunc = (input: Buffer) => { webp: (opts?: { quality?: number }) => { toBuffer: () => Promise<Buffer> } }
           let sharpLib: SharpFunc | null = null
           try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            sharpLib = require('sharp') as unknown as SharpFunc
+            const mod = await import('sharp')
+            sharpLib = (mod && (mod.default || mod)) as unknown as SharpFunc
           } catch (e) {
+            void e
             sharpLib = null
           }
 
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
                   await query('ALTER TABLE hero_image ADD COLUMN variants JSON DEFAULT NULL')
                 }
               } catch (e) {
-                // ignore failures - schema migration may be handled separately
+                void e /* ignore failures - schema migration may be handled separately */
               }
 
               // update row with variants JSON
@@ -99,31 +100,26 @@ export async function POST(req: Request) {
                 }
               } catch (e) {
                 // non-fatal
-                // eslint-disable-next-line no-console
                 console.error('failed to update hero_image variants', e)
               }
             } catch (e) {
               // conversion/upload failed, continue
-              // eslint-disable-next-line no-console
               console.error('webp conversion/upload failed', e)
             }
           }
         } catch (e) {
           // fetching object failed; log and continue
-          // eslint-disable-next-line no-console
           console.error('minio getObject for variant generation failed', e)
         }
       }
     } catch (e) {
       // non-blocking: log and continue
-      // eslint-disable-next-line no-console
       console.error('variant generation error', e)
     }
 
     const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
     return NextResponse.json({ images: rows })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('api/admin/hero/image POST error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
@@ -155,7 +151,6 @@ export async function PATCH(req: Request) {
     const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [row.hero_id])
     return NextResponse.json({ images })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('api/admin/hero/image PATCH error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
@@ -205,13 +200,11 @@ export async function DELETE(req: Request) {
             await minioClient.removeObjects(bucket, [objectKey])
           } catch (e) {
             // log but do not block deletion of DB row
-            // eslint-disable-next-line no-console
             console.error('minio removeObjects error', e)
           }
         }
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('s3 delete attempt failed', e)
     }
 
@@ -219,7 +212,6 @@ export async function DELETE(req: Request) {
     const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
     return NextResponse.json({ images })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('api/admin/hero/image DELETE error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }

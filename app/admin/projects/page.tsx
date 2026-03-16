@@ -27,15 +27,15 @@ export default function AdminProjects() {
   const [detailsExpanded, setDetailsExpanded] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
 
-  async function load() {
+  const load = React.useCallback(async () => {
     setLoading(true)
     const res = await fetch('/api/admin/projects')
     const data = await res.json()
     setItems(data.items || [])
     setLoading(false)
-  }
+  }, [])
 
-  useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t) }, [])
+  useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t) }, [load])
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
 
@@ -44,7 +44,7 @@ export default function AdminProjects() {
     try { return String(err) } catch { return 'Unknown error' }
   }
 
-  async function submit(e?: React.FormEvent) {
+  const submit = React.useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!form.slug || !form.title) return
     const metadata = form.createDetails ? { details: form.details, images: detailImages } : undefined
@@ -59,8 +59,8 @@ export default function AdminProjects() {
     setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
     setDetailImages([])
     await load()
-    try { toast?.showToast && toast.showToast('Project created', 'success') } catch (err: unknown) { console.error('toast error', getErrMsg(err)) }
-  }
+    try { if (toast?.showToast) toast.showToast('Project created', 'success') } catch (err: unknown) { console.error('toast error', getErrMsg(err)) }
+  }, [form, detailImages, load, toast])
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(query), 300)
@@ -78,13 +78,13 @@ export default function AdminProjects() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [form, detailImages])
+  }, [submit])
 
   // Debounced autosave to server when slug exists
   const autosaveTimer = React.useRef<number | null>(null)
   // Draft autosave (localStorage). We avoid creating server records until user explicitly submits.
   const draftIdRef = React.useRef<string | null>(null)
-  const draftKey = () => `admin_project_draft:${form.slug || draftIdRef.current}`
+  
 
   // Generate a stable temp draft id once (do not call Date.now() during render)
   useEffect(() => {
@@ -97,13 +97,13 @@ export default function AdminProjects() {
     autosaveTimer.current = window.setTimeout(() => {
       try {
         const payload = { form, detailImages, updated: Date.now() }
-        try { localStorage.setItem(draftKey(), JSON.stringify(payload)) } catch {}
+        try { localStorage.setItem(`admin_project_draft:${form.slug || draftIdRef.current}`, JSON.stringify(payload)) } catch {}
         // lightweight toast for autosave
-        try { toast?.showToast && toast.showToast('Draft saved locally', 'info') } catch{}
+        try { if (toast?.showToast) toast.showToast('Draft saved locally', 'info') } catch{}
       } catch {}
     }, 800)
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
-  }, [form, detailImages])
+  }, [form, detailImages, toast])
 
   // On mount, restore any temp draft (when slug not yet set)
   useEffect(()=>{
@@ -115,28 +115,32 @@ export default function AdminProjects() {
         if (p && p.form) {
           setForm(f=>({ ...f, ...p.form }))
           setDetailImages(p.detailImages || [])
-          try { toast?.showToast && toast.showToast('Restored unsaved draft', 'info') } catch{}
+          try { if (toast?.showToast) toast.showToast('Restored unsaved draft', 'info') } catch{}
         }
       }
     } catch {}
-  }, [])
+  }, [toast])
 
   // When slug becomes available, if there's a draft for that slug, load it
   useEffect(()=>{
     if (!form.slug) return
+    let t: number | null = null
     try {
       const key = `admin_project_draft:${form.slug}`
       const raw = localStorage.getItem(key)
       if (raw) {
         const p = JSON.parse(raw)
         if (p && p.form) {
-          setForm(f=>({ ...f, ...p.form }))
-          setDetailImages(p.detailImages || [])
-          try { toast?.showToast && toast.showToast('Loaded draft for slug', 'info') } catch{}
+          t = window.setTimeout(() => {
+            setForm(f=>({ ...f, ...p.form }))
+            setDetailImages(p.detailImages || [])
+            try { if (toast?.showToast) toast.showToast('Loaded draft for slug', 'info') } catch{}
+          }, 0)
         }
       }
     } catch {}
-  }, [form.slug])
+    return () => { if (t) window.clearTimeout(t) }
+  }, [form.slug, toast])
 
   // Keep the contentEditable DOM in sync only when the editor is not focused.
   // This avoids React re-setting innerHTML on every render which moves the caret to start.
@@ -188,7 +192,7 @@ export default function AdminProjects() {
       const d = await direct.json()
       if (direct.ok && d.publicUrl) {
         setForm({...form, image_path: d.publicUrl || d.key})
-        try { toast?.showToast && toast.showToast('Main image uploaded', 'success') } catch(e){}
+        try { if (toast?.showToast) toast.showToast('Main image uploaded', 'success') } catch {}
         setUploadProgress(0)
         return
       }
@@ -294,7 +298,7 @@ export default function AdminProjects() {
         setDeletedUndoBuffer({ items: deleted })
         setSelectedIds([])
         await load()
-        try { toast?.showToast && toast.showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success') } catch{}
+        try { if (toast?.showToast) toast.showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success') } catch{}
         setTimeout(()=> setDeletedUndoBuffer(null), 10000)
         return
       }
@@ -306,7 +310,7 @@ export default function AdminProjects() {
       }
       await load()
       setSelectedIds([])
-      try { toast?.showToast && toast.showToast('Bulk action complete', 'success') } catch{}
+      try { if (toast?.showToast) toast.showToast('Bulk action complete', 'success') } catch{}
     } catch (e) {
       alert('Bulk action failed: ' + String(e))
     }
@@ -323,7 +327,7 @@ export default function AdminProjects() {
     }
     setDeletedUndoBuffer(null)
     await load()
-    try { toast?.showToast && toast.showToast('Undo complete', 'success') } catch{}
+    try { if (toast?.showToast) toast.showToast('Undo complete', 'success') } catch{}
   }
 
   // Upload multiple files for details images with progress and limits
@@ -350,7 +354,7 @@ export default function AdminProjects() {
           if (xhr.status >= 200 && xhr.status < 300) {
             const url = res.publicUrl || res.key
                 setDetailImages(prev => [...prev.slice(0,5), url])
-                try { toast.showToast && toast.showToast('Detail image uploaded', 'success') } catch(e){}
+                try { if (toast.showToast) toast.showToast('Detail image uploaded', 'success') } catch {}
             setUploadProgress(0)
             resolve()
           } else {
@@ -495,7 +499,7 @@ export default function AdminProjects() {
                       try { localStorage.removeItem(`admin_project_draft:${form.slug || draftIdRef.current}`) } catch{}
                       setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
                       setDetailImages([])
-                      try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch{}
+                      try { if (toast?.showToast) toast.showToast('Draft discarded', 'info') } catch{}
                     }}>Discard draft</button>
                 </div>
                 </form>
@@ -536,6 +540,14 @@ export default function AdminProjects() {
                     <button className={styles.btnGhost} onClick={()=>performBulkAction('publish')}>Publish</button>
                     <button className={styles.btnGhost} onClick={()=>performBulkAction('unpublish')}>Unpublish</button>
                     <button className={styles.btnDanger} onClick={()=>performBulkAction('delete')}>Delete</button>
+                  </div>
+                ) : null}
+
+                {deletedUndoBuffer && deletedUndoBuffer.items ? (
+                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                    <div className={styles.smallMuted}>Deleted {deletedUndoBuffer.items.length} item(s)</div>
+                    <button className={styles.btnGhost} onClick={undoDelete}>Undo</button>
+                    <button className={styles.btnGhost} onClick={()=>setDeletedUndoBuffer(null)}>Dismiss</button>
                   </div>
                 ) : null}
 

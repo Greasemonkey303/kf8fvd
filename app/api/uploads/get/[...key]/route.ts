@@ -64,7 +64,6 @@ export async function GET(req: Request, ctx: { params?: unknown }) {
 
     return new NextResponse(new Uint8Array(buffer), { status: 200, headers })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('uploads.get (catch) error', err)
     let msg = 'Unknown error'
     if (err instanceof Error) msg = err.message

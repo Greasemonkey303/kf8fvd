@@ -64,6 +64,7 @@ export async function POST(req: Request) {
               }
             } catch (e) {
               // ignore prefix-specific errors
+                void e
               continue
             }
           }

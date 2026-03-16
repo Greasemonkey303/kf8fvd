@@ -89,6 +89,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'file-too-large', maxAllowed: MAX_UPLOAD_SIZE }, { status: 400 })
       }
     } catch (e) {
+      void e
       // ignore Buffer errors on unsupported runtimes
     }
     const recs = parseAdifRecords(txt)
@@ -149,6 +150,7 @@ export async function POST(req: Request) {
           else skipped++
           // no-op: rely on returned counts only
         } catch (e) {
+          void e
           // skip problematic records
           skipped++
           // ignore record-level errors when inserting
@@ -158,7 +160,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ inserted, skipped, totalParsed: recs.length })
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error('calllog upload error', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

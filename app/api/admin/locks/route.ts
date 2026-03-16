@@ -3,6 +3,7 @@ import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
 
 export async function GET(req: Request) {
+  void req
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     await query('DELETE FROM auth_locks WHERE key_name = ?', [keyName])
     return NextResponse.json({ success: true })
   } catch (err) {
+    void err
     return NextResponse.json({ error: 'Failed to unlock' }, { status: 500 })
   }
 }

@@ -73,8 +73,8 @@ export async function POST(req: Request) {
     const honeypot = form.get('hp')?.toString() || ''
     if (honeypot.trim()) {
       console.warn('[api/contact] honeypot triggered', ip)
-      try { await incrementFailure(ipKey, { reason: 'honeypot' }) } catch (_) {}
-      if (emailKey) try { await incrementFailure(emailKey, { reason: 'honeypot' }) } catch (_) {}
+      try { await incrementFailure(ipKey, { reason: 'honeypot' }) } catch (e) { void e }
+      if (emailKey) try { await incrementFailure(emailKey, { reason: 'honeypot' }) } catch (e) { void e }
       return jsonErr('SPAM', 'Spam detected', undefined, 400)
     }
 
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     const CF_SECRET = process.env.CF_TURNSTILE_SECRET
     if (CF_SECRET) {
       if (!cfToken) {
-        try { await incrementFailure(ipKey, { reason: 'turnstile_missing' }) } catch (_) {}
+        try { await incrementFailure(ipKey, { reason: 'turnstile_missing' }) } catch (e) { void e }
         return jsonErr('MISSING_CAPTCHA', 'Missing CAPTCHA token', undefined, 400)
       }
       const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       const vr = await verifyRes.json()
       if (!vr.success) {
         console.warn('[api/contact] turnstile failed', vr)
-        try { await incrementFailure(ipKey, { reason: 'turnstile_failed' }) } catch (_) {}
+        try { await incrementFailure(ipKey, { reason: 'turnstile_failed' }) } catch (e) { void e }
         return jsonErr('CAPTCHA_FAILED', 'CAPTCHA verification failed', vr, 400)
       }
     }
@@ -115,17 +115,17 @@ export async function POST(req: Request) {
         const bytes = uint8.byteLength
         // per-file size check
         if (bytes > MAX_PER_FILE) {
-          try { await incrementFailure(ipKey, { reason: 'file_too_large' }) } catch (_) {}
+          try { await incrementFailure(ipKey, { reason: 'file_too_large' }) } catch (e) { void e }
           return jsonErr('FILE_TOO_LARGE', 'An attachment exceeds the per-file size limit', { filename: file.name }, 413)
         }
         totalBytes += bytes
         if (totalBytes > MAX_TOTAL) {
-          try { await incrementFailure(ipKey, { reason: 'total_size_exceeded' }) } catch (_) {}
+          try { await incrementFailure(ipKey, { reason: 'total_size_exceeded' }) } catch (e) { void e }
           return jsonErr('TOTAL_TOO_LARGE', 'Total attachments exceed 50MB limit', undefined, 413)
         }
         const mime = file.type || ''
         if (!isAllowedMime(mime, file.name)) {
-          try { await incrementFailure(ipKey, { reason: 'unsupported_file_type' }) } catch (_) {}
+          try { await incrementFailure(ipKey, { reason: 'unsupported_file_type' }) } catch (e) { void e }
           return jsonErr('UNSUPPORTED_FILE_TYPE', 'Attachment type is not allowed', { filename: file.name, type: mime }, 415)
         }
         const base64 = Buffer.from(uint8).toString('base64')
@@ -156,10 +156,10 @@ export async function POST(req: Request) {
             await fs.writeFile(filePath, Buffer.from(a.content || '', 'base64'))
             savedAttachmentsMeta.push({ filename: safeName, type: a.type || 'application/octet-stream', dir: uploadDir })
           } catch (e) {
-            console.error('[api/contact] failed to save attachment', e)
-            // fallback to metadata without dir
-            savedAttachmentsMeta.push({ filename: a.filename || 'file', type: a.type || 'application/octet-stream' })
-          }
+              console.error('[api/contact] failed to save attachment', e)
+              // fallback to metadata without dir
+              savedAttachmentsMeta.push({ filename: a.filename || 'file', type: a.type || 'application/octet-stream' })
+            }
         }
       } catch (e) {
         console.error('[api/contact] failed to persist attachments to disk', e)
@@ -231,8 +231,8 @@ export async function POST(req: Request) {
     if (!res.ok) {
       const text = await res.text()
       console.error('[api/contact] SendGrid error', res.status, text)
-      try { await incrementFailure(ipKey, { reason: 'sendgrid_error' }) } catch (_) {}
-      if (emailKey) try { await incrementFailure(emailKey, { reason: 'sendgrid_error' }) } catch (_) {}
+      try { await incrementFailure(ipKey, { reason: 'sendgrid_error' }) } catch (e) { void e }
+      if (emailKey) try { await incrementFailure(emailKey, { reason: 'sendgrid_error' }) } catch (e) { void e }
       return jsonErr('SENDGRID_ERROR', 'SendGrid error', text, 502)
     }
 

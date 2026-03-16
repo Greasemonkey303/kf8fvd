@@ -11,6 +11,7 @@ function slugify(s: string) {
 export async function GET(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  void req
   const rows = await query('SELECT id, slug, name, subtitle, image_path, metadata, sort_order, updated_at FROM credential_sections ORDER BY sort_order ASC, updated_at DESC')
   return NextResponse.json({ items: rows || [] })
 }
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   try {
     const exists = await query('SELECT id FROM credential_sections WHERE slug = ? LIMIT 1', [slug])
     if (Array.isArray(exists) && exists.length > 0) return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
-  } catch (e) { }
+  } catch (e) { void e }
 
   // sanitize subtitle
   const { window } = new JSDOM('')

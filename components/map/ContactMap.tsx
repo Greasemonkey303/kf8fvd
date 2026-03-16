@@ -1,9 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 "use client"
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 type Geo = { lat: number; lon: number };
+
+type LeafletLike = {
+  map: (el: HTMLElement, opts?: Record<string, unknown>) => unknown;
+  tileLayer: (url: string, opts?: Record<string, unknown>) => { addTo: (map: unknown) => void };
+  circleMarker: (coords: [number, number], opts?: Record<string, unknown>) => { bindPopup?: (s: string) => void; bindTooltip?: (s: string, opts?: unknown) => void; addTo?: (map: unknown) => void };
+  markerClusterGroup?: () => unknown;
+  heatLayer?: (pts: Array<[number, number, number]>, opts?: Record<string, unknown>) => unknown;
+}
 
 function loadCss(href: string) {
   if (document.querySelector(`link[href="${href}"]`)) return;
@@ -12,7 +20,8 @@ function loadCss(href: string) {
 
 function loadScript(src: string) {
   return new Promise<void>((res, rej) => {
-    if ((window as any).L) return res();
+    const existingL = (window as unknown as Record<string, unknown>)['L'];
+    if (existingL) return res();
     const s = document.createElement('script'); s.src = src; s.async = true; s.onload = () => res(); s.onerror = rej; document.body.appendChild(s);
   });
 }
@@ -44,7 +53,7 @@ function parseAdif(txt: string) {
       if (Object.keys(e).length>0) entries.push(e);
     }
     return entries;
-  } catch(e) { return [] }
+  } catch { return [] }
 }
 
 export default function ContactMap(){
@@ -60,36 +69,46 @@ export default function ContactMap(){
   const markersLayerRef = useRef<unknown|null>(null);
   const heatLayerRef = useRef<unknown|null>(null);
   const LRef = useRef<unknown|null>(null);
+  
+  function removeLayerFromMap(layer: unknown) {
+    try {
+      const mapObj = mapRef.current as unknown as { removeLayer?: (l: unknown) => void };
+      mapObj.removeLayer?.(layer);
+    } catch {}
+  }
+
+  function addLayerToMap(layer: unknown) {
+    try {
+      const mapObj = mapRef.current as unknown as { addLayer?: (l: unknown) => void };
+      mapObj.addLayer?.(layer);
+    } catch {}
+  }
   const [showSliderPanel, setShowSliderPanel] = useState(false);
   const [showLegendPanel, setShowLegendPanel] = useState(false);
   const [modeFilters, setModeFilters] = useState<{[k:string]:boolean}>({ FM:true, DSTAR:true, DMR:true, OTHER:true });
   const [isMobile, setIsMobile] = useState(false);
 
   function getCssVar(name: string, fallback = '') {
-    try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback; } catch(e) { return fallback; }
+    try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback; } catch { return fallback; }
   }
 
-  // helper: parse ADIF/ISO-ish date strings (YYYYMMDD or YYYY-MM-DD)
-  function parseDateString(s?: string) {
-    if (!s) return null;
-    const t = s.trim();
-    if (/^\d{8}$/.test(t)) {
-      const y = +t.slice(0,4); const m = +t.slice(4,6); const d = +t.slice(6,8);
-      return new Date(Date.UTC(y,m-1,d));
-    }
-    if (/^\d{4}-\d{2}-\d{2}/.test(t)) return new Date(t);
-    return new Date(t);
-  }
-
-  function withinDays(entry: Record<string, unknown>, days:number) {
+  // helper: parse ADIF/ISO-ish date strings (YYYYMMDD or YYYY-MM-DD) and filter by days
+  const withinDays = useCallback((entry: Record<string, unknown>, days:number) => {
     if (!days || days<=0) return true;
     const raw = (entry.qso_date ?? entry.date ?? entry.qsoDate ?? entry.DATE ?? entry.QSO_DATE) as unknown;
     const dStr = typeof raw === 'string' ? raw : (typeof raw === 'number' ? String(raw) : undefined);
-    const dt = parseDateString(dStr);
+    if (!dStr) return false;
+    const t = dStr.trim();
+    let dt: Date | null = null;
+    if (/^\d{8}$/.test(t)) {
+      const y = +t.slice(0,4); const m = +t.slice(4,6); const d = +t.slice(6,8);
+      dt = new Date(Date.UTC(y,m-1,d));
+    } else if (/^\d{4}-\d{2}-\d{2}/.test(t)) dt = new Date(t);
+    else dt = new Date(t);
     if (!dt || isNaN(dt.getTime())) return false;
     const cutoff = Date.now() - (days*24*3600*1000);
     return dt.getTime() >= cutoff;
-  }
+  }, []);
 
   function entryModeCategory(mode?:string) {
     if (!mode) return 'OTHER';
@@ -101,19 +120,19 @@ export default function ContactMap(){
   }
 
   const renderMarkers = useCallback((daysFilter:number) => {
-    const L = LRef.current as any;
+    const L = LRef.current as unknown as LeafletLike | undefined;
     if (!L || !mapRef.current) return;
 
     // clear old layers
     try {
-      if (markersLayerRef.current) { (mapRef.current as any).removeLayer(markersLayerRef.current); markersLayerRef.current = null; }
-      if (heatLayerRef.current) { (mapRef.current as any).removeLayer(heatLayerRef.current); heatLayerRef.current = null; }
-    } catch(e){}
+      if (markersLayerRef.current) { removeLayerFromMap(markersLayerRef.current); markersLayerRef.current = null; }
+      if (heatLayerRef.current) { removeLayerFromMap(heatLayerRef.current); heatLayerRef.current = null; }
+    } catch {}
 
     const locations = locationsRef.current || {};
     const results = resultsRef.current || {};
     const keys = Object.keys(locations);
-    const markers = (window as any).L.markerClusterGroup ? (window as any).L.markerClusterGroup() : null;
+    const markers = L && typeof (L as Record<string, unknown>)['markerClusterGroup'] === 'function' ? ((L as Record<string, unknown>)['markerClusterGroup'] as () => unknown)() : null;
     const heatPoints: Array<[number,number,number]> = [];
 
     for (let i=0;i<keys.length;i++){
@@ -142,17 +161,26 @@ export default function ContactMap(){
         const calls = groupEntries.map((x)=> x['call'] || '').filter(Boolean).slice(0,6).join(', ');
         const tooltip = `${calls || 'Unknown'} — ${k}`;
         m.bindTooltip(tooltip, { direction: 'top', offset: [0, -8] });
-      } catch(e) {}
-      if (markers) markers.addLayer(m); else m.addTo(mapRef.current);
+      } catch {}
+      if (markers) {
+        try { const mc = markers as unknown as { addLayer?: (l: unknown) => void }; mc.addLayer?.(m) } catch {}
+      } else {
+        try { const mm = m as unknown as { addTo?: (map: unknown) => void }; mm.addTo?.(mapRef.current) } catch {}
+      }
       heatPoints.push([g.lat, g.lon, Math.min(8, groupEntries.length || 1)]);
     }
 
-    if (markers) { markersLayerRef.current = markers; (mapRef.current as any).addLayer(markers); }
+    if (markers) { markersLayerRef.current = markers; addLayerToMap(markers); }
 
-    if (heatPoints.length>0 && (window as any).L.heatLayer) {
-      try { heatLayerRef.current = (window as any).L.heatLayer(heatPoints, { radius:25, blur:15, maxZoom:9, max:10 }); (heatLayerRef.current as any).addTo(mapRef.current); } catch(e){}
+    if (heatPoints.length>0 && L && typeof (L as Record<string, unknown>)['heatLayer'] === 'function') {
+      try {
+        const heatFactory = (L as Record<string, unknown>)['heatLayer'] as (pts: Array<[number, number, number]>, opts?: Record<string, unknown>) => unknown
+        heatLayerRef.current = heatFactory(heatPoints, { radius:25, blur:15, maxZoom:9, max:10 })
+        const hl = heatLayerRef.current as unknown as { addTo?: (m: unknown) => void }
+        hl.addTo?.(mapRef.current)
+      } catch {}
     }
-  }, [modeFilters]);
+  }, [modeFilters, withinDays]);
 
   useEffect(()=>{
     let mounted = true;
@@ -162,11 +190,12 @@ export default function ContactMap(){
     loadCss('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
     loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js').then(async ()=>{
       if (!mounted) return;
-      const L = (window as any).L;
-      LRef.current = L;
-      if (!ref.current) return;
-      mapRef.current = L.map(ref.current, { center:[20,0], zoom:2, minZoom:2 });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(mapRef.current);
+      const globalL = (window as unknown as Record<string, unknown>)['L'] as unknown as LeafletLike | undefined;
+      LRef.current = globalL;
+      if (!ref.current || !globalL) return;
+      mapRef.current = globalL.map(ref.current, { center:[20,0], zoom:2, minZoom:2 });
+      const tile = globalL.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' })
+      tile.addTo(mapRef.current);
 
       setStatus('Loading server logbook...');
       let entries: Record<string, unknown>[] = [];
@@ -174,14 +203,14 @@ export default function ContactMap(){
         const r = await fetch('/api/logbook');
         const j = await r.json();
         entries = Array.isArray(j.entries) ? j.entries : (Array.isArray(j) ? j : []);
-      } catch(e) { entries = []; }
+      } catch { entries = []; }
 
       if (!entries || entries.length === 0) {
         setStatus('Loading ADIF fallback...');
         try {
           const r = await fetch('/logbook.adi');
           if (r.ok) { const txt = await r.text(); entries = parseAdif(txt); }
-        } catch(e) { entries = []; }
+        } catch { entries = []; }
       }
 
       entriesRef.current = entries;
@@ -202,7 +231,7 @@ export default function ContactMap(){
       // Use browser localStorage cache for geocode results to avoid re-querying server
       const storageKey = 'kf8fvd-geocode-cache-v1';
       let cached: Record<string,Geo|null> = {};
-      try { cached = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) { cached = {}; }
+      try { cached = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { cached = {}; }
       const toLookup = keys.filter(k => !cached || !Object.prototype.hasOwnProperty.call(cached, k));
       let results: Record<string,Geo|null> = { ...(cached || {}) };
       if (toLookup.length > 0) {
@@ -210,18 +239,20 @@ export default function ContactMap(){
           const resp = await fetch('/api/geocode', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ locations: toLookup }) });
           const j = await resp.json(); const newRes = j.results || {};
           results = { ...results, ...newRes };
-          try { localStorage.setItem(storageKey, JSON.stringify(results)); } catch(e) { /* ignore quota errors */ }
-        } catch(e) { /* network error: keep cached results only */ }
+          try { localStorage.setItem(storageKey, JSON.stringify(results)); } catch { /* ignore quota errors */ }
+        } catch { /* network error: keep cached results only */ }
       }
       resultsRef.current = results;
 
       // preload markercluster and heat plugins (optional)
-      try { await loadScript('https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js'); loadCss('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css'); loadCss('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css'); } catch(e) {}
-      try { await loadScript('https://unpkg.com/leaflet.heat/dist/leaflet-heat.js'); } catch(e) {}
+      try { await loadScript('https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js'); loadCss('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css'); loadCss('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css'); } catch {}
+      try { await loadScript('https://unpkg.com/leaflet.heat/dist/leaflet-heat.js'); } catch {}
 
       // legend will be rendered by React (collapsed by default)
 
-      // initial render of markers
+      // initial render of markers (mount-only). `renderMarkers` is also
+      // invoked by the reactive effect below when `days` or `modeFilters`
+      // change.
       renderMarkers(days);
 
       setStatus(''); setLoading(false);

@@ -34,12 +34,13 @@ export default async function proxy(req: NextRequest) {
     if (!rlRes.ok) {
       if (rlRes.status === 429) {
         // Respect Retry-After header if present
-        const j = await rlRes.json().catch(() => ({})) as any
-        const retry = rlRes.headers.get('Retry-After') || j?.retryAfter || null
+        const j = await rlRes.json().catch(() => ({} as Record<string, unknown>))
+        const retryFromBody = (typeof j === 'object' && j !== null && 'retryAfter' in j) ? String((j as Record<string, unknown>)['retryAfter']) : null
+        const retry = rlRes.headers.get('Retry-After') ?? retryFromBody ?? null
         return new NextResponse('Too Many Requests', { status: 429, headers: retry ? { 'Retry-After': String(retry) } : undefined })
       }
     }
-  } catch (e) {
+  } catch {
     // Best-effort: do not block on rate limiter failures
   }
 
@@ -52,7 +53,7 @@ export default async function proxy(req: NextRequest) {
       const j = await res.json()
       if (j && j.admin) return NextResponse.next()
     }
-  } catch (e) {
+  } catch {
     // If the whoami check fails, fallthrough to redirect to signin.
   }
 

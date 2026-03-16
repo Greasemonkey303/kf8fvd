@@ -17,6 +17,7 @@ export async function GET() {
     }
     return NextResponse.json({ admin: !!admin, user })
   } catch (e: unknown) {
+    void e
     return NextResponse.json({ admin: false }, { status: 200 })
   }
 }

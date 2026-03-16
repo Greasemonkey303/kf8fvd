@@ -1,24 +1,32 @@
-export function tlog(...args: any[]) {
+type TLogEntry = { ts: string; args: unknown[] }
+
+declare global {
+  interface Window {
+    __kf8fvdTurnstileLogs?: TLogEntry[]
+  }
+}
+
+export function tlog(...args: unknown[]) {
   try {
     if (typeof window === 'undefined') {
       // server fallback
-      // eslint-disable-next-line no-console
       console.log('[KF8FVD-TURNSTILE]', ...args)
       return
     }
     // keep a lightweight in-memory log for easier copying
-    ;(window as any).__kf8fvdTurnstileLogs = (window as any).__kf8fvdTurnstileLogs || []
+    window.__kf8fvdTurnstileLogs = window.__kf8fvdTurnstileLogs || []
     const now = new Date().toISOString()
-    const entry = { ts: now, args }
-    ;(window as any).__kf8fvdTurnstileLogs.push(entry)
+    const entry: TLogEntry = { ts: now, args }
+    window.__kf8fvdTurnstileLogs.push(entry)
     // concise console output for quick visibility
-    try { /* eslint-disable no-console */ console.log('[KF8FVD-TURNSTILE]', now, ...args) } catch (e) {}
+    try { console.log('[KF8FVD-TURNSTILE]', now, ...args) } catch (e) { void e }
   } catch (e) {
+    void e
     // best-effort logging only
   }
 }
 
-export function getTLog() {
+export function getTLog(): TLogEntry[] {
   if (typeof window === 'undefined') return []
-  return (window as any).__kf8fvdTurnstileLogs || []
+  return window.__kf8fvdTurnstileLogs || []
 }

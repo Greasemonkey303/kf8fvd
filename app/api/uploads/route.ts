@@ -85,8 +85,8 @@ export async function POST(req: Request) {
         debug = { maskedCred, signedHeaders }
         console.log('uploads.presign debug', debug)
       }
-    } catch (_e: unknown) {
-      // ignore
+    } catch (e: unknown) {
+      void e
     }
 
     return NextResponse.json(Object.assign({ url, key, publicUrl }, debug ? { _debug: debug } : {}))

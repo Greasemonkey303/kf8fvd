@@ -37,4 +37,5 @@ export function generateKeyBase64(): string {
   return randomBytes(32).toString('base64');
 }
 
-export default { encrypt, decrypt, generateKeyBase64 };
+const encryption = { encrypt, decrypt, generateKeyBase64 }
+export default encryption

@@ -24,20 +24,24 @@ export async function insertAdminAction(details: AdminActionDetails) {
       )
       return
     } catch (e) {
+      void e
       // fallback to older schema
       try {
         await query('INSERT INTO admin_actions (actor, actor_type, action, target_key, reason, ip, meta) VALUES (?, ?, ?, ?, ?, ?, ?)', [details?.actor || null, details?.actor_type || null, details?.action, details?.target_key || null, details?.reason || null, details?.ip || null, metaStr])
         return
       } catch (e2) {
+        void e2
         try {
           await query('INSERT INTO admin_actions (action, target_key, details) VALUES (?, ?, ?)', [details?.action, details?.target_key || null, detailsText])
           return
         } catch (e3) {
-          try { console.warn('[admin] failed to write admin_actions', e3) } catch (_) {}
+          void e3
+          try { console.warn('[admin] failed to write admin_actions', e3) } catch (_err) { void _err }
         }
       }
     }
   } catch (e) {
-    try { console.warn('[admin] failed to write admin_actions', e) } catch (_) {}
+    void e
+    try { console.warn('[admin] failed to write admin_actions', e) } catch (_err) { void _err }
   }
 }

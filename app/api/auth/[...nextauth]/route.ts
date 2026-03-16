@@ -32,6 +32,7 @@ async function verifyTurnstileToken(token?: string) {
     const j = await res.json()
     return !!j?.success
   } catch (e) {
+    void e
     return false
   }
 }
@@ -54,7 +55,7 @@ function extractIpFromReq(req: unknown): string {
     // fallback: req itself might have header-like keys
     const maybe = (req as Record<string, unknown>)['x-forwarded-for'] || (req as Record<string, unknown>)['x-real-ip']
     if (maybe) return String(maybe).split(',')[0]
-  } catch (_) {}
+  } catch (e) { void e }
   return 'unknown'
 }
 
@@ -69,12 +70,11 @@ export const authOptions: NextAuthOptions = {
         otp: { label: 'OTP', type: 'text' },
         cf_turnstile_response: { label: 'Turnstile', type: 'text' },
       },
-      // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
       async authorize(credentials, req) {
         const creds = (credentials ?? {}) as Record<string, string | undefined>
         try {
           console.log('[auth] authorize called for', { email: creds.email ? String(creds.email) : null, hasOtp: !!creds.otp })
-        } catch (_) {}
+        } catch (e) { void e }
         // If a server-side Turnstile secret is configured and the client provided a token, verify it.
         // We only verify when a token is present so that the separate 2FA request flow (which verifies Turnstile)
         // can complete the authentication without requiring a fresh token on the final OTP submit.
@@ -85,6 +85,7 @@ export const authOptions: NextAuthOptions = {
             if (!ok) return null
           }
         } catch (err) {
+          void err
           return null
         }
 
@@ -101,13 +102,13 @@ export const authOptions: NextAuthOptions = {
         if (!user.is_active) return null
         const valid = user.hashed_password ? bcrypt.compareSync(String(creds.password), String(user.hashed_password)) : false
         if (!valid) {
-          try { await incrementFailure(emailKey, { reason: 'invalid_password' }) } catch (_) {}
-          try { await incrementFailure(ipKey, { reason: 'invalid_password' }) } catch (_) {}
+          try { await incrementFailure(emailKey, { reason: 'invalid_password' }) } catch (e) { void e }
+          try { await incrementFailure(ipKey, { reason: 'invalid_password' }) } catch (e) { void e }
           return null
         }
         // reset failures on successful password verify
-        try { resetKey(emailKey) } catch (_) {}
-        try { resetKey(ipKey) } catch (_) {}
+        try { resetKey(emailKey) } catch (e) { void e }
+        try { resetKey(ipKey) } catch (e) { void e }
 
         // If an OTP was included, validate it and complete sign-in. Otherwise, require the separate
         // 2FA request flow to send/verify the code.
@@ -116,22 +117,20 @@ export const authOptions: NextAuthOptions = {
           // Ensure table exists (best-effort)
           try {
             await query('CREATE TABLE IF NOT EXISTS two_factor_codes (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, email VARCHAR(255), code_hash VARCHAR(255), expires_at DATETIME, used_at DATETIME DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX (user_id), INDEX (email))')
-          } catch (e) {
-            // ignore create table errors
-          }
+          } catch (e) { void e /* ignore create table errors */ }
 
           const codes = await query<Record<string, unknown>[]>('SELECT id, code_hash FROM two_factor_codes WHERE user_id = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1', [user.id])
           const codeRow = Array.isArray(codes) && codes.length ? codes[0] : null
-          try { console.log('[auth] verifying otp for user', user.id, { foundCode: !!codeRow }) } catch (_) {}
+          try { console.log('[auth] verifying otp for user', user.id, { foundCode: !!codeRow }) } catch (e) { void e }
           if (!codeRow) return null
           const ok = bcrypt.compareSync(String(otp), String(codeRow.code_hash))
-          try { console.log('[auth] otp compare result', !!ok) } catch (_) {}
+          try { console.log('[auth] otp compare result', !!ok) } catch (e) { void e }
           if (!ok) {
-            try { await incrementFailure(emailKey, { reason: 'invalid_otp' }) } catch (_) {}
-            try { await incrementFailure(ipKey, { reason: 'invalid_otp' }) } catch (_) {}
+            try { await incrementFailure(emailKey, { reason: 'invalid_otp' }) } catch (e) { void e }
+            try { await incrementFailure(ipKey, { reason: 'invalid_otp' }) } catch (e) { void e }
             return null
           }
-          try { await query('UPDATE two_factor_codes SET used_at = NOW() WHERE id = ?', [codeRow.id]) } catch (e) {}
+          try { await query('UPDATE two_factor_codes SET used_at = NOW() WHERE id = ?', [codeRow.id]) } catch (e) { void e }
 
           const remember = creds.remember === 'true' || creds.remember === 'on' || creds.remember === '1'
           return { id: String(user.id), name: user.name || '', email: user.email, remember }
@@ -149,21 +148,18 @@ export const authOptions: NextAuthOptions = {
   jwt: {
     encode: async ({ token, secret, maxAge }) => {
       try {
-        const now = Math.floor(Date.now() / 1000)
-        const tkn = token as Record<string, unknown>
-        const ttl = tkn?.remember ? 30 * 24 * 60 * 60 : (maxAge ?? 24 * 60 * 60)
-        const payload = { ...(tkn as Record<string, unknown>), exp: now + ttl }
-        return jwt.sign(payload as Record<string, unknown>, secret, { algorithm: 'HS256' })
-      } catch (_e) { return '' }
+          const now = Math.floor(Date.now() / 1000)
+          const tkn = token as Record<string, unknown>
+          const ttl = tkn?.remember ? 30 * 24 * 60 * 60 : (maxAge ?? 24 * 60 * 60)
+          const payload = { ...(tkn as Record<string, unknown>), exp: now + ttl }
+          return jwt.sign(payload as Record<string, unknown>, secret, { algorithm: 'HS256' })
+        } catch (e) { void e; return '' }
     },
     decode: async ({ token, secret }) => {
       try {
         const decoded = jwt.verify(token || '', secret, { algorithms: ['HS256'] })
         return typeof decoded === 'object' ? (decoded as Record<string, unknown>) : null
-      } catch (_e) {
-        // Do not accept tokens without verification; return null on verification failure
-        return null
-      }
+      } catch (e) { void e; return null }
     }
   },
   // Secure cookie settings: use __Secure- prefix and secure cookies in production
@@ -195,9 +191,9 @@ export const authOptions: NextAuthOptions = {
       return tk
     },
     async session({ session, token }) {
-      if ((token as Record<string, unknown>).user) (session as any).user = (token as Record<string, unknown>).user
-      // expose remember flag to client if present
-      if ((token as Record<string, unknown>).remember) (session as any).remember = true
+      if ((token as Record<string, unknown>).user) (session as unknown as Record<string, unknown>).user = (token as Record<string, unknown>).user
+        // expose remember flag to client if present
+        if ((token as Record<string, unknown>).remember) (session as unknown as Record<string, unknown>).remember = true
       return session
     }
   },

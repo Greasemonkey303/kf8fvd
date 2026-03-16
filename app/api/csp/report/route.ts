@@ -20,7 +20,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.warn('[csp report] error', e)
     return NextResponse.json({ error: 'Invalid CSP report' }, { status: 400 })
   }

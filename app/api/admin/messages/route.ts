@@ -39,7 +39,7 @@ export async function GET(req: Request) {
             const obj = a as Record<string, unknown>
             return { ...obj, url: `/api/admin/messages/attachments/${encodeURIComponent(String(obj.dir))}/${encodeURIComponent(String(obj.filename))}` }
           }
-        } catch (_) {}
+        } catch (e) { void e }
         return a as Record<string, unknown>
       })
     })(),

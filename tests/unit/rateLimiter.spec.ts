@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { incrementFailure, isLocked, resetKey, getInfo } from '../../lib/rateLimiter'
+import { incrementFailure, isLocked, resetKey, getInfo, __test_resetInternalState } from '../../lib/rateLimiter'
 
 // Use a key that does NOT start with 'ip:' or 'email:' to avoid DB audit imports
 const KEY = 'key:unit:1'
 
 beforeEach(async () => {
+  // ensure any cached redis client or in-memory store is cleared between tests
+  try { __test_resetInternalState() } catch (e) {}
   // Force in-memory fallback for tests
   delete process.env.REDIS_URL
   delete process.env.REDIS_HOST

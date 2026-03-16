@@ -32,7 +32,7 @@ export default function ResetPasswordClient({ token: initialToken = '' }: Props)
       setShortCode(token)
     }
     if (!token && !useShortCode) setError('Missing token')
-  }, [token])
+  }, [token, useShortCode])
 
   // password strength and HIBP checks (debounced)
   useEffect(()=>{
@@ -41,12 +41,14 @@ export default function ResetPasswordClient({ token: initialToken = '' }: Props)
       const p = password || ''
       if (!p) { setStrengthScore(null); setStrengthFeedback(null); setPwnedCount(null); return }
         try {
-          const zx = (await import('zxcvbn')).default as any
+          type ZxResult = { score: number; feedback?: { warning?: string; suggestions?: string[] } }
+          type ZxModule = (input: string) => ZxResult
+          const zx = (await import('zxcvbn')).default as unknown as ZxModule
           const res = zx(p)
           setStrengthScore(res.score)
           const msg = (res.feedback && (res.feedback.warning || '') + ' ' + (res.feedback.suggestions || []).join(' ')) || ''
           setStrengthFeedback(msg.trim() || null)
-        } catch (e) {
+        } catch {
           setStrengthScore(null)
           setStrengthFeedback(null)
         }
@@ -72,7 +74,7 @@ export default function ResetPasswordClient({ token: initialToken = '' }: Props)
         } else {
           setPwnedCount(null)
         }
-      } catch (e) {
+      } catch {
         setPwnedCount(null)
       }
     }, 500) as unknown as number

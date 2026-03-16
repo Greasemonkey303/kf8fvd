@@ -47,15 +47,44 @@ export async function getRedis() {
   try {
     const mod = await import('ioredis')
     const RedisCtor = (mod && (mod.default || mod)) as unknown as { new(...args: unknown[]): RedisLike }
-    _redis = new RedisCtor(url)
+    // Prefer creating the client with sensible reconnect/backoff defaults when supported.
+    try {
+      // Some ioredis versions accept (url, options). Cast options to unknown to avoid strict typing issues.
+      _redis = new RedisCtor(url, ({
+        // limit retries per request to avoid long blocking
+        maxRetriesPerRequest: 3,
+        // exponential-ish backoff: 1s, 2s, 3s... capped at 30s
+        retryStrategy: (times: number) => Math.min(1000 * times, 30000),
+        // attempt reconnect on most errors
+        reconnectOnError: () => true,
+      } as unknown) as object)
+    } catch {
+      // fallback for ioredis builds that expect only a single arg
+      _redis = new RedisCtor(url)
+    }
     if (_redis && typeof _redis.on === 'function') {
+      _redis.on('connect', () => { try { console.info('[rateLimiter] redis connect') } catch {} })
+      _redis.on('ready', () => { try { console.info('[rateLimiter] redis ready') } catch {} })
       _redis.on('error', (e: unknown) => { try { console.warn('[rateLimiter] redis error', e) } catch {} })
+      _redis.on('close', () => { try { console.warn('[rateLimiter] redis closed') } catch {} })
+      _redis.on('reconnecting', (delay: unknown) => { try { console.info('[rateLimiter] redis reconnecting', delay) } catch {} })
     }
     return _redis
   } catch (e) {
     try { console.warn('[rateLimiter] failed to initialize redis', e) } catch {}
     return null
   }
+}
+
+// Test helper: reset internal in-memory state and drop cached redis client.
+// Exported only for tests to ensure deterministic runs.
+export function __test_resetInternalState() {
+  try {
+    _redis = null
+  } catch (e) {
+    try { console.warn('[rateLimiter] __test_resetInternalState error', e) } catch {}
+  }
+  try { store.clear() } catch (e) { try { console.warn('[rateLimiter] __test_resetInternalState store clear', e) } catch {} }
 }
 
 function encodeKey(k: string) { return encodeURIComponent(k) }
@@ -177,7 +206,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         const { transaction } = await import('./db')
         const res = await transaction(async (conn) => {
       // use SELECT ... FOR UPDATE to atomically inspect and change
-      const execRes = await conn.execute('SELECT `count`, UNIX_TIMESTAMP(expires_at) * 1000 as expires_at_ms FROM rate_limiter_counts WHERE key_name = ? FOR UPDATE', [key]) as unknown as [Array<Record<string, unknown>>, any[]]
+      const execRes = await conn.execute('SELECT `count`, UNIX_TIMESTAMP(expires_at) * 1000 as expires_at_ms FROM rate_limiter_counts WHERE key_name = ? FOR UPDATE', [key]) as unknown as [Array<Record<string, unknown>>, unknown[]]
       const rows = execRes[0]
       const nowMs = Date.now()
       if (!rows || rows.length === 0) {
@@ -197,7 +226,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       }
       // otherwise increment
       await conn.execute('UPDATE rate_limiter_counts SET `count` = `count` + 1 WHERE key_name = ?', [key])
-      const execRes2 = await conn.execute('SELECT `count` FROM rate_limiter_counts WHERE key_name = ?', [key]) as unknown as [Array<Record<string, unknown>>, any[]]
+      const execRes2 = await conn.execute('SELECT `count` FROM rate_limiter_counts WHERE key_name = ?', [key]) as unknown as [Array<Record<string, unknown>>, unknown[]]
       const updated = execRes2[0] && execRes2[0][0]
       const cur = updated && (updated as Record<string, unknown>).count ? Number((updated as Record<string, unknown>).count) : 0
       // if threshold reached, add auth_locks
@@ -338,4 +367,5 @@ export async function getInfo(key: string) {
   return store.get(key) || null
 }
 
-export default { isLocked, incrementFailure, resetKey, getInfo }
+const rateLimiter = { isLocked, incrementFailure, resetKey, getInfo }
+export default rateLimiter

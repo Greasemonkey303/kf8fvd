@@ -35,8 +35,8 @@ export async function POST(req: Request) {
     })
 
     await new Promise<void>((resolve, reject) => {
-      // pass buffer length as the 4th argument (per Minio typings)
-      minioClient.putObject(bucket, key, buffer, buffer.length, (err?: Error | null) => {
+      // pass buffer length and content-type as metadata
+      minioClient.putObject(bucket, key, buffer, buffer.length, { 'Content-Type': contentType }, (err?: Error | null) => {
         if (err) return reject(err)
         resolve()
       })
@@ -52,7 +52,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ key, publicUrl })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('direct-json upload error', err)
     let msg = 'Unknown error'
     if (err instanceof Error) msg = err.message

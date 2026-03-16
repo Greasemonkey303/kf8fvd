@@ -25,6 +25,7 @@ export async function GET() {
 
     return NextResponse.json(payload);
   } catch (err) {
+    void err
     // fallback mocked values
     return NextResponse.json({ kIndex: 3, f107: 92, source: 'fallback' });
   }

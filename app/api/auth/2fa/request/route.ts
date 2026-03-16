@@ -18,6 +18,7 @@ async function verifyTurnstileToken(token?: string) {
     const j = await res.json()
     return !!j?.success
   } catch (e) {
+    void e
     return false
   }
 }
@@ -50,20 +51,20 @@ export async function POST(req: Request) {
     const valid = user.hashed_password ? bcrypt.compareSync(password, String(user.hashed_password)) : false
     if (!valid) {
       // record failures for IP and email
-      try { await incrementFailure(ipKey, { reason: 'invalid_password' }) } catch (_) {}
-      try { await incrementFailure(emailKey, { reason: 'invalid_password' }) } catch (_) {}
+      try { await incrementFailure(ipKey, { reason: 'invalid_password' }) } catch (e) { void e }
+      try { await incrementFailure(emailKey, { reason: 'invalid_password' }) } catch (e) { void e }
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
     // on success, reset failure counters for this IP/email
-    try { await resetKey(ipKey) } catch (_) {}
-    try { await resetKey(emailKey) } catch (_) {}
+    try { await resetKey(ipKey) } catch (e) { void e }
+    try { await resetKey(emailKey) } catch (e) { void e }
 
     // Ensure storage table exists (best-effort)
     try {
       await query('CREATE TABLE IF NOT EXISTS two_factor_codes (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, email VARCHAR(255), code_hash VARCHAR(255), expires_at DATETIME, used_at DATETIME DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX (user_id), INDEX (email))')
     } catch (e) {
-      // ignore
+      void e
     }
 
     // generate 6-digit code
@@ -72,8 +73,8 @@ export async function POST(req: Request) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
     await query('INSERT INTO two_factor_codes (user_id, email, code_hash, expires_at) VALUES (?, ?, ?, ?)', [user.id, user.email, codeHash, expiresAt])
-    try { /* eslint-disable no-console */ console.log('[api/auth/2fa/request] generated code for', { userId: user.id, email: user.email }) } catch (_) {}
-    try { /* eslint-disable no-console */ console.log('[api/auth/2fa/request] code (debug):', code) } catch (_) {}
+    try { console.log('[api/auth/2fa/request] generated code for', { userId: user.id, email: user.email }) } catch (e) { void e }
+    try { console.log('[api/auth/2fa/request] code (debug):', code) } catch (e) { void e }
 
     // Send email via SendGrid if configured
     const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
@@ -87,6 +88,7 @@ export async function POST(req: Request) {
           <p>Use the following verification code to complete signing in to your account. This code expires in 10 minutes.</p>
           <p style="font-size:20px;font-weight:600">${code}</p>
           <p>If you did not request this, you can ignore this email.</p>
+          <p><a href="${siteUrl}">${siteUrl}</a></p>
         </div>`
 
       const bodyReq = {
@@ -103,7 +105,6 @@ export async function POST(req: Request) {
         })
       } catch (e) {
         // log but don't fail the request
-        // eslint-disable-next-line no-console
         console.warn('[api/auth/2fa/request] sendgrid error', e)
       }
     }
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
     if ((process.env.DEBUG_2FA || '').toString() === '1' || String(body?._debug || '') === '1') return NextResponse.json({ ok: true, debugCode: code })
     return NextResponse.json({ ok: true })
   } catch (e) {
+    void e
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }

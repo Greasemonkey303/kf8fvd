@@ -9,7 +9,6 @@ export async function GET() {
     const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero.id])
     return NextResponse.json({ hero, images })
   } catch (err: unknown) {
-    // eslint-disable-next-line no-console
     console.error('api/hero error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }

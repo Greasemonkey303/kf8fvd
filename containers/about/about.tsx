@@ -28,6 +28,17 @@ type AboutData = {
   cards?: AboutCard[]
 }
 
+type RawCard = {
+  title?: unknown
+  subtitle?: unknown
+  content?: unknown
+  content_sanitized?: string | null
+  contentSanitized?: string | null
+  image?: unknown
+  templateSmall?: unknown
+  templateLarge?: unknown
+}
+
 export default function About({ data }: { data?: AboutData }) {
   const [open, setOpen] = useState<string | null>(null)
 
@@ -61,20 +72,26 @@ export default function About({ data }: { data?: AboutData }) {
   const topologyCard = data?.topologyCard ?? { title: '', subtitle: '', content: '', image: '' }
   const hamshackCard = data?.hamshackCard ?? { title: '', subtitle: '', content: '', image: '' }
 
+  // reference fallbacks to avoid unused-var ESLint warnings
+  void aboutCard
+  void topologyCard
+  void hamshackCard
+
   // Prefer flexible `cards` array when provided; otherwise render no cards (admin controls cards exclusively)
-  const cardsList: AboutCard[] = Array.isArray((data as any)?.cards) && (data as any).cards.length > 0
-    ? (data as any).cards.map((c: any) => ({
-        title: c?.title || '',
-        subtitle: c?.subtitle || '',
-        content: String(c?.content || ''),
+  const rawCards = (data as unknown as { cards?: RawCard[] } | undefined)?.cards
+  const cardsList: AboutCard[] = Array.isArray(rawCards) && rawCards.length > 0
+    ? rawCards.map((c) => ({
+        title: String(c?.title ?? ''),
+        subtitle: String(c?.subtitle ?? ''),
+        content: String(c?.content ?? ''),
         content_sanitized: c?.content_sanitized ?? c?.contentSanitized ?? null,
-        image: c?.image || '/headshot.jpg',
-        templateSmall: c?.templateSmall || '',
-        templateLarge: c?.templateLarge || ''
+        image: String(c?.image ?? '/headshot.jpg'),
+        templateSmall: String(c?.templateSmall ?? ''),
+        templateLarge: String(c?.templateLarge ?? '')
       }))
     : []
 
-  const getThumbProps = (card: any) => {
+  const getThumbProps = (card: AboutCard) => {
     const t = String(card?.templateSmall || '').toLowerCase()
     switch (t) {
       case 'avatar':

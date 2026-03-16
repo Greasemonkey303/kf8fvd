@@ -9,7 +9,7 @@ function parseBasicAuth(header: string | null) {
     const idx = decoded.indexOf(':')
     if (idx < 0) return null
     return { user: decoded.slice(0, idx), pass: decoded.slice(idx + 1) }
-  } catch (_) { return null }
+  } catch (e) { void e; return null }
 }
 
 function checkAdmin(req: Request) {
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
         try {
           if (typeof metaRaw === 'string') metaVal = JSON.parse(metaRaw || '{}')
           else metaVal = metaRaw ?? {}
-        } catch (_) { metaVal = metaRaw }
+        } catch (e) { void e; metaVal = metaRaw }
         return {
           id: r.id,
           actor: r.actor,
@@ -74,13 +74,13 @@ export async function GET(req: Request) {
         }
       }) : []
 
-      if (format === 'csv') {
+        if (format === 'csv') {
         // log export action
         try {
           const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null
           const { insertAdminAction } = await import('@/lib/adminActions')
           await insertAdminAction({ actor: auth.actor, actor_type: auth.actor_type, action: 'export', target_key: 'admin_actions_csv', reason: null, ip, meta: { limit, offset, filterAction, filterActor } })
-        } catch (_) {}
+        } catch (e) { void e }
         // Build CSV header
         const cols = ['id', 'createdAt', 'actor', 'actor_type', 'action', 'target_key', 'reason', 'ip', 'meta']
         function esc(v: unknown) {
@@ -106,6 +106,7 @@ export async function GET(req: Request) {
 
       return NextResponse.json({ ok: true, source: 'db', total, actions })
     } catch (e) {
+      void e
       // If DB not available and CSV requested, return header-only CSV
       if (format === 'csv') {
         const header = 'id,createdAt,actor,actor_type,action,target_key,reason,ip,meta\n'
@@ -120,6 +121,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, source: 'none', total: 0, actions: [] })
     }
   } catch (e) {
+    void e
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

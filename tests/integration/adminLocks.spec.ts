@@ -9,9 +9,9 @@ function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = net.createServer()
     srv.listen(0, () => {
-      // @ts-ignore
       const addr = srv.address()
-      const port = typeof addr === 'object' && addr && 'port' in addr ? (addr as any).port : null
+      let port: number | null = null
+      if (addr && typeof addr === 'object' && 'port' in addr) port = (addr as { port?: number }).port ?? null
       srv.close(() => resolve(port))
     })
     srv.on('error', reject)
@@ -27,31 +27,30 @@ describe('admin auth locks integration', () => {
     const container = 'kf8fvd-redis-adminlocks-test'
     let startedContainer = false
 
-    if (!redisUrl) {
-      try { await exec('docker version --format "{{.Server.Version}}"') } catch (err) {
-        // Docker not available and no REDIS_URL -> skip test
-        // eslint-disable-next-line no-console
-        console.warn('Docker not available and REDIS_URL not set; skipping admin locks test')
-        return
-      }
+      if (!redisUrl) {
+        try { await exec('docker version --format "{{.Server.Version}}"') } catch {
+          // Docker not available and no REDIS_URL -> skip test
+          console.warn('Docker not available and REDIS_URL not set; skipping admin locks test')
+          return
+        }
       const port = await getFreePort()
       redisUrl = `redis://127.0.0.1:${port}`
-      try { await exec(`docker rm -f ${container}`) } catch (_) {}
-      const { stdout } = await exec(`docker run -d --name ${container} -p ${port}:6379 redis:7`)
+      try { await exec(`docker rm -f ${container}`) } catch { }
+      await exec(`docker run -d --name ${container} -p ${port}:6379 redis:7`)
       startedContainer = true
 
       const Redis = (await import('ioredis')).default || (await import('ioredis'))
       const rClient = new Redis(redisUrl)
       let ready = false
       for (let i = 0; i < 30; i++) {
-        try { if ((await rClient.ping()) === 'PONG') { ready = true; break } } catch (e) { await sleep(500) }
+        try { if ((await rClient.ping()) === 'PONG') { ready = true; break } } catch { await sleep(500) }
       }
       if (!ready) {
-        try { rClient.disconnect() } catch (_) {}
+        try { rClient.disconnect() } catch { }
         await exec(`docker rm -f ${container}`)
         throw new Error('Redis did not become ready in time')
       }
-      try { rClient.disconnect() } catch (_) {}
+      try { rClient.disconnect() } catch { }
     }
 
     // Ensure admin key is set for the route to authorize
@@ -75,7 +74,11 @@ describe('admin auth locks integration', () => {
     const j = await (getRes as Response).json()
     expect(j.ok).toBe(true)
     expect(Array.isArray(j.locks)).toBe(true)
-    const found = j.locks.some((l: any) => l.key === KEY)
+    const found = Array.isArray(j.locks) && j.locks.some((l: unknown) => {
+      if (typeof l !== 'object' || l === null) return false
+      const keyVal = (l as Record<string, unknown>)['key']
+      return String(keyVal) === KEY
+    })
     expect(found).toBe(true)
 
     // Unlock via POST
@@ -87,11 +90,15 @@ describe('admin auth locks integration', () => {
     // Verify lock removed
     const getRes2 = await GET(getReq)
     const j2 = await (getRes2 as Response).json()
-    const found2 = j2.locks.some((l: any) => l.key === KEY)
+    const found2 = Array.isArray(j2.locks) && j2.locks.some((l: unknown) => {
+      if (typeof l !== 'object' || l === null) return false
+      const keyVal = (l as Record<string, unknown>)['key']
+      return String(keyVal) === KEY
+    })
     expect(found2).toBe(false)
 
     if (startedContainer) {
-      try { await exec(`docker rm -f ${container}`) } catch (_) {}
+      try { await exec(`docker rm -f ${container}`) } catch { }
     }
   }, 120000)
 })

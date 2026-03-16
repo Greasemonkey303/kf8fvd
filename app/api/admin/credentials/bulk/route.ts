@@ -48,6 +48,7 @@ export async function POST(req: Request) {
               if (obj && (obj as { name?: string }).name) objs.push((obj as { name?: string }).name as string)
             }
           } catch (e: unknown) {
+            void e
             // listObjects failed for this prefix; continue
           }
         }

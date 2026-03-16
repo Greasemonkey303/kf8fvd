@@ -16,6 +16,7 @@ export async function GET(req: Request) {
       if (r && r.description) r.description = sanitizeHtmlServer(String(r.description))
     }
   } catch (e) {
+    void e
     // best-effort: if sanitization fails, leave description as-is
   }
   const totalRows = await query('SELECT COUNT(*) as total FROM projects WHERE is_published = 1') as Array<{ total: number }>

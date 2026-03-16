@@ -11,7 +11,8 @@ export function loadTurnstileScript(opts: LoaderOptions = {}) {
   return new Promise<HTMLScriptElement>((resolve, reject) => {
     if (typeof window === 'undefined') return reject(new Error('no-window'))
     const existing = document.getElementById(id) as HTMLScriptElement | null
-    if (existing && (window as any).turnstile) return resolve(existing)
+    const _win = window as unknown as Record<string, unknown>
+    if (existing && _win.turnstile) return resolve(existing)
     if (existing) {
       const onLoad = () => resolve(existing)
       const onErr = () => reject(new Error('turnstile-script-error'))
@@ -37,10 +38,12 @@ export function loadTurnstileScript(opts: LoaderOptions = {}) {
 export function waitForTurnstileReady(timeoutMs = 5000) {
   return new Promise<void>((resolve, reject) => {
     if (typeof window === 'undefined') return reject(new Error('no-window'))
-    if ((window as any).turnstile) return resolve()
+    const _win = window as unknown as Record<string, unknown>
+    if (_win.turnstile) return resolve()
     const start = Date.now()
     const iv = window.setInterval(() => {
-      if ((window as any).turnstile) {
+      const _win2 = window as unknown as Record<string, unknown>
+      if (_win2.turnstile) {
         clearInterval(iv)
         return resolve()
       }

@@ -27,7 +27,7 @@ export default async function Page() {
           <strong>Error loading call_logs:</strong>
           <div style={{marginTop:8}}>{error}</div>
           <div style={{marginTop:8}}>
-            If this mentions "call_logs" table not found, run the migration SQL file in <em>migrations/</em> to create the table.
+            If this mentions &quot;call_logs&quot; table not found, run the migration SQL file in <em>migrations/</em> to create the table.
           </div>
         </div>
       ) : (

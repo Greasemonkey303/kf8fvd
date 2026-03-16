@@ -47,12 +47,12 @@ export async function POST(req: Request) {
       const found = await checkPwnedBySha1(sha1)
       if (found && found > 0) {
         // record a failure for IP to discourage brute-force
-        try { await incrementFailure(ipKey) } catch (_) {}
+          try { await incrementFailure(ipKey) } catch (e) { void e }
         return NextResponse.json({ error: 'This password has been seen in data breaches; choose a different password.' }, { status: 400 })
       }
     } catch (e) {
       // if HIBP check fails, don't block; log and continue
-      try { console.warn('[reset-password] HIBP check failed', e) } catch (_) {}
+      try { console.warn('[reset-password] HIBP check failed', e) } catch (err) { void err }
     }
 
     // update password and mark token used in a transaction
@@ -64,6 +64,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (e) {
+    void e
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }

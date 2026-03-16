@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { exec as execCb } from 'child_process'
 import { promisify } from 'util'
 import net from 'net'
@@ -10,13 +10,26 @@ function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = net.createServer()
     srv.listen(0, () => {
-      // @ts-ignore
       const addr = srv.address()
-      const port = typeof addr === 'object' && addr && 'port' in addr ? (addr as any).port : null
-      srv.close(() => resolve(port))
+      let port: number | null = null
+      if (addr && typeof addr === 'object' && 'port' in addr) {
+        const ai = addr as net.AddressInfo
+        if (typeof ai.port === 'number') port = ai.port
+      }
+      srv.close(() => {
+        if (port != null) resolve(port)
+        else reject(new Error('Failed to obtain free port'))
+      })
     })
     srv.on('error', reject)
   })
+}
+
+function errMsg(e: unknown): string {
+  if (e == null) return ''
+  if (e instanceof Error) return e.message
+  try { if (typeof e === 'object' && e !== null && 'message' in e) return String((e as Record<string, unknown>)['message']) } catch {}
+  return String(e)
 }
 
 async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)) }
@@ -26,9 +39,8 @@ describe('rateLimiter failover simulation (Docker)', () => {
     // Check docker available
     try {
       await exec('docker version --format "{{.Server.Version}}"')
-    } catch (err) {
+    } catch {
       // Docker not available; skip the test gracefully
-      // eslint-disable-next-line no-console
       console.warn('Docker not available; skipping failover simulation test')
       return
     }
@@ -40,32 +52,30 @@ describe('rateLimiter failover simulation (Docker)', () => {
     const KEY = 'failover:test:key'
 
     // Cleanup any existing container with the same name
-    try { await exec(`docker rm -f ${container}`) } catch (_) {}
+    try { await exec(`docker rm -f ${container}`) } catch { }
 
     // Start redis container mapped to chosen free port
-    let cid = null
     try {
-      const { stdout } = await exec(`docker run -d --name ${container} -p ${port}:6379 redis:7`)
-      cid = stdout.trim()
+      await exec(`docker run -d --name ${container} -p ${port}:6379 redis:7`)
     } catch (err) {
-      throw new Error('Failed to start redis container: ' + (err && (err as any).message ? (err as any).message : err))
+      throw new Error('Failed to start redis container: ' + errMsg(err))
     }
 
     // Wait for Redis to become available
-    let Redis: any
-    try { Redis = (await import('ioredis')).default || (await import('ioredis')) } catch (e) { throw e }
-    const rClient = new Redis(redisUrl)
+    const ioredisMod = await import('ioredis')
+    const RedisCtor = (ioredisMod && (ioredisMod.default || ioredisMod)) as unknown as { new (url?: string): { ping: () => Promise<unknown>; disconnect: () => Promise<void>; get?: (k: string) => Promise<unknown> } }
+    const rClient = new RedisCtor(redisUrl)
     let ready = false
     for (let i = 0; i < 30; i++) {
       try {
         const pong = await rClient.ping()
         if (pong === 'PONG') { ready = true; break }
-      } catch (e) {
+      } catch {
         await sleep(1000)
       }
     }
     if (!ready) {
-      try { rClient.disconnect() } catch (_) {}
+      try { rClient.disconnect() } catch { }
       await exec(`docker rm -f ${container}`)
       throw new Error('Redis did not become ready in time')
     }
@@ -96,18 +106,18 @@ describe('rateLimiter failover simulation (Docker)', () => {
       after = await incrementFailure(KEY, { max: 100, windowMs: 60000 })
     } catch (err) {
       // cleanup then rethrow
-      try { await exec(`docker rm -f ${container}`) } catch (_) {}
-      throw new Error('incrementFailure threw after redis stopped: ' + (err && (err as any).message ? (err as any).message : err))
+      try { await exec(`docker rm -f ${container}`) } catch { }
+      throw new Error('incrementFailure threw after redis stopped: ' + errMsg(err))
     }
     expect(after).toBeDefined()
 
     // getInfo should now return in-memory info (or null) and not crash
     let info
-    try { info = await getInfo(KEY) } catch (err) { info = null }
+    try { info = await getInfo(KEY) } catch { info = null }
     expect(info === null || typeof info === 'object').toBe(true)
 
     // Cleanup: remove container
-    try { await exec(`docker rm -f ${container}`) } catch (_) {}
-    try { rClient.disconnect() } catch (_) {}
+    try { await exec(`docker rm -f ${container}`) } catch { }
+    try { rClient.disconnect() } catch { }
   }, 120000)
 })

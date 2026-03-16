@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server'
-import { incrementFailure, getInfo } from '@/lib/rateLimiter'
+import { incrementFailure } from '@/lib/rateLimiter'
+
+type IncrementResult = {
+  locked?: boolean
+  remaining?: number
+  lockedUntil?: number
+  redisTtl?: number
+}
 
 export async function POST(req: Request) {
   try {
@@ -10,16 +17,15 @@ export async function POST(req: Request) {
     const key = `ip:${ip}`
 
     // bump counter for this request and get status
-    const res = await incrementFailure(key, { reason: `middleware:${path}` })
+    const res = (await incrementFailure(key, { reason: `middleware:${path}` })) as IncrementResult | null
     // if incrementFailure indicates locked, return 429
-    if (res && (res as any).locked) {
-      const lockedUntil = (res as any).lockedUntil || Date.now() + 60000
-      const retryAfter = Math.ceil(((res as any).lockedUntil || Date.now()) / 1000)
+    if (res && res.locked) {
+      const retryAfter = Math.ceil((res.lockedUntil || Date.now()) / 1000)
       return NextResponse.json({ allowed: false, locked: true, retryAfter }, { status: 429 })
     }
 
     // otherwise return remaining quota
-    const remaining = (res && (res as any).remaining) || null
+    const remaining = (res && res.remaining) || null
     return NextResponse.json({ allowed: true, locked: false, remaining })
   } catch (err) {
     try { console.warn('[mw:rate] error', err) } catch {}

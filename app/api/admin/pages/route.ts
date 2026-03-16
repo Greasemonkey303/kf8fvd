@@ -71,6 +71,7 @@ export async function POST(req: Request) {
       if ((safeMetadata['hamshackCard'] as Record<string, unknown>)?.content) (safeMetadata['hamshackCard'] as Record<string, unknown>).content = removeDebugBlockFromHtml(DOMPurify.sanitize(String((safeMetadata['hamshackCard'] as Record<string, unknown>).content)))
     }
   } catch (e) {
+    void e
     safeMetadata = metadata ? { ...metadata } : {}
   }
 
@@ -158,6 +159,7 @@ export async function PUT(req: Request) {
       if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.hamshackCard.content)))
     }
   } catch (e) {
+    void e
     safeMetadata = metadata ? { ...metadata } : {}
   }
 

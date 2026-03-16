@@ -8,7 +8,7 @@ async function tryInsertAdminAction(details: AdminActionDetails | unknown) {
     const { insertAdminAction } = await import('@/lib/adminActions')
     await insertAdminAction(details as AdminActionDetails)
   } catch (e) {
-    try { console.warn('[admin] failed to write admin_actions', e) } catch (_) {}
+    try { console.warn('[admin] failed to write admin_actions', e) } catch (inner) { void inner }
   }
 }
 
@@ -21,7 +21,7 @@ function parseBasicAuth(header: string | null) {
     const idx = decoded.indexOf(':')
     if (idx < 0) return null
     return { user: decoded.slice(0, idx), pass: decoded.slice(idx + 1) }
-  } catch (_) { return null }
+  } catch (e) { void e; return null }
 }
 
 function checkAdmin(req: Request) {
@@ -52,17 +52,19 @@ export async function GET(req: Request) {
     const r = await getRedis()
     if (r) {
       // list locks from redis keys rl:lock:* (guard if client doesn't expose `keys`)
-      const keys = (typeof (r as any).keys === 'function') ? await (r as any).keys('rl:lock:*') : []
+      type RedisLike = { keys?: (pattern: string) => Promise<string[]>; pttl?: (key: string) => Promise<number> }
+      const redisClient = r as unknown as RedisLike
+      const keys = (typeof redisClient.keys === 'function') ? await redisClient.keys('rl:lock:*') : []
       const locks: Array<{ key: string; redisKey?: string; ttlMs?: number | null; expiresAt?: number | null }> = []
       for (const k of keys) {
         try {
           let ttl: number | null = null
-          if (typeof (r as any).pttl === 'function') {
-            try { ttl = await (r as any).pttl(k) } catch (_) { ttl = null }
+          if (typeof redisClient.pttl === 'function') {
+            try { ttl = await redisClient.pttl(k) } catch (e) { void e; ttl = null }
           }
           const name = decodeURIComponent(String(k).slice('rl:lock:'.length))
           locks.push({ key: name, redisKey: k, ttlMs: (typeof ttl === 'number' && ttl > 0) ? ttl : null, expiresAt: (typeof ttl === 'number' && ttl > 0) ? Date.now() + ttl : null })
-        } catch (_) {}
+        } catch (e) { void e /* ignore per-key errors */ }
       }
       return NextResponse.json({ ok: true, source: 'redis', locks })
     }
@@ -73,9 +75,11 @@ export async function GET(req: Request) {
       const locks = Array.isArray(rows) ? rows.map((r: Record<string, unknown>) => ({ key: r.key_name, expiresAt: r.locked_at_ms })) : []
       return NextResponse.json({ ok: true, source: 'db', locks })
     } catch (e) {
+      void e
       return NextResponse.json({ ok: true, source: 'none', locks: [] })
     }
   } catch (e) {
+    void e
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -93,12 +97,14 @@ export async function POST(req: Request) {
       try {
         const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null
         await tryInsertAdminAction({ actor: auth.actor, actor_type: auth.actor_type, action: 'unlock', target_key: key, reason: body?.reason || null, ip, meta: { source: 'admin_api' } })
-      } catch (_) {}
+      } catch (e) { void e }
       return NextResponse.json({ ok: true })
     } catch (e) {
+      void e
       return NextResponse.json({ error: 'Failed to reset key' }, { status: 500 })
     }
   } catch (e) {
+    void e
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }

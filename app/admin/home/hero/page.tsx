@@ -12,7 +12,7 @@ type HeroImage = { id?: number; url?: string; alt?: string; is_featured?: number
 export default function AdminHeroPage() {
   const [hero, setHero] = useState<Hero | null>(null)
   const [images, setImages] = useState<HeroImage[]>([])
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
   const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
@@ -128,7 +128,6 @@ export default function AdminHeroPage() {
       })
 
       const storedKey = pd.key || key
-      const publicUrl = pd.publicUrl || buildPublicUrl(storedKey)
       // record in DB (store the object key, not a presigned URL)
       // auto-feature if no featured exists
       const currentlyHasFeatured = images.find(i => Number(i.is_featured) === 1)
@@ -294,7 +293,7 @@ export default function AdminHeroPage() {
                 <div style={{marginTop:12}}>
                   {/* Featured image section */}
                   {(() => {
-                    const featured = images.find((i) => Number(i.is_featured) === 1) || null
+                    const featured = images.find((i) => Number(i.is_featured) === 1)
                     const others = images.filter((i) => Number(i.is_featured) !== 1)
                     return (
                       <div>
@@ -302,18 +301,19 @@ export default function AdminHeroPage() {
                           <div style={{marginBottom:12}}>
                             <div className={styles.draftTitleBold}>Featured</div>
                             <div style={{marginTop:8, width:'100%', height:180, overflow:'hidden', borderRadius:10}}>
-                              <img src={getPreviewSrc((featured as any).url)} alt={(featured as any).alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={getPreviewSrc(featured?.url)} alt={featured?.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
                             </div>
                             <div style={{display:'flex', gap:8, marginTop:8, alignItems:'center'}}>
-                              <button className={styles.btnGhostSmall} onClick={() => setDeleteTarget({ id: Number((featured as any).id ?? 0), url: (featured as any).url, alt: (featured as any).alt })}>Delete</button>
-                              {editingId === (featured as any).id ? (
+                              <button className={styles.btnGhostSmall} onClick={() => setDeleteTarget({ id: Number(featured?.id ?? 0), url: featured?.url, alt: featured?.alt })}>Delete</button>
+                              {editingId === featured?.id ? (
                                 <div style={{display:'flex', gap:8, alignItems:'center'}}>
                                   <input value={editingAlt} onChange={e=>setEditingAlt(e.target.value)} className={styles.formInput} style={{width:180}} />
-                                  <button className={styles.btnGhostSmall} onClick={() => { updateImageMeta(Number((featured as any).id ?? 0), editingAlt); setEditingId(null) }}>Save</button>
+                                  <button className={styles.btnGhostSmall} onClick={() => { updateImageMeta(Number(featured?.id ?? 0), editingAlt); setEditingId(null) }}>Save</button>
                                   <button className={styles.btnGhostSmall} onClick={() => { setEditingId(null); setEditingAlt('') }}>Cancel</button>
                                 </div>
                               ) : (
-                                <button className={styles.btnGhostSmall} onClick={() => { setEditingId(typeof (featured as any).id === 'number' ? (featured as any).id : null); setEditingAlt((featured as any).alt || '') }}>Edit alt</button>
+                                <button className={styles.btnGhostSmall} onClick={() => { setEditingId(typeof featured?.id === 'number' ? (featured?.id as number) : null); setEditingAlt(featured?.alt || '') }}>Edit alt</button>
                               )}
                             </div>
                           </div>
@@ -324,9 +324,10 @@ export default function AdminHeroPage() {
                         <div style={{marginTop:6}}>
                           <div className={styles.draftTitleBold}>Other images</div>
                           <div className={styles.imgGallery} style={{marginTop:8}}>
-                            {others.map((img: any) => (
+                            {others.map((img: HeroImage) => (
                               <div key={String(img.id)} style={{width:120}}>
                                 <div style={{width:120, height:80, overflow:'hidden', borderRadius:8}}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={getPreviewSrc(img.url)} alt={img.alt||''} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
                                 </div>
                                 <div style={{display:'flex', gap:6, marginTop:6, alignItems:'center'}}>
@@ -381,6 +382,7 @@ export default function AdminHeroPage() {
                               <p className={styles.smallMuted}>Are you sure you want to delete this image? This action cannot be undone.</p>
                               <div style={{display:'flex', gap:12, marginTop:12, alignItems:'center'}}>
                                 <div style={{width:120,height:80,overflow:'hidden',borderRadius:8,background:'#021022'}}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={getPreviewSrc(deleteTarget.url)} alt={deleteTarget.alt || ''} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
                                 </div>
                                 <div style={{flex:1}}>

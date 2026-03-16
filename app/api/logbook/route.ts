@@ -6,8 +6,7 @@ import { NextResponse } from 'next/server';
 // - QRZ_API_KEY = your QRZ API key (if using QRZ; note: QRZ XML API may require session handling)
 // - LOGBOOK_URL = custom JSON endpoint returning an array of QSO strings
 
-import fs from 'fs';
-import path from 'path';
+// (removed unused fs/path imports)
 import { query } from '@/lib/db'
 
 export async function GET(request: Request) {
@@ -31,6 +30,7 @@ export async function GET(request: Request) {
         });
       }
     } catch (e) {
+      void e
       // ignore
     }
 
@@ -55,6 +55,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ source: 'db', entries })
       }
     } catch (e) {
+      void e
       // if the table doesn't exist or DB query fails, fall back to local ADI
     }
 
@@ -193,6 +194,7 @@ export async function GET(request: Request) {
                     return NextResponse.json({ source: 'qrz', entries, fetchedFrom: cu });
                   }
                 } catch (e) {
+                  void e
                   // ignore and try next
                 }
               }
@@ -225,6 +227,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ source: 'mock', entries: mock });
   } catch (err) {
+    void err
     return NextResponse.json({ source: 'error', entries: [] });
   }
 }
