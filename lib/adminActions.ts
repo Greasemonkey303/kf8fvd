@@ -12,7 +12,7 @@ export type AdminActionDetails = {
 
 export async function insertAdminAction(details: AdminActionDetails) {
   try {
-    const { query } = await import('@/lib/db')
+    const { query } = await import('./db')
     const metaStr = typeof details?.meta === 'string' ? details.meta : (details?.meta ? JSON.stringify(details.meta) : null)
     const detailsText = details?.details ?? (metaStr && metaStr !== '{}' ? metaStr : null)
     const adminId = typeof details?.admin_user_id !== 'undefined' ? details.admin_user_id : null

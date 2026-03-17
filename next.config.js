@@ -28,9 +28,11 @@ const nextConfig = {
       ? "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
       : "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com"
     const imgSrc = isProd ? "img-src 'self' data: https: https://*.gravatar.com" : "img-src 'self' data: http: https: https://*.gravatar.com"
+    // Ensure localhost:3030 is explicitly allowed for development and local testing
+    const localDev3030 = "http://127.0.0.1:3030 http://localhost:3030"
     const connectSrc = isProd
-      ? `connect-src 'self' ${siteOrigin} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
-      : `connect-src 'self' ${siteOrigin} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`
+      ? `connect-src 'self' ${siteOrigin} ${localDev3030} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
+      : `connect-src 'self' ${siteOrigin} ${localDev3030} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`
     const fontSrc = "font-src 'self' https://fonts.gstatic.com data:"
     const reportUri = `${siteOrigin}/api/csp/report`
     // Explicitly allow Cloudflare Turnstile frames

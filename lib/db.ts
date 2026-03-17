@@ -52,7 +52,7 @@ export async function query<T>(sql: string, params?: unknown[]): Promise<T> {
     if (process.env.DEBUG_DB) {
       console.log('[db] executing', { sql, params: safeParams, types: safeParams.map(p => (p === null ? 'null' : typeof p)) })
     }
-    const [rows] = await pool.execute(sql, safeParams)
+    const [rows] = await pool.execute(sql, safeParams as any)
     return rows as T
   } catch (error) {
     console.error('Database query error:', error)

@@ -35,9 +35,11 @@ function metricKey(name: string) {
   return `metrics:${getMetricsPrefix()}:${name}`
 }
 
-const DISABLE_DB_FALLBACK = process.env.DISABLE_DB_FALLBACK
-  ? (process.env.DISABLE_DB_FALLBACK === '1' || process.env.DISABLE_DB_FALLBACK === 'true')
-  : (process.env.NODE_ENV === 'production')
+function disableDbFallback() {
+  const v = process.env.DISABLE_DB_FALLBACK
+  if (v === undefined || v === null || v === '') return process.env.NODE_ENV === 'production'
+  return v === '1' || v === 'true'
+}
 
 let _redis: RedisLike | null = null
 export async function getRedis() {
@@ -103,7 +105,7 @@ export async function isLocked(key: string) {
     }
   }
   // DB fallback: check auth_locks table
-  if (!DISABLE_DB_FALLBACK) {
+  if (!disableDbFallback()) {
     try {
       const { query } = await import('./db')
       const rows = await query<Array<Record<string, unknown>>>('SELECT UNIX_TIMESTAMP(locked_until) * 1000 as locked_until_ms FROM auth_locks WHERE key_name = ? AND locked_until > NOW() LIMIT 1', [key])
@@ -201,7 +203,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
   }
 
   // DB fallback (attempt persistent counter in DB)
-  if (!DISABLE_DB_FALLBACK) {
+  if (!disableDbFallback()) {
     try {
         const { transaction } = await import('./db')
         const res = await transaction(async (conn) => {
@@ -323,7 +325,7 @@ export async function resetKey(key: string) {
     }
   }
   // also remove any DB fallback counters
-  if (!DISABLE_DB_FALLBACK) {
+  if (!disableDbFallback()) {
     try {
       const { query } = await import('./db')
       await query('DELETE FROM rate_limiter_counts WHERE key_name = ?', [key])
@@ -350,7 +352,7 @@ export async function getInfo(key: string) {
     }
   }
   // DB fallback: query rate_limiter_counts and auth_locks
-  if (!DISABLE_DB_FALLBACK) {
+  if (!disableDbFallback()) {
     try {
       const { query } = await import('./db')
       try {

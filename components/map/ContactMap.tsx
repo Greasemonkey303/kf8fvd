@@ -155,12 +155,12 @@ export default function ContactMap(){
       const color = modes.map(m=>m.toUpperCase()).includes('FM') ? fm : (modes.map(m=>m.toUpperCase()).includes('DSTAR') ? dstar : otherCol);
       const m = L.circleMarker([g.lat, g.lon], { radius:8, color: getCssVar('--white-100','#fff'), weight:1, fillColor: color, fillOpacity:0.95 });
       const popup = `<div><strong>${k}</strong><br/>${groupEntries.slice(0,6).map((x)=>x['call'] || '').join(', ')}<br/><small>modes: ${modes.join(', ')}</small></div>`;
-      m.bindPopup(popup);
+      ;(m as any).bindPopup(popup);
       // tooltip on hover with callsign(s) and location
       try {
         const calls = groupEntries.map((x)=> x['call'] || '').filter(Boolean).slice(0,6).join(', ');
         const tooltip = `${calls || 'Unknown'} — ${k}`;
-        m.bindTooltip(tooltip, { direction: 'top', offset: [0, -8] });
+        ;(m as any).bindTooltip(tooltip, { direction: 'top', offset: [0, -8] });
       } catch {}
       if (markers) {
         try { const mc = markers as unknown as { addLayer?: (l: unknown) => void }; mc.addLayer?.(m) } catch {}

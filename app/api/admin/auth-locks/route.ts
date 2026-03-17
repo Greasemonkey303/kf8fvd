@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getRedis, resetKey } from '@/lib/rateLimiter'
-import type { AdminActionDetails } from '@/lib/adminActions'
+import { getRedis, resetKey } from '../../../../lib/rateLimiter'
+import type { AdminActionDetails } from '../../../../lib/adminActions'
 
 // Use shared admin action helper
 async function tryInsertAdminAction(details: AdminActionDetails | unknown) {
   try {
-    const { insertAdminAction } = await import('@/lib/adminActions')
+    const { insertAdminAction } = await import('../../../../lib/adminActions')
     await insertAdminAction(details as AdminActionDetails)
   } catch (e) {
     try { console.warn('[admin] failed to write admin_actions', e) } catch (inner) { void inner }
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
     }
     // fallback to DB
     try {
-      const { query } = await import('@/lib/db')
+      const { query } = await import('../../../../lib/db')
       const rows = await query<Array<Record<string, unknown>>>('SELECT key_name, UNIX_TIMESTAMP(locked_until) * 1000 as locked_at_ms FROM auth_locks WHERE locked_until > NOW()')
       const locks = Array.isArray(rows) ? rows.map((r: Record<string, unknown>) => ({ key: r.key_name, expiresAt: r.locked_at_ms })) : []
       return NextResponse.json({ ok: true, source: 'db', locks })

@@ -12,7 +12,10 @@ function getFreePort(): Promise<number> {
       const addr = srv.address()
       let port: number | null = null
       if (addr && typeof addr === 'object' && 'port' in addr) port = (addr as { port?: number }).port ?? null
-      srv.close(() => resolve(port))
+      srv.close(() => {
+        if (port != null) resolve(port)
+        else reject(new Error('Failed to obtain free port'))
+      })
     })
     srv.on('error', reject)
   })
@@ -58,7 +61,7 @@ describe('admin auth locks integration', () => {
     process.env.ADMIN_API_KEY = 'test_admin_key'
 
     // Import rateLimiter and trigger a lock (max=1 causes immediate lock)
-    const rl = await import('../../../lib/rateLimiter')
+    const rl = await import('../../lib/rateLimiter')
     const { incrementFailure } = rl
     const KEY = 'admin:test:key'
     const res = await incrementFailure(KEY, { max: 1, windowMs: 60_000, lockMs: 60_000 })
@@ -66,7 +69,7 @@ describe('admin auth locks integration', () => {
     expect(res.locked === true || res.locked === false).toBe(true)
 
     // Import admin route handlers and call them directly
-    const admin = await import('../../../app/api/admin/auth-locks/route')
+    const admin = await import('../../app/api/admin/auth-locks/route')
     const { GET, POST } = admin
 
     const getReq = new Request('http://localhost', { headers: { 'x-admin-key': 'test_admin_key' } })

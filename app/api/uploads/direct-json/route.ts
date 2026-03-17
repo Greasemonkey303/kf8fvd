@@ -35,8 +35,8 @@ export async function POST(req: Request) {
     })
 
     await new Promise<void>((resolve, reject) => {
-      // pass buffer length and content-type as metadata
-      minioClient.putObject(bucket, key, buffer, buffer.length, { 'Content-Type': contentType }, (err?: Error | null) => {
+      // pass content-type as metadata; omit explicit length to match MinIO TS typings
+      minioClient.putObject(bucket, key, buffer, { 'Content-Type': contentType } as any, (err?: Error | null) => {
         if (err) return reject(err)
         resolve()
       })
