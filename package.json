@@ -18,6 +18,7 @@
     "ship:admin": "node scripts/ship_admin_actions.js",
     "e2e": "npx playwright test",
     "e2e:ci": "npx playwright test --reporter=github",
+    "make:docker-secrets": "node scripts/create_build_secrets_from_envdocker.js",
     "migrate:messages_sanitize": "node scripts/backfill_messages_sanitized.js",
     "audit": "npm audit --audit-level=moderate",
     "audit:fix": "npm audit fix"

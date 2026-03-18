@@ -15,11 +15,11 @@ const imgSrc = isProd
   ? "img-src 'self' data: https://*.gravatar.com https://www.google-analytics.com"
   : "img-src 'self' data: http://127.0.0.1:9000 http://localhost:9000 https://*.gravatar.com https://www.google-analytics.com";
 
-// Ensure localhost:3030 is explicitly allowed for development and local testing
-const localDev3030 = "http://127.0.0.1:3030 http://localhost:3030";
+// Ensure localhost:3000 is explicitly allowed for development and local testing
+const localDev3000 = "http://127.0.0.1:3000 http://localhost:3000";
 const connectSrc = isProd
-  ? `connect-src 'self' ${siteOrigin} ${localDev3030} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
-  : `connect-src 'self' ${siteOrigin} ${localDev3030} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`;
+  ? `connect-src 'self' ${siteOrigin} ${localDev3000} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
+  : `connect-src 'self' ${siteOrigin} ${localDev3000} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`;
 
 const reportUri = `${siteOrigin}/api/csp/report`
 

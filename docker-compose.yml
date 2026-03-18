@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Provide non-sensitive build args here; sensitive values are supplied
+      # as build-time secrets (see ./secrets/* files).
+      args:
+        NODE_ENV: ${NODE_ENV}
+        DB_HOST: ${DB_HOST}
+        DB_PORT: ${DB_PORT}
+        DB_USER: ${DB_USER}
+        DB_NAME: ${DB_NAME}
+        REDIS_URL: ${REDIS_URL}
+      secrets:
+        - nextauth_secret
+        - encryption_key
+        - db_password
+        - redis_url
+    image: kf8fvd-app:latest
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.docker
+    restart: unless-stopped
+
+secrets:
+  nextauth_secret:
+    file: ./secrets/nextauth_secret
+  encryption_key:
+    file: ./secrets/encryption_key
+  db_password:
+    file: ./secrets/db_password
+  redis_url:
+    file: ./secrets/redis_url
