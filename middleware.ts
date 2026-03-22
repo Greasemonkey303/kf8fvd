@@ -5,12 +5,32 @@ export async function middleware(req: NextRequest) {
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
 
-  const scriptSrcBase = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
-  const scriptSrc = isLocalhost ? `${scriptSrcBase} 'unsafe-inline' 'unsafe-eval'` : scriptSrcBase
-  const styleSrcBase = "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
-  const styleSrc = isLocalhost ? `${styleSrcBase} 'unsafe-inline'` : styleSrcBase
+  // Generate a per-request CSP nonce for production. Keep this lightweight
+  // to avoid adding heavy crypto dependencies in the middleware runtime.
+  const makeNonce = () => {
+    try {
+      // Prefer web crypto if available
+      // @ts-ignore
+      if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const arr = new Uint8Array(16)
+        // @ts-ignore
+        crypto.getRandomValues(arr)
+        return Array.from(arr).map(b => ('0' + b.toString(16)).slice(-2)).join('')
+      }
+    } catch (e) {
+      // fallthrough
+    }
+    return (Math.random().toString(36).slice(2) + Date.now().toString(36))
+  }
+  const nonce = makeNonce()
 
-  const connectSrc = `connect-src 'self' ${siteOrigin} http://127.0.0.1:3000 http://localhost:3000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`
+  const scriptSrcBase = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
+  // In production prefer nonces; in local/dev keep 'unsafe-inline' for developer convenience
+  const scriptSrc = isLocalhost ? `${scriptSrcBase} 'unsafe-inline' 'unsafe-eval'` : `${scriptSrcBase} 'nonce-${nonce}'`
+  const styleSrcBase = "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
+  const styleSrc = isLocalhost ? `${styleSrcBase} 'unsafe-inline'` : `${styleSrcBase} 'nonce-${nonce}'`
+
+  const connectSrc = `connect-src 'self' ${siteOrigin} http://127.0.0.1:3000 http://localhost:3000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com ws: wss:`
 
   const CSP = [
     "default-src 'self'",
@@ -36,6 +56,12 @@ export async function middleware(req: NextRequest) {
   // allowances too — some Next static prerender headers can override
   // the report-only header. For local debugging, also set the enforced
   // header so the browser allows inline styles/scripts needed for dev.
+  // Always expose the per-request nonce via a cookie so server components can
+  // consume it and apply `nonce` attributes. In production the cookie is marked
+  // `Secure` as well. Localhost/dev will receive the cookie without `Secure`.
+  const cookieOptions = ['Path=/', 'SameSite=Lax', 'HttpOnly']
+  if (process.env.NODE_ENV === 'production') cookieOptions.push('Secure')
+  res.headers.append('Set-Cookie', `csp-nonce=${nonce}; ${cookieOptions.join('; ')}`)
   if (isLocalhost) {
     res.headers.set('Content-Security-Policy', CSP)
   }

@@ -31,7 +31,7 @@ process.env.DISABLE_DB_FALLBACK = '1'
 
 try {
   console.log('Running tests with env from', p);
-  cp.execSync('npx vitest run tests/unit', { stdio: 'inherit', shell: true });
+  cp.execSync('npx vitest run tests/unit', { stdio: 'inherit', shell: true, env: Object.assign({}, process.env, { NODE_ENV: 'test' }) });
   process.exit(0);
 } catch (err) {
   console.error('tests failed:', err && err.message ? err.message : err);

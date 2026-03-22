@@ -1,0 +1,12 @@
+https://localhost {
+    tls /certs/localhost.pem /certs/localhost-key.pem
+    encode zstd gzip
+    reverse_proxy /* http://app:3000
+}
+
+# Optional: include LAN IP if you generated certificates for it
+https://192.168.1.240 {
+    tls /certs/localhost.pem /certs/localhost-key.pem
+    encode zstd gzip
+    reverse_proxy /* http://app:3000
+}

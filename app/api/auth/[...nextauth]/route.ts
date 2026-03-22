@@ -170,15 +170,15 @@ export const authOptions: NextAuthOptions = {
     },
     csrfToken: {
       name: isProd ? '__Secure-next-auth.csrf-token' : 'next-auth.csrf-token',
-      options: { httpOnly: true, path: '/', secure: isProd }
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: isProd }
     },
     callbackUrl: {
       name: isProd ? '__Secure-next-auth.callback-url' : 'next-auth.callback-url',
-      options: { httpOnly: false, path: '/', secure: isProd }
+      options: { httpOnly: false, sameSite: 'lax', path: '/', secure: isProd }
     },
     pkceCodeVerifier: {
       name: isProd ? '__Secure-next-auth.pkce.code_verifier' : 'next-auth.pkce.code_verifier',
-      options: { httpOnly: true, path: '/', secure: isProd }
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: isProd }
     }
   },
   callbacks: {

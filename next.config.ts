@@ -25,8 +25,8 @@ const imgSrc = isProd
 // Ensure localhost:3000 is explicitly allowed for development and local testing
 const localDev3000 = "http://127.0.0.1:3000 http://localhost:3000";
 const connectSrc = isProd
-  ? `connect-src 'self' ${siteOrigin} ${localDev3000} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
-  : `connect-src 'self' ${siteOrigin} ${localDev3000} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`;
+  ? `connect-src 'self' ${siteOrigin} ${localDev3000} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com`
+  : `connect-src 'self' ${siteOrigin} ${localDev3000} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com ws: wss:`;
 
 const reportUri = `${siteOrigin}/api/csp/report`
 
@@ -84,6 +84,7 @@ const nextConfig: NextConfig = {
     ],
     remotePatterns: [
       { protocol: 'http', hostname: '127.0.0.1', port: '9000', pathname: '/:path*' },
+      { protocol: 'http', hostname: '192.168.1.240', port: '9000', pathname: '/:path*' },
       { protocol: 'http', hostname: 'localhost', port: '9000', pathname: '/:path*' },
       { protocol: 'http', hostname: 'minio', port: '', pathname: '/:path*' },
       { protocol: 'https', hostname: 's3.amazonaws.com', port: '', pathname: '/:path*' }

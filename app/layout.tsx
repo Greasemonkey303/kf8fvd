@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from 'next/headers'
 import { Navbar, BackButton } from "@/components";
 import { Footer } from "@/containers";
 import '../styles/app.css'
@@ -22,21 +23,24 @@ export const metadata: Metadata = {
   description: "KF8FVD Zach Amateur Radio Operator Page",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const _cookies = await cookies();
+  const nonce = _cookies.get('csp-nonce')?.value;
+
   return (
     <html lang="en">
       <head>
-        <link rel="preload" as="image" href="/grand_rapids.jpg" />
+        {/* preloading large hero image removed to avoid duplicate/unused preload warnings */}
         <meta property="og:site_name" content="KF8FVD" />
         <meta name="twitter:card" content="summary_large_image" />
         {/* Early theme initializer (external to avoid CSP inline blocks) */}
-        <script src="/theme-init.js" defer />
-        <script id="cf-turnstile-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        <script src="/theme-init.js" defer nonce={nonce} />
+        <script id="cf-turnstile-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer nonce={nonce} />
+        <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@graph": [
             {
