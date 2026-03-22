@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { tlog } from '@/lib/turnstileDebug'
-import { loadTurnstileScript, waitForTurnstileReady } from '@/lib/turnstileLoader'
+import { loadTurnstileScript, waitForTurnstileReady, fetchTurnstileSiteKey } from '@/lib/turnstileLoader'
 import Modal from '@/components/modal/Modal'
 import Image from 'next/image'
 import styles from './contact.module.css'
@@ -37,6 +37,7 @@ export default function Contact() {
   const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
   const [cfToken, setCfToken] = useState<string | null>(null)
   const cfIntervalRef = useRef<number | null>(null)
+  const [runtimeSiteKey, setRuntimeSiteKey] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [previewName, setPreviewName] = useState<string | null>(null)
@@ -51,16 +52,26 @@ export default function Contact() {
 
   useEffect(()=>{
     setMounted(true)
-    // dynamically load Cloudflare Turnstile script if sitekey is present
-    tlog('contact useEffect mount', { sitekeyPresent: !!process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY })
-    if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
+    // dynamically load Cloudflare Turnstile script if sitekey is present (build-time or runtime)
+    const envSiteKey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
+    tlog('contact useEffect mount', { sitekeyPresent: !!envSiteKey })
+    if (envSiteKey) {
       loadTurnstileScript().then(() => tlog('contact script loaded')).catch(e => tlog('contact script load error', e))
+      setRuntimeSiteKey(envSiteKey)
+      return
     }
+    // fetch runtime sitekey if available
+    fetchTurnstileSiteKey().then(k => {
+      if (k) {
+        setRuntimeSiteKey(k)
+        loadTurnstileScript().then(() => tlog('contact script loaded (runtime)')).catch(e => tlog('contact script load error', e))
+      }
+    }).catch(e => tlog('contact fetch runtime key failed', e))
   },[])
 
   // When script loads, render turnstile widget programmatically and capture token via callback
   useEffect(()=>{
-    const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
+    const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY || runtimeSiteKey
     tlog('contact render effect start', { sitekeyPresent: !!sitekey })
     if (!sitekey) return
     let cancelled = false
@@ -87,7 +98,7 @@ export default function Contact() {
       }
     })()
     return () => { cancelled = true }
-  },[])
+  },[runtimeSiteKey])
 
   function validate(){
     const e: Record<string,string> = {}
@@ -197,8 +208,9 @@ export default function Contact() {
       // include honeypot value if present in DOM
       const hpEl = document.querySelector<HTMLInputElement>('input[name="hp"]')
       if (hpEl) fd.append('hp', hpEl.value)
-      // include Cloudflare Turnstile token if present (use programmatic token if available)
-      if (process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) {
+      // include Cloudflare Turnstile token if a sitekey is configured (build-time or runtime)
+      const sitekeyNow = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY || runtimeSiteKey
+      if (sitekeyNow) {
         const token = cfToken || document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value
         if (!token) {
           throw new Error('Please complete the CAPTCHA to continue')
@@ -375,8 +387,8 @@ export default function Contact() {
                 <label>Leave this field empty<input name="hp" tabIndex={-1} /></label>
               </div>
 
-              {/* Cloudflare Turnstile widget (requires NEXT_PUBLIC_CF_TURNSTILE_SITEKEY in env) */}
-              {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
+              {/* Cloudflare Turnstile widget (show when build-time or runtime sitekey present) */}
+              {(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY || runtimeSiteKey) && (
                 <div className="mt-12">
                   <div id="cf-turnstile-container"></div>
                   {!cfToken && <div className={styles.small} role="status" aria-live="polite">Please complete the CAPTCHA to enable sending.</div>}
@@ -384,7 +396,7 @@ export default function Contact() {
               )}
 
                 <div className={styles.actions}>
-                  <button ref={submitButtonRef} type="submit" disabled={loading || uploadProgress !== null || (Boolean(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) && !cfToken)} aria-busy={loading}>
+                  <button ref={submitButtonRef} type="submit" disabled={loading || uploadProgress !== null || ((Boolean(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) || Boolean(runtimeSiteKey)) && !cfToken)} aria-busy={loading}>
                     {loading ? (
                       <>
                         <span className={styles.spinner} aria-hidden></span>
@@ -430,7 +442,7 @@ export default function Contact() {
 
           <div className={styles.confirmActions}>
             <button ref={confirmCancelRef} onClick={() => { if (uploadProgress !== null) cancelUpload(); else setConfirmOpen(false) }}>Cancel</button>
-            <button onClick={confirmSend} disabled={loading || uploadProgress !== null || (Boolean(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) && !cfToken)} aria-disabled={loading || uploadProgress !== null}>{loading ? 'Sending…' : 'Confirm & Send'}</button>
+            <button onClick={confirmSend} disabled={loading || uploadProgress !== null || ((Boolean(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) || Boolean(runtimeSiteKey)) && !cfToken)} aria-disabled={loading || uploadProgress !== null || ((Boolean(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY) || Boolean(runtimeSiteKey)) && !cfToken)}>{loading ? 'Sending…' : 'Confirm & Send'}</button>
           </div>
         </Modal>
       )}

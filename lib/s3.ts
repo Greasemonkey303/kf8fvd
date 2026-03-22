@@ -38,8 +38,8 @@ export async function getUploadKey(slug: string, filename: string, prefixOverrid
 }
 
 export function buildPublicUrl(key: string) {
-  // Prefer returning a proxied API URL so the app can fetch objects regardless of MinIO bucket policy
-  // Return a path-based proxied URL to avoid query-string issues with next/image localPatterns
+  // Return a proxied API URL that encodes the key into the path
+  // so Next's image optimizer (and other callers) use a clean pathname
   // Example: /api/uploads/get/<encoded-key>
   return `/api/uploads/get/${encodeURIComponent(key)}`
 }

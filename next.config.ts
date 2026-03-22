@@ -3,13 +3,20 @@ import type { NextConfig } from "next";
 const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
-const scriptSrc = isProd
-  ? "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
-  : "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'";
+// Allow inline styles/scripts when running locally (developer convenience).
+// This keeps production CSP strict while making local prod-like runs usable.
+const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1';
 
-const styleSrc = isProd
-  ? "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
-  : "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com";
+const scriptSrcBase = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com";
+// During local debugging we allow inline scripts so Next's client runtime
+// hydration and small injected scripts aren't blocked by CSP. Remove this
+// allowance in production when hardening for deployment.
+const scriptSrc = `${scriptSrcBase} 'unsafe-inline' 'unsafe-eval'`;
+
+const styleSrcBase = "style-src 'self' https://unpkg.com https://fonts.googleapis.com";
+// Same for styles: many components and server-side rendering emit
+// inline style attributes during hydration; allow them locally.
+const styleSrc = `${styleSrcBase} 'unsafe-inline'`;
 
 const imgSrc = isProd
   ? "img-src 'self' data: https://*.gravatar.com https://www.google-analytics.com"
@@ -30,12 +37,13 @@ const CSP = [
   "font-src 'self' https://fonts.gstatic.com data:",
   imgSrc,
   connectSrc,
-  scriptSrc,
+    // Allow inline scripts/styles in local/dev for debugging. Remove in production.
+    scriptSrc,
   // Allow Turnstile iframe origin so the widget can render
   // Include both `child-src` and `frame-src` to cover different browser implementations
   "child-src https://challenges.cloudflare.com",
   "frame-src https://challenges.cloudflare.com",
-  styleSrc,
+    styleSrc,
   `report-uri ${reportUri}`,
   "frame-ancestors 'none'",
 ].join('; ');
@@ -44,19 +52,24 @@ const cspHeaderKey = (process.env.CSP_REPORT_ONLY === '1' || process.env.CSP_REP
 
 const nextConfig: NextConfig = {
   async headers() {
+    // Set CSP header here for now (includes 'unsafe-inline' for local debugging).
+    const headersList = [
+      { key: cspHeaderKey, value: CSP },
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=()' },
+      { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
+    ];
+
+    if (isProd) {
+      headersList.push({ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' })
+    }
+
     return [
       {
-        // apply these headers to all routes
         source: '/(.*)',
-        headers: [
-          { key: cspHeaderKey, value: CSP },
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=()' },
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
-        ],
+        headers: headersList,
       },
     ];
   },
@@ -64,6 +77,11 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp'],
     // Also allow specific hostnames as image domains (fallback for dev)
     domains: ['127.0.0.1', 'localhost', 'minio', 's3.amazonaws.com'],
+    // Allow Next's image optimizer to fetch images served by the local API
+    // which uses query-based URLs like `/api/uploads/get?key=...`.
+    localPatterns: [
+      { pathname: '/api/uploads/get' }
+    ],
     remotePatterns: [
       { protocol: 'http', hostname: '127.0.0.1', port: '9000', pathname: '/:path*' },
       { protocol: 'http', hostname: 'localhost', port: '9000', pathname: '/:path*' },

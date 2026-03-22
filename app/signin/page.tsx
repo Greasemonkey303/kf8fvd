@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { tlog } from '@/lib/turnstileDebug';
-import { loadTurnstileScript, waitForTurnstileReady } from '@/lib/turnstileLoader';
+import { loadTurnstileScript, waitForTurnstileReady, fetchTurnstileSiteKey } from '@/lib/turnstileLoader';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Card } from '@/components';
@@ -22,6 +22,7 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
   const [cfToken, setCfToken] = useState<string | null>(null)
+  const [runtimeSiteKey, setRuntimeSiteKey] = useState<string | null>(null)
   // removed interval polling; use loader instead
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -34,11 +35,11 @@ export default function SignInPage() {
   const getTurnstile = () => (typeof window !== 'undefined' ? (window as unknown as { turnstile?: { render?: (el: HTMLElement, opts?: { sitekey?: string; callback?: (token: string) => void }) => number | string; reset?: (id: number) => void } }).turnstile : undefined)
 
   useEffect(()=>{
-    const sitekey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
-    tlog('signin loader start', { sitekeyPresent: !!sitekey })
-    if (!sitekey) return
     let cancelled = false
-    ;(async () => {
+    const envSiteKey = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
+    tlog('signin loader start', { sitekeyPresent: !!envSiteKey })
+
+    async function init(keyToUse: string) {
       try {
         await loadTurnstileScript().catch((e)=> { tlog('signin load script failed', e); throw e })
         tlog('signin script loaded')
@@ -49,7 +50,7 @@ export default function SignInPage() {
         try {
           const turn = getTurnstile()
           const id = turn && typeof turn.render === 'function' ? turn.render(container, {
-            sitekey,
+            sitekey: keyToUse,
             callback: (token: string) => {
               tlog('signin callback token', token)
               setCfToken(token)
@@ -68,7 +69,18 @@ export default function SignInPage() {
       } catch (err) {
         tlog('signin loader error', err)
       }
-    })()
+    }
+
+    if (envSiteKey) init(envSiteKey)
+    else {
+      fetchTurnstileSiteKey().then((k)=> {
+        if (cancelled) return
+        if (!k) { tlog('signin: no runtime sitekey'); return }
+        setRuntimeSiteKey(k)
+        init(k)
+      }).catch(e => tlog('signin fetch runtime sitekey failed', e))
+    }
+
     return () => { cancelled = true }
   }, [])
 
@@ -90,6 +102,8 @@ export default function SignInPage() {
   }, [resendCooldown])
 
   const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+
+  const sitekeyNow = process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY || runtimeSiteKey
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -231,7 +245,7 @@ export default function SignInPage() {
               <div style={{marginTop:8}}><a href="/forgot-password" className={styles.helperLink}>Forgot password?</a></div>
             </div>
 
-            {process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY && (
+            {(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY || runtimeSiteKey) && (
               <div className={styles.turnstile} role="region" aria-describedby="turnstile-desc">
                 <div id="cf-turnstile-container" aria-hidden={false}></div>
                 <input type="hidden" name="cf-turnstile-response" />
@@ -259,7 +273,7 @@ export default function SignInPage() {
                 <span className={styles.smallText}>Remember me</span>
               </label>
               <div>
-                <button type="submit" className={styles.primaryButton} disabled={loading || (!codeRequested && !cfToken && !isDev) || (codeRequested && otp.trim().length < 6)} aria-disabled={loading || (!codeRequested && !cfToken && !isDev) || (codeRequested && otp.trim().length < 6)}>
+                <button type="submit" className={styles.primaryButton} disabled={loading || ((!codeRequested && sitekeyNow && !cfToken && !isDev)) || (codeRequested && otp.trim().length < 6)} aria-disabled={loading || ((!codeRequested && sitekeyNow && !cfToken && !isDev)) || (codeRequested && otp.trim().length < 6)}>
                   {loading ? (
                     <span style={{display:'inline-flex', alignItems:'center', gap:8}}>
                       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style={{marginRight:6}}>

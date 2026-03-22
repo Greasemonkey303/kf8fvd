@@ -1,6 +1,7 @@
 const { devices } = require('@playwright/test');
 
 module.exports = {
+  // Run tests in this directory (the config lives inside tests/playwright)
   testDir: '.',
   timeout: 30 * 1000,
   use: {

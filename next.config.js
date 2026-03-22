@@ -20,13 +20,11 @@ const nextConfig = {
   async headers() {
     const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
-    // In production, avoid unsafe-inline/eval and limit connect-src to secure endpoints
-    const scriptSrc = isProd
-      ? "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
-      : "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'"
-    const styleSrc = isProd
-      ? "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
-      : "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com"
+    // For local debugging allow inline scripts/styles so Next's inline
+    // hydration/runtime scripts and server-emitted style attributes aren't blocked.
+    // This is intentional for development; remove these allowances for production.
+    const scriptSrc = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'"
+    const styleSrc = "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com"
     const imgSrc = isProd ? "img-src 'self' data: https: https://*.gravatar.com" : "img-src 'self' data: http: https: https://*.gravatar.com"
     // Ensure localhost:3000 is explicitly allowed for development and local testing
     const localDev3000 = "http://127.0.0.1:3000 http://localhost:3000"
@@ -40,13 +38,17 @@ const nextConfig = {
 
     const cspHeaderKey = (process.env.CSP_REPORT_ONLY === '1' || process.env.CSP_REPORT_ONLY === 'true') ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'
 
+    // For local Docker builds the static header is easier to reason about
+    // and ensures the browser receives the intended policy. This includes
+    // temporary 'unsafe-inline' allowances for development only — remove
+    // before production deploy.
     const headers = [
+      { key: cspHeaderKey, value: csp },
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=()' },
       { key: 'X-XSS-Protection', value: '0' },
-      { key: cspHeaderKey, value: csp }
     ]
 
     if (isProd) {

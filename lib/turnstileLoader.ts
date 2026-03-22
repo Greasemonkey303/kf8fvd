@@ -4,6 +4,8 @@ export type LoaderOptions = {
   timeoutMs?: number
 }
 
+import { tlog } from './turnstileDebug'
+
 export function loadTurnstileScript(opts: LoaderOptions = {}) {
   const id = opts.id || 'cf-turnstile-script'
   const src = opts.src || 'https://challenges.cloudflare.com/turnstile/v0/api.js'
@@ -12,10 +14,26 @@ export function loadTurnstileScript(opts: LoaderOptions = {}) {
     if (typeof window === 'undefined') return reject(new Error('no-window'))
     const existing = document.getElementById(id) as HTMLScriptElement | null
     const _win = window as unknown as Record<string, unknown>
-    if (existing && _win.turnstile) return resolve(existing)
     if (existing) {
-      const onLoad = () => resolve(existing)
-      const onErr = () => reject(new Error('turnstile-script-error'))
+      // If the global is already present, we're done.
+      if (_win.turnstile) {
+        tlog('loadTurnstileScript: existing script and global present')
+        return resolve(existing)
+      }
+      // If the script element exists but the global is not yet defined,
+      // don't reject immediately — resolve and let the caller wait for
+      // the Turnstile global using `waitForTurnstileReady`.
+      try {
+        // Some TS DOM types don't expose `readyState` in all targets; use `any`
+        // here to avoid build-time type errors while still checking state.
+        const rs = (existing as any).readyState
+        if (rs === 'complete' || rs === 'loaded') {
+          tlog('loadTurnstileScript: existing script readyState', rs)
+          return resolve(existing)
+        }
+      } catch (e) { void e }
+      const onLoad = () => { tlog('loadTurnstileScript: script load event'); resolve(existing) }
+      const onErr = () => { tlog('loadTurnstileScript: script error event'); reject(new Error('turnstile-script-error')) }
       existing.addEventListener('load', onLoad)
       existing.addEventListener('error', onErr)
       setTimeout(() => reject(new Error('turnstile-script-timeout')), timeoutMs)
@@ -53,4 +71,15 @@ export function waitForTurnstileReady(timeoutMs = 5000) {
       }
     }, 200)
   })
+}
+
+export async function fetchTurnstileSiteKey() {
+  try {
+    const res = await fetch('/api/public-config')
+    if (!res.ok) return null
+    const j = await res.json()
+    return (j && typeof j.turnstileSiteKey === 'string') ? j.turnstileSiteKey : null
+  } catch (e) {
+    return null
+  }
 }

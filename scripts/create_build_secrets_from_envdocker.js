@@ -45,8 +45,12 @@ function main() {
     NEXTAUTH_SECRET: 'nextauth_secret',
     ENCRYPTION_KEY: 'encryption_key',
     DB_PASSWORD: 'db_password',
-    REDIS_URL: 'redis_url'
+    REDIS_URL: 'redis_url',
+    ADMIN_BASIC_USER: 'admin_basic_user',
+    ADMIN_BASIC_PASSWORD: 'admin_basic_password',
+    ADMIN_API_KEY: 'admin_api_key'
   };
+
 
   Object.entries(mapping).forEach(([envKey, secretFile]) => {
     if (env[envKey]) {

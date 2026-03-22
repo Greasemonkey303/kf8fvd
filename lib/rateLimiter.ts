@@ -41,6 +41,18 @@ function disableDbFallback() {
   return v === '1' || v === 'true'
 }
 
+// Allow disabling the rate limiter only in non-production environments.
+// - In `production` the limiter is always active regardless of env vars.
+// - `DISABLE_RATE_LIMIT=1` or `DEV_DISABLE_RATE_LIMIT=1` will disable the limiter in dev/test.
+function rateLimitDisabled() {
+  if (process.env.NODE_ENV === 'production') return false
+  const v = process.env.DISABLE_RATE_LIMIT
+  if (v === '1' || v === 'true') return true
+  const dv = process.env.DEV_DISABLE_RATE_LIMIT
+  if (dv === '1' || dv === 'true') return true
+  return false
+}
+
 let _redis: RedisLike | null = null
 export async function getRedis() {
   if (_redis) return _redis
@@ -91,7 +103,20 @@ export function __test_resetInternalState() {
 
 function encodeKey(k: string) { return encodeURIComponent(k) }
 
+function logRateEvent(level: 'info' | 'warn' | 'error' | 'debug', event: string, data?: Record<string, unknown>) {
+  try {
+    const payload = { event, ts: new Date().toISOString(), ...(data || {}) }
+    const msg = JSON.stringify(payload)
+    if (level === 'info') console.info('[rateLimiter]', msg)
+    else if (level === 'warn') console.warn('[rateLimiter]', msg)
+    else if (level === 'error') console.error('[rateLimiter]', msg)
+    else console.debug('[rateLimiter]', msg)
+  } catch (e) {
+    try { console.warn('[rateLimiter] log failed', e) } catch {}
+  }
+}
 export async function isLocked(key: string) {
+  if (rateLimitDisabled()) return false
   const r = await getRedis()
   if (r) {
     try {
@@ -125,6 +150,9 @@ export async function isLocked(key: string) {
 }
 
 export async function incrementFailure(key: string, opts?: { windowMs?: number; max?: number; lockMs?: number; reason?: string }) {
+  if (rateLimitDisabled()) {
+    return { locked: false, remaining: Number.MAX_SAFE_INTEGER }
+  }
   const windowMs = opts?.windowMs ?? getRateWindowMs()
   const max = opts?.max ?? getRateMax()
   const lockMs = opts?.lockMs ?? getRateLockMs()
@@ -150,6 +178,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       const resArr = Array.isArray(evalRes) ? (evalRes as unknown[]) : []
       const cur = Number(resArr[0] ?? 0)
       const lockTtl = Number(resArr[1] ?? -1)
+      try { logRateEvent('info', 'increment', { key, source: 'redis', cur, max, remaining: Math.max(0, max - cur), redisTtl: lockTtl, reason: opts?.reason }) } catch {}
 
       // increment a cumulative metric for total login attempts (namespaced)
       try {
@@ -194,11 +223,12 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
         } catch (err) {
           try { console.warn('[rateLimiter] redis metrics incr failed', err) } catch {}
         }
+        try { logRateEvent('warn', 'locked', { key, source: 'redis', cur, max, lockedUntil: until, reason: opts?.reason }) } catch {}
         return { locked: true, remaining: 0, lockedUntil: Date.now() + lockMs }
       }
       return { locked: false, remaining: Math.max(0, max - cur), redisTtl: lockTtl }
     } catch (err) {
-      try { console.warn('[rateLimiter] redis increment error', err) } catch {}
+      try { logRateEvent('error', 'redis_increment_error', { key, err: String(err) }) } catch {}
     }
   }
 
@@ -242,6 +272,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       return { locked: false, remaining: Math.max(0, max - cur), cur }
     })
       if (res) {
+        try { logRateEvent('info', 'increment', { key, source: 'db', cur: res.cur, remaining: res.remaining, locked: !!res.locked, reason: opts?.reason }) } catch {}
       // attempt to increment cumulative metric in Redis if available
       try {
         const rr = await getRedis()
@@ -251,11 +282,14 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
           try { if (typeof rr.expire === 'function') await rr.expire(mkey, getMetricsTtlSec()) } catch {}
         }
       } catch {}
-      if (res.locked) return { locked: true, remaining: 0, lockedUntil: res.lockedUntil }
+      if (res.locked) {
+        try { logRateEvent('warn', 'locked', { key, source: 'db', cur: res.cur, max, lockedUntil: res.lockedUntil, reason: opts?.reason }) } catch {}
+        return { locked: true, remaining: 0, lockedUntil: res.lockedUntil }
+      }
       return { locked: false, remaining: res.remaining }
       }
     } catch (e) {
-      try { console.warn('[rateLimiter] db fallback failed', e) } catch {}
+      try { logRateEvent('error', 'db_fallback_failed', { key, err: String(e) }) } catch {}
     }
   }
 
@@ -276,6 +310,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
     } catch (err) {
       try { console.warn('[rateLimiter] audit insert failed', err) } catch {}
     }
+    try { logRateEvent('info', 'increment', { key, source: 'memory', cur: 1, remaining: Math.max(0, max - 1), reason: opts?.reason }) } catch {}
     return { locked: false, remaining: Math.max(0, max - 1) }
   }
   // if outside window, reset
@@ -296,13 +331,19 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
     } catch (err) {
       try { console.warn('[rateLimiter] auth_locks insert failed', err) } catch {}
     }
+    try { logRateEvent('warn', 'locked', { key, source: 'memory', cur: e.count, max, lockedUntil: e.lockedUntil, reason: opts?.reason }) } catch {}
     return { locked: true, remaining: 0, lockedUntil: e.lockedUntil }
   }
   store.set(key, e)
+  try { logRateEvent('info', 'increment', { key, source: 'memory', cur: e.count, remaining: Math.max(0, max - e.count), reason: opts?.reason }) } catch {}
   return { locked: false, remaining: Math.max(0, max - e.count) }
 }
 
 export async function resetKey(key: string) {
+  if (rateLimitDisabled()) {
+    try { store.delete(key) } catch {}
+    return
+  }
   const r = await getRedis()
   if (r) {
     try {
@@ -315,13 +356,14 @@ export async function resetKey(key: string) {
         if (hadLock) {
           try { if (typeof r.decr === 'function') await r.decr(metricKey('auth_locks_active')) } catch {}
         }
+        try { logRateEvent('info', 'reset', { key, source: 'redis', hadLock: Boolean(hadLock) }) } catch {}
       } catch {
         // best-effort: still delete keys
         try { if (typeof r.del === 'function') await r.del(countKey, lockKey) } catch {}
       }
       try { const { query } = await import('./db'); await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch {}
     } catch (err) {
-      try { console.warn('[rateLimiter] redis resetKey failed', err) } catch {}
+      try { logRateEvent('error', 'redis_reset_failed', { key, err: String(err) }) } catch {}
     }
   }
   // also remove any DB fallback counters
@@ -330,12 +372,14 @@ export async function resetKey(key: string) {
       const { query } = await import('./db')
       await query('DELETE FROM rate_limiter_counts WHERE key_name = ?', [key])
       try { await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch {}
+      try { logRateEvent('info', 'reset', { key, source: 'db' }) } catch {}
     } catch {}
   }
   store.delete(key)
 }
 
 export async function getInfo(key: string) {
+  if (rateLimitDisabled()) return { count: 0 }
   const r = await getRedis()
   if (r) {
     try {
