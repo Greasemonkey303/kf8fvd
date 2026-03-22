@@ -22,9 +22,11 @@ const nextConfig = {
 
     // For local debugging allow inline scripts/styles so Next's inline
     // hydration/runtime scripts and server-emitted style attributes aren't blocked.
-    // This is intentional for development; remove these allowances for production.
-    const scriptSrc = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'"
-    const styleSrc = "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com"
+    // Only include 'unsafe-inline' when running locally or when explicitly
+    // allowed via `CSP_ALLOW_INLINE=1` to keep production CSP strict.
+    const allowInline = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
+    const scriptSrc = allowInline ? "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
+    const styleSrc = allowInline ? "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com" : "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
     const imgSrc = isProd ? "img-src 'self' data: https: https://*.gravatar.com" : "img-src 'self' data: http: https: https://*.gravatar.com"
     // Ensure localhost:3000 is explicitly allowed for development and local testing
     const localDev3000 = "http://127.0.0.1:3000 http://localhost:3000"

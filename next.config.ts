@@ -11,12 +11,12 @@ const scriptSrcBase = "script-src 'self' https://unpkg.com https://challenges.cl
 // During local debugging we allow inline scripts so Next's client runtime
 // hydration and small injected scripts aren't blocked by CSP. Remove this
 // allowance in production when hardening for deployment.
-const scriptSrc = `${scriptSrcBase} 'unsafe-inline' 'unsafe-eval'`;
+const scriptSrc = isLocalhost ? `${scriptSrcBase} 'unsafe-inline' 'unsafe-eval'` : `${scriptSrcBase}`;
 
 const styleSrcBase = "style-src 'self' https://unpkg.com https://fonts.googleapis.com";
 // Same for styles: many components and server-side rendering emit
 // inline style attributes during hydration; allow them locally.
-const styleSrc = `${styleSrcBase} 'unsafe-inline'`;
+const styleSrc = isLocalhost ? `${styleSrcBase} 'unsafe-inline'` : `${styleSrcBase}`;
 
 const imgSrc = isProd
   ? "img-src 'self' data: https://*.gravatar.com https://www.google-analytics.com"

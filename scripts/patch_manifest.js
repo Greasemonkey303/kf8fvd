@@ -11,6 +11,10 @@ const raw = fs.readFileSync(manifestPath, 'utf8')
 let j
 try { j = JSON.parse(raw) } catch (e) { console.error('invalid JSON', e); process.exit(2) }
 
+// Only apply the inline allowances patch when explicitly requested by
+// setting `CSP_ALLOW_INLINE=1`. This avoids accidentally inserting
+// 'unsafe-inline' into production manifests.
+const allowInline = process.env.CSP_ALLOW_INLINE === '1'
 let patched = false
 if (Array.isArray(j.headers)) {
   for (const route of j.headers) {
@@ -23,13 +27,15 @@ if (Array.isArray(j.headers)) {
         const afterScript = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'"
         const beforeStyle = "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
         const afterStyle = "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com"
-        if (v.includes(beforeScript) && !v.includes("'unsafe-inline'")) {
-          v = v.replace(beforeScript, afterScript)
-          patched = true
-        }
-        if (v.includes(beforeStyle) && !v.includes("'unsafe-inline'")) {
-          v = v.replace(beforeStyle, afterStyle)
-          patched = true
+        if (allowInline) {
+          if (v.includes(beforeScript) && !v.includes("'unsafe-inline'")) {
+            v = v.replace(beforeScript, afterScript)
+            patched = true
+          }
+          if (v.includes(beforeStyle) && !v.includes("'unsafe-inline'")) {
+            v = v.replace(beforeStyle, afterStyle)
+            patched = true
+          }
         }
         h.value = v
       }
