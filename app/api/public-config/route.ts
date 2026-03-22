@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 
 // Ensure this route runs in Node.js runtime so `process.env` is available
 export const runtime = 'nodejs'
+// Force dynamic so Next.js does not statically inline env values at build-time
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
