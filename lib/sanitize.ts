@@ -21,7 +21,7 @@ export function sanitizeHtmlServer(input: string): string {
   try {
     const iso = isomorphicDompurify as unknown as DomPurifyLike
     if (iso && typeof iso.sanitize === 'function') {
-      try { return iso.sanitize(s) } catch { /* fallthrough */ }
+      try { return iso.sanitize(s, { FORBID_TAGS: ['script', 'style'] } as any) } catch { /* fallthrough */ }
     }
   } catch {
     // ignore
@@ -33,7 +33,7 @@ export function sanitizeHtmlServer(input: string): string {
     const createDP = createDOMPurify as unknown as (win: unknown) => DomPurifyLike
     const DOMPurify = createDP(window)
     if (DOMPurify && typeof DOMPurify.sanitize === 'function') {
-      try { return DOMPurify.sanitize(s) } catch { /* fallthrough */ }
+      try { return DOMPurify.sanitize(s, { FORBID_TAGS: ['script', 'style'] }) } catch { /* fallthrough */ }
     }
   } catch {
     // ignore
@@ -42,6 +42,7 @@ export function sanitizeHtmlServer(input: string): string {
   // final conservative fallback: strip <script> blocks, remove on* attributes and javascript: links
   try {
     let out = s.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    out = out.replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
     out = out.replace(/\son\w+=(["'])[\s\S]*?\1/gi, '')
     out = out.replace(/javascript:[^\"'\s>]+/gi, '#')
     return out
