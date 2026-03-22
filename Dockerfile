@@ -29,6 +29,8 @@ ARG NEXT_PUBLIC_CF_TURNSTILE_SITEKEY
 ARG NEXT_PUBLIC_MINIO_BASE_URL
 ARG NEXT_PUBLIC_SITE_URL
 ARG NEXTAUTH_URL
+ARG NEXTAUTH_SECRET
+ARG ENCRYPTION_KEY
 
 # Copy source into build context
 COPY . .
@@ -40,17 +42,19 @@ RUN --mount=type=secret,id=nextauth_secret \
 	--mount=type=secret,id=encryption_key \
 	--mount=type=secret,id=db_password \
 	--mount=type=secret,id=redis_url \
-	sh -c 'export NEXTAUTH_SECRET=$(cat /run/secrets/nextauth_secret) && \
-			 export ENCRYPTION_KEY=$(cat /run/secrets/encryption_key) && \
-			 export DB_PASSWORD=$(cat /run/secrets/db_password) && \
-			 export REDIS_URL=$(cat /run/secrets/redis_url) && \
-			 export CSP_REPORT_ONLY="$CSP_REPORT_ONLY" && export CSP_ALLOW_INLINE="$CSP_ALLOW_INLINE" && \
-			 export NEXT_PUBLIC_SITE_URL="$NEXT_PUBLIC_SITE_URL" && export NEXTAUTH_URL="$NEXTAUTH_URL" && \
-			 export NEXT_PUBLIC_CF_TURNSTILE_SITEKEY="$NEXT_PUBLIC_CF_TURNSTILE_SITEKEY" && export NEXT_PUBLIC_MINIO_BASE_URL="$NEXT_PUBLIC_MINIO_BASE_URL" && \
-			 NEXTAUTH_SECRET="$NEXTAUTH_SECRET" ENCRYPTION_KEY="$ENCRYPTION_KEY" \
-			 NODE_ENV="$NODE_ENV" DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_USER="$DB_USER" \
-			 DB_PASSWORD="$DB_PASSWORD" DB_NAME="$DB_NAME" REDIS_URL="$REDIS_URL" \
-			 NEXT_PUBLIC_SITE_URL="$NEXT_PUBLIC_SITE_URL" NEXTAUTH_URL="$NEXTAUTH_URL" NEXT_PUBLIC_CF_TURNSTILE_SITEKEY="$NEXT_PUBLIC_CF_TURNSTILE_SITEKEY" NEXT_PUBLIC_MINIO_BASE_URL="$NEXT_PUBLIC_MINIO_BASE_URL" npm run build'
+	sh -c 'set -eu;\
+		# If build-time secret files are mounted, read them; otherwise keep any provided build args or env vars.\
+		if [ -f /run/secrets/nextauth_secret ]; then NEXTAUTH_SECRET=$(cat /run/secrets/nextauth_secret); fi;\
+		if [ -f /run/secrets/encryption_key ]; then ENCRYPTION_KEY=$(cat /run/secrets/encryption_key); fi;\
+		if [ -f /run/secrets/db_password ]; then DB_PASSWORD=$(cat /run/secrets/db_password); fi;\
+		if [ -f /run/secrets/redis_url ]; then REDIS_URL=$(cat /run/secrets/redis_url); fi;\
+		export CSP_REPORT_ONLY="${CSP_REPORT_ONLY:-}" CSP_ALLOW_INLINE="${CSP_ALLOW_INLINE:-}";\
+		export NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" NEXTAUTH_URL="${NEXTAUTH_URL:-}";\
+		export NEXT_PUBLIC_CF_TURNSTILE_SITEKEY="${NEXT_PUBLIC_CF_TURNSTILE_SITEKEY:-}" NEXT_PUBLIC_MINIO_BASE_URL="${NEXT_PUBLIC_MINIO_BASE_URL:-}";\
+		NEXTAUTH_SECRET="${NEXTAUTH_SECRET:-}" ENCRYPTION_KEY="${ENCRYPTION_KEY:-}" \ 
+		NODE_ENV="${NODE_ENV:-production}" DB_HOST="${DB_HOST:-}" DB_PORT="${DB_PORT:-}" DB_USER="${DB_USER:-}" \ 
+		DB_PASSWORD="${DB_PASSWORD:-}" DB_NAME="${DB_NAME:-}" REDIS_URL="${REDIS_URL:-}" \ 
+		NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" NEXTAUTH_URL="${NEXTAUTH_URL:-}" NEXT_PUBLIC_CF_TURNSTILE_SITEKEY="${NEXT_PUBLIC_CF_TURNSTILE_SITEKEY:-}" NEXT_PUBLIC_MINIO_BASE_URL="${NEXT_PUBLIC_MINIO_BASE_URL:-}" npm run build'
 
 FROM node:20-bullseye-slim AS runner
 WORKDIR /app
@@ -65,6 +69,8 @@ COPY --from=builder /app/package.json ./package.json
 
 # Copy Node-based entrypoint (reads /run/secrets and starts the app)
 COPY --from=builder /app/scripts/docker-entrypoint.js /usr/local/bin/docker-entrypoint.js
+# Ensure entrypoint has LF line endings inside the image (strip CR if present)
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.js || true
 RUN chmod +x /usr/local/bin/docker-entrypoint.js || true
 
 # Create a non-root runtime user and fix ownership for /app
@@ -78,9 +84,6 @@ ENV NPM_COMMAND=start
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.js"]
 
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-	CMD node -e "require('http').get('http://127.0.0.1:3000', res=>{process.exit(res.statusCode===200?0:1)}).on('error', ()=>process.exit(1))"
-
 CMD ["npm","run","start"]
 
 # Optional distroless target (build with: --target distroless-runner)

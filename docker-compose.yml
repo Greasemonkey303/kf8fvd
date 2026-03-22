@@ -21,26 +21,12 @@ services:
         NEXT_PUBLIC_MINIO_BASE_URL: ${NEXT_PUBLIC_MINIO_BASE_URL:-http://host.docker.internal:9000}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://localhost}
         NEXTAUTH_URL: ${NEXTAUTH_URL:-https://localhost}
-      secrets:
-        - nextauth_secret
-        - encryption_key
-        - db_password
-        - redis_url
-        - admin_basic_user
-        - admin_basic_password
+      # Build-time secrets are optional; do not require local secret files here.
     image: kf8fvd-app:latest
     ports:
       - "3000:3000"
     env_file:
       - .env.docker
-    secrets:
-      - nextauth_secret
-      - encryption_key
-      - db_password
-      - redis_url
-      - admin_basic_user
-      - admin_basic_password
-      - admin_api_key
     restart: unless-stopped
 
   caddy:
@@ -54,18 +40,7 @@ services:
       - ./certs:/certs:ro
     restart: unless-stopped
 
-secrets:
-  nextauth_secret:
-    file: ./secrets/nextauth_secret
-  encryption_key:
-    file: ./secrets/encryption_key
-  db_password:
-    file: ./secrets/db_password
-  redis_url:
-    file: ./secrets/redis_url
-  admin_basic_user:
-    file: ./secrets/admin_basic_user
-  admin_basic_password:
-    file: ./secrets/admin_basic_password
-  admin_api_key:
-    file: ./secrets/admin_api_key
+# Note: Docker Compose `secrets` mappings were removed to avoid requiring
+# placeholder secret files in the repository. Runtime secrets should be
+# supplied via `.env.docker` or a secrets provider. Build-time secrets in
+# the Dockerfile are optional and will be conditionally read if provided.

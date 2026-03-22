@@ -20,8 +20,8 @@ export function sanitizeHtmlServer(input: string): string {
   // try isomorphic-dompurify first (works in Node)
   try {
     const iso = isomorphicDompurify as unknown as DomPurifyLike
-    if (iso && typeof iso.sanitize === 'function') {
-      try { return iso.sanitize(s, { FORBID_TAGS: ['script', 'style'] } as any) } catch { /* fallthrough */ }
+    if (iso && typeof (iso as any).sanitize === 'function') {
+      try { return (iso as any).sanitize(s, { FORBID_TAGS: ['script', 'style'] } as any) } catch { /* fallthrough */ }
     }
   } catch {
     // ignore
@@ -32,8 +32,8 @@ export function sanitizeHtmlServer(input: string): string {
     const window = (new JSDOM('')).window
     const createDP = createDOMPurify as unknown as (win: unknown) => DomPurifyLike
     const DOMPurify = createDP(window)
-    if (DOMPurify && typeof DOMPurify.sanitize === 'function') {
-      try { return DOMPurify.sanitize(s, { FORBID_TAGS: ['script', 'style'] }) } catch { /* fallthrough */ }
+    if (DOMPurify && typeof (DOMPurify as any).sanitize === 'function') {
+      try { return (DOMPurify as any).sanitize(s, { FORBID_TAGS: ['script', 'style'] }) } catch { /* fallthrough */ }
     }
   } catch {
     // ignore
