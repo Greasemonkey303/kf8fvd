@@ -592,6 +592,7 @@ export default function AdminCredentials() {
   }
 
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   const groupedItems = React.useMemo(() => {
     const groups: Record<string, CredItem[]> = {};

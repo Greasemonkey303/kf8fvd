@@ -38,6 +38,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   const [descExpanded, setDescExpanded] = useState(false)
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
   const frec = form as Record<string, unknown>
   const safeDescription = (frec.description_sanitized as string) ?? (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))
   const safeDetails = (frec.details_sanitized as string) ?? (purify ? purify.sanitize(String(form.details || '')) : (form.details || ''))

@@ -33,6 +33,7 @@ async function main() {
     // Setup DOMPurify
     const window = new JSDOM('').window
     const DOMPurify = createDOMPurify(window)
+    if (DOMPurify && typeof DOMPurify.setConfig === 'function') DOMPurify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
     // Process rows that are missing sanitized field
     const [rows] = await pool.query('SELECT id, message, message_sanitized FROM messages WHERE message_sanitized IS NULL OR message_sanitized = ""')

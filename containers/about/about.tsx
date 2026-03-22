@@ -43,6 +43,7 @@ export default function About({ data }: { data?: AboutData }) {
   const [open, setOpen] = useState<string | null>(null)
 
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   useEffect(() => {
     if (!open) return;

@@ -37,6 +37,7 @@ export default async function Page() {
 
     const dom = new JSDOM('')
     const DOMPurify = createDOMPurify(dom.window as unknown as Window & typeof globalThis)
+    if (DOMPurify && typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
     const sanitize = (s: unknown) => { if (!s) return ''; return DOMPurify.sanitize(String(s)) }
     const isJsonString = (s: string) => {
       if (!s) return false

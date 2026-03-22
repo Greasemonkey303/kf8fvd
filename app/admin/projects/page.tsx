@@ -38,6 +38,7 @@ export default function AdminProjects() {
   useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t) }, [load])
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   const getErrMsg = (err: unknown) => {
     if (err instanceof Error) return err.message

@@ -59,7 +59,7 @@ export async function middleware(req: NextRequest) {
   // Always expose the per-request nonce via a cookie so server components can
   // consume it and apply `nonce` attributes. In production the cookie is marked
   // `Secure` as well. Localhost/dev will receive the cookie without `Secure`.
-  const cookieOptions = ['Path=/', 'SameSite=Lax', 'HttpOnly']
+  const cookieOptions = ['Path=/', 'SameSite=Lax', 'HttpOnly', 'Max-Age=300']
   if (process.env.NODE_ENV === 'production') cookieOptions.push('Secure')
   res.headers.append('Set-Cookie', `csp-nonce=${nonce}; ${cookieOptions.join('; ')}`)
   if (isLocalhost) {

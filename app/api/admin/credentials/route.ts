@@ -55,6 +55,7 @@ export async function POST(req: Request) {
   // sanitize description server-side
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
+  if (DOMPurify && typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
   const safeDescription = description ? DOMPurify.sanitize(String(description)) : null
 
   // compute s3 prefix for uploads (store actual folder used)

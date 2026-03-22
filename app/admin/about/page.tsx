@@ -28,6 +28,7 @@ export default function AdminAboutList() {
   const [creating, setCreating] = useState(false)
 
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   async function load() {
     setLoading(true)

@@ -23,6 +23,7 @@ export default function CredentialCard({ item }: { item: Item }) {
   const [imgOpen, setImgOpen] = useState(false)
   const src = item.image_path || null
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   return (
     <div className={styles.innerCardWrapper}>

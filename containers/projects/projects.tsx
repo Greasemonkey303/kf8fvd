@@ -13,6 +13,7 @@ export default function Projects() {
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const { isAdmin } = useAdmin()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   useEffect(() => {
     let mounted = true

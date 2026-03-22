@@ -3,6 +3,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+
+// Ensure client-side DOMPurify forbids <script> and <style> tags
+try {
+  if (typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
+} catch {}
 import { useRouter } from 'next/navigation'
 import styles from '../../admin.module.css'
 

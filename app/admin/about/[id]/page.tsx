@@ -49,6 +49,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
   const previewCloseRef = useRef<HTMLButtonElement | null>(null)
   const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
+  if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   const [uploadProgress, setUploadProgress] = useState<Record<string | number, number>>({})
   const [previewOpen, setPreviewOpen] = useState(false)

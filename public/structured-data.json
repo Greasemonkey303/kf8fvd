@@ -1,0 +1,21 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Person",
+      "@id": "https://kf8fvd.com/#person",
+      "name": "Zachary (KF8FVD)",
+      "alternateName": "KF8FVD",
+      "url": "https://kf8fvd.com/",
+      "jobTitle": "CNC & EDM Specialist",
+      "description": "Amateur radio operator and maker based in Kentwood, MI."
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://kf8fvd.com/#website",
+      "url": "https://kf8fvd.com/",
+      "name": "KF8FVD",
+      "publisher": { "@id": "https://kf8fvd.com/#person" }
+    }
+  ]
+}

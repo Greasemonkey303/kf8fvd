@@ -48,6 +48,7 @@ export async function POST(req: Request) {
   // Sanitize content server-side before saving
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
+  if (DOMPurify && typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
   let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
   if (sanitized) sanitized = String(removeDebugBlockFromHtml(sanitized))
   // sanitize known metadata HTML fields to avoid storing unsafe markup

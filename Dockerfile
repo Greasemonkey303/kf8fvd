@@ -1,11 +1,13 @@
 # syntax=docker/dockerfile:1.4
 # Build a production image for Next.js
-FROM node:20-bookworm-slim AS deps
+FROM node:20-bullseye-slim AS deps
 WORKDIR /app
 
 # Update OS packages and install build deps required by native modules (e.g. sharp)
 # Running an upgrade here reduces known vulnerabilities in the image layers.
-RUN apt-get update && apt-get upgrade -y && apt-get install -y python3 make g++ libc6-dev libvips-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y \
+	&& apt-get install -y --no-install-recommends python3 make g++ libc6-dev libvips-dev \
+	&& rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
 RUN npm ci
@@ -50,28 +52,43 @@ RUN --mount=type=secret,id=nextauth_secret \
 			 DB_PASSWORD="$DB_PASSWORD" DB_NAME="$DB_NAME" REDIS_URL="$REDIS_URL" \
 			 NEXT_PUBLIC_SITE_URL="$NEXT_PUBLIC_SITE_URL" NEXTAUTH_URL="$NEXTAUTH_URL" NEXT_PUBLIC_CF_TURNSTILE_SITEKEY="$NEXT_PUBLIC_CF_TURNSTILE_SITEKEY" NEXT_PUBLIC_MINIO_BASE_URL="$NEXT_PUBLIC_MINIO_BASE_URL" npm run build'
 
-FROM node:20-bookworm-slim AS runner
+FROM node:20-bullseye-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Install runtime native deps and perform an upgrade to reduce OS-level vulnerabilities
-RUN apt-get update && apt-get upgrade -y && apt-get install -y libvips-dev && rm -rf /var/lib/apt/lists/*
-
-# Copy runtime artifacts from earlier stages
+# Copy runtime artifacts from earlier stages (native modules built in builder)
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 
-# Copy runtime helper scripts so they are available inside the container
-COPY --from=builder /app/scripts ./scripts
+# Copy Node-based entrypoint (reads /run/secrets and starts the app)
+COPY --from=builder /app/scripts/docker-entrypoint.js /usr/local/bin/docker-entrypoint.js
+RUN chmod +x /usr/local/bin/docker-entrypoint.js || true
 
-# Copy entrypoint that will load Docker secrets from /run/secrets into env vars
-COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Create a non-root runtime user and fix ownership for /app
+RUN groupadd -r app \
+	&& useradd -r -g app app \
+	&& chown -R app:app /app /usr/local/bin/docker-entrypoint.js || true
+USER app
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+ENV NPM_COMMAND=start
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.js"]
 
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+	CMD node -e "require('http').get('http://127.0.0.1:3000', res=>{process.exit(res.statusCode===200?0:1)}).on('error', ()=>process.exit(1))"
+
 CMD ["npm","run","start"]
+
+# Optional distroless target (build with: --target distroless-runner)
+FROM gcr.io/distroless/nodejs:20 AS distroless-runner
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/scripts/docker-entrypoint.js /usr/local/bin/docker-entrypoint.js
+RUN true

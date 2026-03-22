@@ -37,6 +37,7 @@ export async function POST(req: Request) {
   // sanitize subtitle
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
+  if (DOMPurify && typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
   const safeSubtitle = subtitle ? DOMPurify.sanitize(subtitle) : null
 
   const res = await query('INSERT INTO credential_sections (slug, name, subtitle, image_path, sort_order) VALUES (?, ?, ?, ?, ?)', [slug, name, safeSubtitle, image_path || null, body.sort_order || 0])
