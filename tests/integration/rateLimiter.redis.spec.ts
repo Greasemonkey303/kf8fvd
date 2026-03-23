@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 
 // Ensure tests do not run with production guards
-(process.env as any).NODE_ENV = process.env.NODE_ENV || 'test'
+process.env.NODE_ENV = process.env.NODE_ENV || 'test'
+
+type IncrementResult = {
+  locked?: boolean
+}
 
 let rateLimiter: typeof import('../../lib/rateLimiter') | null = null
 let redisClient: { ping: () => Promise<unknown>; disconnect?: () => Promise<void> } | null = null
@@ -45,7 +49,10 @@ describe('rateLimiter integration with Redis (if available)', () => {
     for (let i = 0; i < increments; i++) promises.push((rateLimiter as typeof import('../../lib/rateLimiter')).incrementFailure(KEY, opts))
     const results = await Promise.all(promises)
 
-    const anyLocked = results.some((r: any) => r && (r as any).locked)
+    const anyLocked = results.some((result) => {
+      const incrementResult = result as IncrementResult | null | undefined
+      return Boolean(incrementResult?.locked)
+    })
     expect(anyLocked).toBe(true)
 
     const locked = await rateLimiter.isLocked(KEY)

@@ -4,6 +4,10 @@ import { query } from '@/lib/db'
 import { JSDOM } from 'jsdom'
 import createDOMPurify from 'dompurify'
 
+type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
+  setConfig?: (config: { FORBID_TAGS: string[] }) => void
+}
+
 function slugify(s: string) {
   return String(s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
@@ -37,7 +41,8 @@ export async function POST(req: Request) {
   // sanitize subtitle
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
-  if (DOMPurify && typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
+  const configuredPurifier = DOMPurify as DomPurifyWithConfig
+  if (typeof configuredPurifier.setConfig === 'function') configuredPurifier.setConfig({ FORBID_TAGS: ['script', 'style'] })
   const safeSubtitle = subtitle ? DOMPurify.sanitize(subtitle) : null
 
   const res = await query('INSERT INTO credential_sections (slug, name, subtitle, image_path, sort_order) VALUES (?, ?, ?, ?, ?)', [slug, name, safeSubtitle, image_path || null, body.sort_order || 0])

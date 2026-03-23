@@ -1,0 +1,56 @@
+KF8FVD production deployment handoff
+
+Read these files first and treat them as the source of truth:
+
+- c:\Users\zachs\Documents\code\kf8fvd\docs\PRODUCTION_DEPLOY_RUNBOOK.md
+- c:\Users\zachs\Documents\code\kf8fvd\deploy\FIRST_ADMIN_USER.txt
+- c:\Users\zachs\Documents\code\kf8fvd\deploy\kf8fvd-prduction-duildand-safe.sql
+
+Deployment goal:
+
+- Deploy the current repo to production without changing how the app behaves now.
+- Keep the production app container labeled `kf8fvd`.
+- Keep the app runtime unchanged: current Dockerfile, current Node entrypoint, internal port `3000`, current auth flow, current Turnstile flow, current Redis-backed rate limiter, current MySQL schema name `kf8fvd`, and current MinIO bucket `kf8fvd`.
+- Use the existing production Nginx, SSL certificates, and Cloudflare tunnel already present in the production Docker Compose stack.
+- Do not rework app code or refactor deployment architecture unless validation proves a real blocker.
+
+Hard requirements:
+
+1. Do not reintroduce `middleware.ts`. The app already uses `proxy.ts`.
+2. Do not remove or bypass Turnstile, 2FA, admin gating, Redis, or CSP.
+3. Do not change app logic just to fit the deployment.
+4. Do not expose the app publicly on port `3000`; put Nginx in front of it.
+5. Keep `INTERNAL_APP_ORIGIN` on the internal Docker network, not the public HTTPS URL.
+6. Keep the app service/container name as `kf8fvd`.
+7. Reuse the existing production MySQL schema `kf8fvd` and existing MinIO bucket `kf8fvd`.
+
+What to do:
+
+1. Verify all required production env vars and secrets from the runbook are present.
+2. Apply `deploy\kf8fvd-prduction-duildand-safe.sql` to the production `kf8fvd` schema if the database is empty or not current.
+3. Build the production image with BuildKit secrets using the existing Dockerfile.
+4. Integrate the app container into the existing production Compose stack as `kf8fvd`.
+5. Make Nginx proxy to `http://kf8fvd:3000` and preserve `Host`, `X-Forwarded-For`, `X-Real-IP`, and `X-Forwarded-Proto`.
+6. Ensure the Cloudflare tunnel points to Nginx, not directly to the app.
+7. Start the stack and wait for the app to become ready.
+8. Create the first admin user using the instructions in `deploy\FIRST_ADMIN_USER.txt`.
+9. Run the smoke checks from the production runbook.
+10. Only if a check fails, make the smallest possible fix and revalidate.
+
+What to report back:
+
+- Exact environment or integration issues that blocked startup, if any.
+- Exact production checks that passed.
+- Exact production checks that failed.
+- Any smallest necessary changes made outside app logic.
+- Any remaining risk after deployment.
+
+What not to waste time on:
+
+- broad refactors
+- design changes
+- replacing MinIO
+- replacing MySQL
+- replacing Redis
+- changing auth providers
+- changing the app from containerized deployment to another hosting model

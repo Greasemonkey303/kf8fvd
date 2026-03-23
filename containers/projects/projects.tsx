@@ -1,5 +1,6 @@
 "use client"
 
+import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import styles from './projects.module.css'
 import createDOMPurify from 'dompurify'
@@ -8,8 +9,23 @@ import { buildPublicUrl } from '@/lib/s3'
 import useAdmin from '@/components/hooks/useAdmin'
 import { Card } from '@/components'
 
+type ProjectItem = {
+  id: number
+  slug?: string
+  title?: string
+  subtitle?: string
+  image_path?: string
+  description?: string
+  description_sanitized?: string
+}
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message
+  return String(error)
+}
+
 export default function Projects() {
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<ProjectItem[]>([])
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const { isAdmin } = useAdmin()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
@@ -39,7 +55,7 @@ export default function Projects() {
                 <div className={styles.thumbFake} />
                 <div>
                   <p>This project documents building a compact local amateur radio hotspot using a Raspberry Pi 4 and an MMDVM HAT.</p>
-                  <p><a href="/projects/hotspot">Read the Hotspot Story</a></p>
+                  <p><Link href="/projects/hotspot">Read the Hotspot Story</Link></p>
                 </div>
               </div>
             </Card>
@@ -82,8 +98,9 @@ export default function Projects() {
                             }
                           }
                           if (imageSrc) {
+                            const finalImageSrc = imageSrc
                             return (
-                              <Image src={imageSrc} alt={p.title} className={styles.thumb} width={320} height={200} unoptimized={String(imageSrc).startsWith('data:') || String(imageSrc).startsWith('blob:') || String(imageSrc).indexOf('X-Amz-Algorithm') !== -1 || String(imageSrc).indexOf('minio') !== -1 || String(imageSrc).indexOf('127.0.0.1') !== -1} />
+                              <Image src={finalImageSrc} alt={p.title || 'Project image'} className={styles.thumb} width={320} height={200} unoptimized={finalImageSrc.startsWith('data:') || finalImageSrc.startsWith('blob:') || finalImageSrc.indexOf('X-Amz-Algorithm') !== -1 || finalImageSrc.indexOf('minio') !== -1 || finalImageSrc.indexOf('127.0.0.1') !== -1} />
                             )
                           }
                         } catch (e) {
@@ -103,7 +120,7 @@ export default function Projects() {
                         const res = await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: val }) })
                         if (!res.ok) throw new Error('Save failed')
                         setItems(prev => prev.map(it => it.id === p.id ? { ...it, image_path: val } : it))
-                      } catch (e:any) { alert('Could not save: ' + (e?.message || e)) }
+                      } catch (error: unknown) { alert('Could not save: ' + getErrorMessage(error)) }
                     }}>✎</button>
                     <button title="Delete image" onClick={async ()=>{
                       if (!p.image_path) return
@@ -117,7 +134,7 @@ export default function Projects() {
                       try {
                         await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: '' }) })
                         setItems(prev => prev.map(it => it.id === p.id ? { ...it, image_path: '' } : it))
-                      } catch (e:any) { alert('Could not clear image_path: ' + (e?.message || e)) }
+                      } catch (error: unknown) { alert('Could not clear image_path: ' + getErrorMessage(error)) }
                     }}>🗑</button>
                     <label title="Upload new image" style={{display:'inline-block'}}>
                       <input className={styles.imgUploadInput} type="file" accept="image/*" onChange={async (ev)=>{
@@ -135,8 +152,8 @@ export default function Projects() {
                           const url = j.publicUrl || j.key
                           await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: url }) })
                           setItems(prev => prev.map(it => it.id === p.id ? { ...it, image_path: url } : it))
-                        } catch (e:any) {
-                          alert('Upload failed: ' + (e?.message || e))
+                        } catch (error: unknown) {
+                          alert('Upload failed: ' + getErrorMessage(error))
                         } finally { setUploadingId(null) }
                       }} />
                       <button disabled={uploadingId===p.id}>{uploadingId===p.id ? '…' : '↑'}</button>
@@ -146,7 +163,7 @@ export default function Projects() {
                 </div>
                 <div>
                   <p dangerouslySetInnerHTML={{ __html: (p.description_sanitized ?? (purify ? purify.sanitize(String(p.description || '')) : String(p.description || ''))) }} />
-                  {p.slug ? <p><a href={`/projects/${p.slug}`}>Read more</a></p> : null}
+                  {p.slug ? <p><Link href={`/projects/${p.slug}`}>Read more</Link></p> : null}
                 </div>
               </div>
             </Card>

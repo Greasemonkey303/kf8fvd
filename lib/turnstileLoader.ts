@@ -4,6 +4,10 @@ export type LoaderOptions = {
   timeoutMs?: number
 }
 
+type ScriptWithReadyState = HTMLScriptElement & {
+  readyState?: 'loading' | 'loaded' | 'complete'
+}
+
 import { tlog } from './turnstileDebug'
 
 export function loadTurnstileScript(opts: LoaderOptions = {}) {
@@ -24,9 +28,7 @@ export function loadTurnstileScript(opts: LoaderOptions = {}) {
       // don't reject immediately — resolve and let the caller wait for
       // the Turnstile global using `waitForTurnstileReady`.
       try {
-        // Some TS DOM types don't expose `readyState` in all targets; use `any`
-        // here to avoid build-time type errors while still checking state.
-        const rs = (existing as any).readyState
+        const rs = (existing as ScriptWithReadyState).readyState
         if (rs === 'complete' || rs === 'loaded') {
           tlog('loadTurnstileScript: existing script readyState', rs)
           return resolve(existing)

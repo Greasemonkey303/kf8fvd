@@ -12,11 +12,10 @@ services:
         DB_USER: ${DB_USER:-kf8fvd}
         DB_NAME: ${DB_NAME:-kf8fvd}
         REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379}
-        # For local debugging we force report-only and allow inline styles/scripts
-        # to avoid blocking client-side injected markup (Turnstile/widget) and
-        # inline React style/script pieces during development builds.
-        CSP_REPORT_ONLY: 1
-        CSP_ALLOW_INLINE: 1
+        # Keep CSP behavior configurable via environment so production builds
+        # are not forced into debug-friendly report-only/inline modes.
+        CSP_REPORT_ONLY: ${CSP_REPORT_ONLY:-0}
+        CSP_ALLOW_INLINE: ${CSP_ALLOW_INLINE:-0}
         NEXT_PUBLIC_CF_TURNSTILE_SITEKEY: ${NEXT_PUBLIC_CF_TURNSTILE_SITEKEY:-}
         NEXT_PUBLIC_MINIO_BASE_URL: ${NEXT_PUBLIC_MINIO_BASE_URL:-http://host.docker.internal:9000}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://localhost}
@@ -28,7 +27,7 @@ services:
     env_file:
       - .env.docker
     environment:
-      # Use the secret from .env.docker and disable the dev bypass
+      # Keep Turnstile verification enabled in container runtime.
       CF_TURNSTILE_BYPASS: "0"
     restart: unless-stopped
     entrypoint: ["node", "/usr/local/bin/docker-entrypoint.js"]

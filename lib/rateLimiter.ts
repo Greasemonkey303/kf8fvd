@@ -300,7 +300,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
     store.set(key, { count: 1, firstAt: t })
     // audit best-effort
     try {
-      if (key.startsWith('email:') || key.startsWith('ip:')) {
+      if (!disableDbFallback() && (key.startsWith('email:') || key.startsWith('ip:'))) {
         const parts = key.split(':')
         const email = parts[0] === 'email' ? parts.slice(1).join(':') : null
         const ip = parts[0] === 'ip' ? parts.slice(1).join(':') : null
@@ -326,8 +326,10 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
     e.lockedUntil = t + lockMs
     store.set(key, e)
     try {
-      const { query } = await import('./db')
-      await query('INSERT INTO auth_locks (key_name, locked_until, reason) VALUES (?, FROM_UNIXTIME(?/1000), ?) ON DUPLICATE KEY UPDATE locked_until = VALUES(locked_until), reason = VALUES(reason)', [key, e.lockedUntil, opts?.reason || 'too_many_attempts'])
+      if (!disableDbFallback()) {
+        const { query } = await import('./db')
+        await query('INSERT INTO auth_locks (key_name, locked_until, reason) VALUES (?, FROM_UNIXTIME(?/1000), ?) ON DUPLICATE KEY UPDATE locked_until = VALUES(locked_until), reason = VALUES(reason)', [key, e.lockedUntil, opts?.reason || 'too_many_attempts'])
+      }
     } catch (err) {
       try { console.warn('[rateLimiter] auth_locks insert failed', err) } catch {}
     }

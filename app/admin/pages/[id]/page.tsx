@@ -4,9 +4,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
+type DOMPurifyWithConfig = typeof DOMPurify & {
+  setConfig?: (config: { FORBID_TAGS: string[] }) => void
+}
+
 // Ensure client-side DOMPurify forbids <script> and <style> tags
 try {
-  if (typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
+  const purifier = DOMPurify as DOMPurifyWithConfig
+  if (typeof purifier.setConfig === 'function') purifier.setConfig({ FORBID_TAGS: ['script', 'style'] })
 } catch {}
 import { useRouter } from 'next/navigation'
 import styles from '../../admin.module.css'

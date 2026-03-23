@@ -6,6 +6,12 @@ import net from 'net'
 const exec = promisify(execCb)
 // increase timeout for Docker operations via per-test timeout parameter
 
+type RedisClientLike = {
+  ping: () => Promise<unknown>
+  disconnect: () => Promise<void>
+  get?: (key: string) => Promise<unknown>
+}
+
 function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = net.createServer()
@@ -63,7 +69,7 @@ describe('rateLimiter failover simulation (Docker)', () => {
 
     // Wait for Redis to become available
     const ioredisMod = await import('ioredis')
-    const RedisCtor = (ioredisMod && (ioredisMod.default || ioredisMod)) as unknown as { new (url?: string): { ping: () => Promise<unknown>; disconnect: () => Promise<void>; get?: (k: string) => Promise<unknown> } }
+    const RedisCtor = (ioredisMod && (ioredisMod.default || ioredisMod)) as unknown as { new (url?: string): RedisClientLike }
     const rClient = new RedisCtor(redisUrl)
     let ready = false
     for (let i = 0; i < 30; i++) {
@@ -93,9 +99,9 @@ describe('rateLimiter failover simulation (Docker)', () => {
     const countKey = `rl:count:${encodeURIComponent(KEY)}`
     let redisCount: unknown = null
     // rClient.get may be optional on the runtime client type; guard the call
-    if (typeof (rClient as any).get === 'function') {
+    if (typeof rClient.get === 'function') {
       try {
-        redisCount = await (rClient as any).get(countKey)
+        redisCount = await rClient.get(countKey)
       } catch {
         redisCount = null
       }

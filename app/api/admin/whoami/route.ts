@@ -2,20 +2,31 @@ import { NextResponse, NextRequest } from 'next/server'
 import { isAdminEmail, getSessionServer, getAdminUserByEmail } from '@/lib/auth'
 import jwt from 'jsonwebtoken'
 
+type SessionTokenUser = {
+  email?: string
+  name?: string
+}
+
+type SessionTokenPayload = Record<string, unknown> & {
+  email?: string
+  name?: string
+  user?: SessionTokenUser
+}
+
 export async function GET(req: NextRequest) {
   try {
     try { console.log('[whoami] incoming cookies:', String(req.headers.get('cookie') || '')) } catch (e) { void e }
     // Fallback: decode JWT directly from the session cookie if getToken doesn't
     // return a usable token in this runtime. This keeps the whoami check robust
     // across different Next.js/Edge runtimes and reverse-proxy setups.
-    let token: Record<string, unknown> | null = null
+    let token: SessionTokenPayload | null = null
     try {
       const cookies = String(req.headers.get('cookie') || '')
       const m = cookies.match(/(?:__Secure-next-auth.session-token|next-auth.session-token)=([^;\s]+)/)
       if (m && m[1]) {
         try {
           const decoded = jwt.verify(m[1], String(process.env.NEXTAUTH_SECRET || ''))
-          if (decoded && typeof decoded === 'object') token = decoded as Record<string, unknown>
+          if (decoded && typeof decoded === 'object') token = decoded as SessionTokenPayload
         } catch (e) { void e }
       }
     } catch (e) { void e }
@@ -41,9 +52,9 @@ export async function GET(req: NextRequest) {
       // well as tokens that expose `email`/`name` at the top level. This makes
       // server-side `whoami` resilient to the custom JWT encode/decode used by
       // this app where the user object is stored under `token.user`.
-      const maybeUser = (token as any).user
-      const email = typeof (token as any).email === 'string' ? (token as any).email : (maybeUser && typeof maybeUser.email === 'string' ? maybeUser.email : undefined)
-      const name = typeof (token as any).name === 'string' ? (token as any).name : (maybeUser && typeof maybeUser.name === 'string' ? maybeUser.name : undefined)
+      const maybeUser = token.user
+      const email = typeof token.email === 'string' ? token.email : (maybeUser && typeof maybeUser.email === 'string' ? maybeUser.email : undefined)
+      const name = typeof token.name === 'string' ? token.name : (maybeUser && typeof maybeUser.name === 'string' ? maybeUser.name : undefined)
       if (email) {
         user = name ? { name, email } : { email }
         try {

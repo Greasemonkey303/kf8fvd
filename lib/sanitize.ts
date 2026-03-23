@@ -4,7 +4,8 @@ import isomorphicDompurify from 'isomorphic-dompurify'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
 
-type DomPurifyLike = { sanitize?: (input: string) => string }
+type SanitizeConfig = { FORBID_TAGS: string[] }
+type DomPurifyLike = { sanitize?: (input: string, config?: SanitizeConfig) => string }
 export function escapeHtml(input: string) {
   return String(input || '')
     .replace(/&/g, '&amp;')
@@ -20,8 +21,8 @@ export function sanitizeHtmlServer(input: string): string {
   // try isomorphic-dompurify first (works in Node)
   try {
     const iso = isomorphicDompurify as unknown as DomPurifyLike
-    if (iso && typeof (iso as any).sanitize === 'function') {
-      try { return (iso as any).sanitize(s, { FORBID_TAGS: ['script', 'style'] } as any) } catch { /* fallthrough */ }
+    if (iso && typeof iso.sanitize === 'function') {
+      try { return iso.sanitize(s, { FORBID_TAGS: ['script', 'style'] }) } catch { /* fallthrough */ }
     }
   } catch {
     // ignore
@@ -32,8 +33,8 @@ export function sanitizeHtmlServer(input: string): string {
     const window = (new JSDOM('')).window
     const createDP = createDOMPurify as unknown as (win: unknown) => DomPurifyLike
     const DOMPurify = createDP(window)
-    if (DOMPurify && typeof (DOMPurify as any).sanitize === 'function') {
-      try { return (DOMPurify as any).sanitize(s, { FORBID_TAGS: ['script', 'style'] }) } catch { /* fallthrough */ }
+    if (DOMPurify && typeof DOMPurify.sanitize === 'function') {
+      try { return DOMPurify.sanitize(s, { FORBID_TAGS: ['script', 'style'] }) } catch { /* fallthrough */ }
     }
   } catch {
     // ignore

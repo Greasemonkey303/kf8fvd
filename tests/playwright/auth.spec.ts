@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test'
 
+type SubmitCapableForm = HTMLFormElement & {
+  requestSubmit?: () => void
+}
+
 test.describe('Auth flows', () => {
   test('sign in -> request 2FA -> submit code (debug)', async ({ page }) => {
     const base = process.env.SITE_URL || 'http://localhost:3000'
@@ -30,9 +34,9 @@ test.describe('Auth flows', () => {
       }
       inp.value = 'playwright-bypass'
       // prefer programmatic form submit to avoid React-controlled disabled button
-      const form = document.querySelector('form') as HTMLFormElement | null
-      if (form && typeof (form as any).requestSubmit === 'function') {
-        ;(form as any).requestSubmit()
+      const form = document.querySelector('form') as SubmitCapableForm | null
+      if (form && typeof form.requestSubmit === 'function') {
+        form.requestSubmit()
       } else if (form) {
         const ev = new Event('submit', { bubbles: true, cancelable: true })
         form.dispatchEvent(ev)
@@ -47,8 +51,8 @@ test.describe('Auth flows', () => {
 
     // expect 2FA request UI or redirect; allow the in-page success message as evidence
     await page.waitForTimeout(1000)
-    let url = page.url()
-    let successCount = await page.locator('text=A verification code was sent to your email.').count()
+    const url = page.url()
+    const successCount = await page.locator('text=A verification code was sent to your email.').count()
     if (!(url.includes('/auth/2fa') || url.includes('/dashboard') || url.includes('/verify') || successCount > 0)) {
       // fallback: call the 2FA request API directly with bypass (useful for headless CI)
       const apiRes = await page.evaluate(async (data) => {

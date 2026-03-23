@@ -4,6 +4,25 @@ import { buildPublicUrl } from '@/lib/s3'
 import { query } from '@/lib/db'
 import { sanitizeHtmlServer } from '@/lib/sanitize'
 
+type HeroRecord = Record<string, unknown> & {
+  title?: string
+  subtitle?: string
+  content?: string
+  id?: number
+}
+
+type HeroImageRecord = Record<string, unknown> & {
+  url?: string
+  alt?: string
+  is_featured?: number | boolean
+  variants?: string | HeroVariants | null
+}
+
+type HeroVariants = {
+  avif?: string
+  webp?: string
+}
+
 async function fetchHero() {
   try {
     const heroes = await query<Record<string, unknown>[]>('SELECT * FROM hero ORDER BY id ASC LIMIT 1')
@@ -20,9 +39,9 @@ async function fetchHero() {
 
 export default async function Hero() {
   const data = await fetchHero()
-  const hero = data?.hero || null
-  const images = Array.isArray(data?.images) ? data.images : []
-  const featured = images.find((i: any) => i.is_featured) || images[0] || null
+  const hero = (data?.hero as HeroRecord | null) || null
+  const images = Array.isArray(data?.images) ? (data.images as HeroImageRecord[]) : []
+  const featured = images.find((image) => image.is_featured) || images[0] || null
 
   let imageSrc = '/grand_rapids.jpg'
   try {
@@ -59,15 +78,13 @@ export default async function Hero() {
 
   const rawAlt = featured?.alt ? String(featured.alt) : ''
   const altText = rawAlt ? rawAlt.replace(/\.[^.\/\\]+$/, '') : 'Hero image'
-  const imageUnoptimized = /^https?:\/\//i.test(imageSrc) || imageSrc.startsWith('/api/uploads/get/')
-
   // Build variant URLs if available
   let avifUrl: string | null = null
   let webpUrl: string | null = null
   try {
-    let variants: any = featured?.variants
+    let variants: HeroVariants | string | null | undefined = featured?.variants
     if (variants && typeof variants === 'string') {
-      try { variants = JSON.parse(variants) } catch { /* ignore */ }
+      try { variants = JSON.parse(variants) as HeroVariants } catch { /* ignore */ }
     }
     if (variants && typeof variants === 'object') {
       if (variants.avif) {

@@ -1,13 +1,15 @@
 # syntax=docker/dockerfile:1.4
 # Build a production image for Next.js
-FROM node:20-bullseye-slim AS deps
+FROM cgr.dev/chainguard/wolfi-base:latest AS deps
 WORKDIR /app
 
-# Update OS packages and install build deps required by native modules (e.g. sharp)
-# Running an upgrade here reduces known vulnerabilities in the image layers.
-RUN apt-get update && apt-get upgrade -y \
-	&& apt-get install -y --no-install-recommends python3 make g++ libc6-dev libvips-dev \
-	&& rm -rf /var/lib/apt/lists/*
+# Install the exact Node 20 toolchain and native build dependencies needed for
+# Next.js production builds and sharp/libvips.
+RUN apk add --no-cache \
+	nodejs-20 \
+	npm \
+	python3 \
+	build-base
 
 COPY package.json package-lock.json* ./
 RUN npm ci
@@ -57,8 +59,9 @@ RUN --mount=type=secret,id=nextauth_secret \
 		export DB_PASSWORD="${DB_PASSWORD:-}" DB_NAME="${DB_NAME:-}" REDIS_URL="${REDIS_URL:-}";\
 		npm run build'
 
-FROM node:20-bullseye-slim AS runner
+FROM cgr.dev/chainguard/wolfi-base:latest AS runner
 WORKDIR /app
+RUN apk add --no-cache nodejs-20 npm
 ENV NODE_ENV=production
 ENV PORT=3000
 
@@ -75,8 +78,8 @@ RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.js || true
 RUN chmod +x /usr/local/bin/docker-entrypoint.js || true
 
 # Create a non-root runtime user and fix ownership for /app
-RUN groupadd -r app \
-	&& useradd -r -g app app \
+RUN addgroup -S app \
+	&& adduser -S -G app app \
 	&& chown -R app:app /app /usr/local/bin/docker-entrypoint.js || true
 USER app
 
@@ -88,8 +91,9 @@ EXPOSE 3000
 CMD ["npm","run","start"]
 
 # Optional distroless target (build with: --target distroless-runner)
-FROM node:20-bullseye-slim AS distroless-runner
+FROM cgr.dev/chainguard/wolfi-base:latest AS distroless-runner
 WORKDIR /app
+RUN apk add --no-cache nodejs-20 npm
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public

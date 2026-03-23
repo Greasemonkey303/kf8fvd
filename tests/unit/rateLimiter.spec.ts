@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { incrementFailure, isLocked, resetKey, getInfo, __test_resetInternalState } from '../../lib/rateLimiter'
 
 // Ensure tests do not run with production guards
-(process.env as any).NODE_ENV = process.env.NODE_ENV || 'test'
+process.env.NODE_ENV = process.env.NODE_ENV || 'test'
 
 // Use a key that does NOT start with 'ip:' or 'email:' to avoid DB audit imports
 const KEY = 'key:unit:1'

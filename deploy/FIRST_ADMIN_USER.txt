@@ -1,0 +1,70 @@
+KF8FVD first admin creation
+
+Preferred method
+
+Use the repo script. It already does the correct thing for this app:
+
+- hashes the password with bcrypt cost `12`
+- creates the user if missing
+- updates the existing user if the email already exists
+- ensures the `admin` role exists
+- assigns the `admin` role in `user_roles`
+
+Run the script from a machine that has this repo checked out and has network access to the production MySQL server.
+
+Required database environment variables for the script:
+
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+
+The database name should stay `kf8fvd`.
+
+Run:
+
+```powershell
+node scripts/create-admin.js
+```
+
+The script will prompt for:
+
+- admin email
+- admin password
+- admin display name
+
+After the script completes, sign in through the normal production `/signin` flow and verify that `/api/admin/whoami` returns `admin: true`.
+
+Workbench-only fallback
+
+If you must do it entirely through MySQL Workbench, use this sequence:
+
+1. Generate a bcrypt hash locally from the repo root:
+
+```powershell
+node -e "const bcrypt=require('bcryptjs'); console.log(bcrypt.hashSync(process.argv[1], 12))" "REAL_ADMIN_PASSWORD"
+```
+
+2. In MySQL Workbench, connect to the production `kf8fvd` schema and run SQL using the real admin name, real admin email, and the generated bcrypt hash.
+
+3. Ensure all three things exist when you are done:
+
+- a row in `users`
+- a row in `roles` with `name='admin'`
+- a row in `user_roles` linking that user to the `admin` role
+
+Validation query
+
+Run this in MySQL Workbench after creation to confirm the account is truly an admin:
+
+```sql
+SELECT u.id, u.name, u.email, u.is_active, r.name AS role_name
+FROM users u
+JOIN user_roles ur ON ur.user_id = u.id
+JOIN roles r ON r.id = ur.role_id
+WHERE r.name = 'admin'
+ORDER BY u.id;
+```
+
+If the admin can sign in but `/api/admin/whoami` does not return `admin: true`, the `user_roles` link to the `admin` role is missing or incorrect.

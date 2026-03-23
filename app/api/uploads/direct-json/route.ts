@@ -5,6 +5,8 @@ import { getUploadKey, buildPublicUrl } from '@/lib/s3'
 
 type Body = { slug?: string; filename?: string; contentType?: string; data?: string }
 
+type ObjectMetadata = Record<string, string>
+
 export async function POST(req: Request) {
   try {
     // allow this endpoint in development without auth for quick testing
@@ -34,13 +36,8 @@ export async function POST(req: Request) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
-    await new Promise<void>((resolve, reject) => {
-      // pass content-type as metadata; omit explicit length to match MinIO TS typings
-      minioClient.putObject(bucket, key, buffer, { 'Content-Type': contentType } as any, (err?: Error | null) => {
-        if (err) return reject(err)
-        resolve()
-      })
-    })
+    const metadata: ObjectMetadata = { 'Content-Type': contentType }
+    await minioClient.putObject(bucket, key, buffer, buffer.length, metadata)
 
     let publicUrl: string
     try {

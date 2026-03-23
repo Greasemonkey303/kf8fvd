@@ -1,5 +1,6 @@
 "use client"
 
+import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import styles from '../admin.module.css'
 
@@ -20,7 +21,10 @@ export default function AdminUsers() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => { void load() }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -81,7 +85,7 @@ export default function AdminUsers() {
                       {u.roles && u.roles.length ? <div className="muted">Roles: {u.roles.join(', ')}</div> : null}
                     </div>
                     <div className="flex gap-2">
-                      <a className={styles.btnGhost} href={`/admin/users/${u.id}`}>Edit</a>
+                      <Link className={styles.btnGhost} href={`/admin/users/${u.id}`}>Edit</Link>
                     </div>
                   </li>
                 ))}

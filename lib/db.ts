@@ -1,5 +1,41 @@
 import mysql from 'mysql2/promise';
 
+type DbExecuteValue =
+  | string
+  | number
+  | bigint
+  | boolean
+  | Date
+  | null
+  | Blob
+  | Buffer
+  | Uint8Array
+  | DbExecuteValue[]
+  | { [key: string]: DbExecuteValue }
+
+function toDbExecuteValue(value: unknown): DbExecuteValue {
+  if (value === undefined || value === null) return null
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'bigint' ||
+    typeof value === 'boolean' ||
+    value instanceof Date ||
+    value instanceof Buffer ||
+    value instanceof Uint8Array ||
+    (typeof Blob !== 'undefined' && value instanceof Blob)
+  ) {
+    return value
+  }
+  if (Array.isArray(value)) return value.map(toDbExecuteValue)
+  if (typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, toDbExecuteValue(entry)])
+    )
+  }
+  return String(value)
+}
+
 // Load environment variables
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -27,6 +63,8 @@ if (!globalThis.__mysqlPool__) globalThis.__mysqlPool__ = pool;
 // Optionally test the connection in non-production environments
 async function testConnection() {
   if (process.env.NODE_ENV === 'production') return;
+  if (process.env.DISABLE_DB_FALLBACK === '1' || process.env.DISABLE_DB_FALLBACK === 'true') return;
+  if (!process.env.DB_USER || !process.env.DB_NAME) return;
   try {
     const connection = await pool.getConnection();
     console.log('Connected to MySQL database successfully');
@@ -46,13 +84,13 @@ void testConnection();
  * @param params Optional parameters for the query
  * @returns Promise resolving to query results
  */
-export async function query<T>(sql: string, params?: unknown[]): Promise<T> {
+export async function query<T>(sql: string, params?: ReadonlyArray<unknown>): Promise<T> {
   try {
-    const safeParams = (Array.isArray(params) ? params.map(p => p === undefined ? null : p) : []) as unknown[]
+    const safeParams: DbExecuteValue[] = Array.isArray(params) ? params.map(toDbExecuteValue) : []
     if (process.env.DEBUG_DB) {
       console.log('[db] executing', { sql, params: safeParams, types: safeParams.map(p => (p === null ? 'null' : typeof p)) })
     }
-    const [rows] = await pool.execute(sql, safeParams as any)
+    const [rows] = await pool.execute(sql, safeParams)
     return rows as T
   } catch (error) {
     console.error('Database query error:', error)

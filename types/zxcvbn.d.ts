@@ -1,4 +1,8 @@
 declare module 'zxcvbn' {
-  const zxcvbn: (password: string) => any
+  type ZXCVBNResult = {
+    score: number
+    [key: string]: unknown
+  }
+  const zxcvbn: (password: string) => ZXCVBNResult
   export default zxcvbn
 }

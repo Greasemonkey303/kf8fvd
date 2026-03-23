@@ -475,7 +475,7 @@ export default function Contact() {
         )}
 
       {success && (
-        <div ref={successRef} tabIndex={-1} className={styles.toast} role="status" aria-live="polite">Message sent — thanks! I'll reply as soon as I can.</div>
+        <div ref={successRef} tabIndex={-1} className={styles.toast} role="status" aria-live="polite">Message sent - thanks! I&apos;ll reply as soon as I can.</div>
       )}
     </main>
   )

@@ -133,7 +133,10 @@ export default function AdminCredentials() {
       if (raw) {
         const p = JSON.parse(raw)
         if (p && p.form) {
-          setPendingDraftSlug({ key, payload: p })
+          const timeoutId = window.setTimeout(() => {
+            setPendingDraftSlug({ key, payload: p })
+          }, 0)
+          return () => window.clearTimeout(timeoutId)
         }
       }
     } catch {}
@@ -170,7 +173,10 @@ export default function AdminCredentials() {
     } catch {}
   }, [form.description])
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setMounted(true), 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [])
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const internalAppOrigin = process.env.INTERNAL_APP_ORIGIN || `http://127.0.0.1:${process.env.PORT || '3000'}`
   const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
 
   // Generate a per-request CSP nonce for production. Keep this lightweight
-  // to avoid adding heavy crypto dependencies in the middleware runtime.
+  // to avoid adding heavy crypto dependencies in the proxy runtime.
   const makeNonce = () => {
     try {
       // Prefer web crypto if available
-      // @ts-ignore
       if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
         const arr = new Uint8Array(16)
-        // @ts-ignore
         crypto.getRandomValues(arr)
         return Array.from(arr).map(b => ('0' + b.toString(16)).slice(-2)).join('')
       }
@@ -36,13 +34,13 @@ export async function middleware(req: NextRequest) {
   const CSP = [
     "default-src 'self'",
     "base-uri 'self'",
-    "block-all-mixed-content",
+    'block-all-mixed-content',
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: https://*.gravatar.com",
     connectSrc,
     scriptSrc,
-    "child-src https://challenges.cloudflare.com",
-    "frame-src https://challenges.cloudflare.com",
+    'child-src https://challenges.cloudflare.com',
+    'frame-src https://challenges.cloudflare.com',
     styleSrc,
     `report-uri ${siteOrigin}/api/csp/report`,
     "frame-ancestors 'none'",
@@ -69,7 +67,7 @@ export async function middleware(req: NextRequest) {
 
   const pathname = req.nextUrl.pathname
 
-  // Skip middleware for internal assets and auth endpoints
+  // Skip proxy for internal assets and auth endpoints
   if (pathname.startsWith('/_next') || pathname.startsWith('/static') || pathname.startsWith('/api/auth')) {
     return res
   }
@@ -79,27 +77,19 @@ export async function middleware(req: NextRequest) {
     return res
   }
 
+  const forwarded = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || ''
+  const ip = (forwarded.split(',')[0] || 'unknown').trim() || 'unknown'
+
   // Admin route: perform allowlist checks and rate limiting via server API
   try {
     const ALLOWLIST_IPS = (process.env.MW_ALLOWLIST_IPS || '').split(',').map(s => s.trim()).filter(Boolean)
     const ALLOWLIST_PATHS = (process.env.MW_ALLOWLIST_PATHS || '').split(',').map(s => s.trim()).filter(Boolean)
-
-    const forwarded = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || ''
-    const ip = (forwarded.split(',')[0] || 'unknown').trim() || 'unknown'
 
     if (ALLOWLIST_IPS.includes(ip)) return res
 
     for (const p of ALLOWLIST_PATHS) {
       if (p && pathname.startsWith(p)) return res
     }
-
-    // NOTE: previously this middleware invoked the centralized rate-limiter API
-    // for admin routes. Per request, we now skip calling `/api/mw/rate` here so
-    // that admin pages aren't blocked by global rate limits. The rate limiter
-    // remains active for the login and contact endpoints (they perform their
-    // own checks). This avoids double-rate-limiting admin UI requests and
-    // prevents redirects caused by false positives while keeping protections
-    // in place for public endpoints.
   } catch {
     // Best-effort: do not block on rate limiter failures
   }
@@ -107,7 +97,7 @@ export async function middleware(req: NextRequest) {
   // Verify admin session via server-side whoami
   try {
     const whoami = new URL('/api/admin/whoami', internalAppOrigin).toString()
-    try { console.log('[middleware] calling whoami url=', whoami, 'cookie=', String(req.headers.get('cookie') || '')) } catch (e) { void e }
+    try { console.log('[proxy] calling whoami url=', whoami, 'cookie=', String(req.headers.get('cookie') || '')) } catch (e) { void e }
     const whoRes = await fetch(whoami, { headers: { cookie: req.headers.get('cookie') || '' }, cache: 'no-store' })
     if (whoRes.ok) {
       const j = await whoRes.json()
@@ -115,6 +105,35 @@ export async function middleware(req: NextRequest) {
     }
   } catch {
     // If the whoami check fails, fallthrough to redirect to signin.
+  }
+
+  // Only rate-limit failed admin access attempts so authenticated admins are
+  // not penalized for normal page navigation. This keeps the admin gate and
+  // Turnstile-protected sign-in flow active at the same time.
+  try {
+    const rateUrl = new URL('/api/mw/rate', internalAppOrigin).toString()
+    const rateRes = await fetch(rateUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': ip,
+      },
+      body: JSON.stringify({
+        ip,
+        path: pathname,
+        scope: 'admin',
+        key: `admin-ip:${ip}`,
+      }),
+      cache: 'no-store',
+    })
+    if (rateRes.status === 429) {
+      const retryAfter = rateRes.headers.get('retry-after')
+      const lockRes = NextResponse.json({ error: 'Too many admin access attempts, try again later.' }, { status: 429 })
+      if (retryAfter) lockRes.headers.set('Retry-After', retryAfter)
+      return lockRes
+    }
+  } catch {
+    // Best-effort: do not block on rate limiter failures
   }
 
   // Not an admin — redirect to signin and preserve callback

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import styles from '../admin.module.css'
 
@@ -18,7 +19,10 @@ export default function AdminPages() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => { void load() }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -30,10 +34,6 @@ export default function AdminPages() {
     }
     setForm({ id: 0, slug: '', title: '', content: '', is_published: false })
     await load()
-  }
-
-  async function edit(p: PageItem) {
-    setForm({ id: p.id, slug: p.slug, title: p.title, content: '', is_published: !!p.is_published })
   }
 
   async function remove(id: number) {
@@ -81,7 +81,7 @@ export default function AdminPages() {
                         <strong>{p.title}</strong> <span className="muted">({p.slug})</span>
                       </div>
                       <div className="flex gap-2">
-                        <a className={styles.btnGhost} href={`/admin/pages/${p.id}`}>Edit</a>
+                        <Link className={styles.btnGhost} href={`/admin/pages/${p.id}`}>Edit</Link>
                         <button className={styles.btnGhost} onClick={()=>remove(p.id)}>Delete</button>
                       </div>
                     </li>

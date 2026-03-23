@@ -155,6 +155,11 @@ interface QsoEntry {
   display?: string;
 }
 
+type HeroImage = {
+  is_featured?: number | boolean;
+  url?: string;
+}
+
 export default function Dashboard() {
   const [featured, setFeatured] = useState<{ url?: string; title?: string } | null>(null)
   const [space, setSpace] = useState<{kIndex:number; f107:number; source:string} | null>(null);
@@ -278,8 +283,8 @@ export default function Dashboard() {
         fetchTimerFeatured = setTimeout(() => {
           if (!mounted) return
           const h = j?.hero || null
-          const imgs = Array.isArray(j?.images) ? j.images : []
-          const f = imgs.find((i:any) => Number(i.is_featured) === 1) || imgs[0] || null
+          const imgs = Array.isArray(j?.images) ? (j.images as HeroImage[]) : []
+          const f = imgs.find((item) => Number(item.is_featured) === 1) || imgs[0] || null
           if (f) setFeatured({ url: f.url, title: h?.title || '' })
           else setFeatured(null)
         }, 0)

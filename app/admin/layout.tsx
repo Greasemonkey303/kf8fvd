@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { requireAdmin } from '../../lib/auth'
 import styles from './admin.module.css'
 import ToastProvider from '../../components/toast/ToastProvider'
@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <div style={{maxWidth:720}}>
             <h2>Admin</h2>
             <p>You must be logged in as an administrator to view this page.</p>
-            <p><a href="/signin">Sign In</a> or <a href="/">Return home</a></p>
+            <p><Link href="/signin">Sign In</Link> or <Link href="/">Return home</Link></p>
           </div>
         </div>
       </main>

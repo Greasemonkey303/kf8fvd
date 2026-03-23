@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import styles from './admin.module.css'
@@ -26,7 +27,7 @@ export default function AdminPage() {
       const isOn = j?.item && (j.item.is_on === 1 || j.item.is_on === true)
       setOnAir(Boolean(isOn))
       if (j?.item?.updated_at) setOnairUpdatedAt(String(j.item.updated_at))
-    } catch (e) {
+    } catch {
       // ignore
     }
   }
@@ -84,7 +85,8 @@ export default function AdminPage() {
     })()
 
     // fetch on-air status for admin control (initial)
-    fetchOnAir()
+    const timeoutId = window.setTimeout(() => { void fetchOnAir() }, 0)
+    return () => window.clearTimeout(timeoutId)
   }, [])
 
   function getPreviewSrc(urlVal: unknown) {
@@ -154,7 +156,7 @@ export default function AdminPage() {
           <div style={{display:'flex', alignItems:'center', gap:12, marginTop:8, marginBottom:12}}>
             <div style={{flex:1}}>
               <div style={{fontWeight:700}}>On Air</div>
-              <div className={styles.smallMuted}>Toggle whether the public site shows "On Air".</div>
+              <div className={styles.smallMuted}>Toggle whether the public site shows the On Air indicator.</div>
             </div>
             <div style={{display:'flex', alignItems:'center', gap:8}}>
               <label className={styles.switch} style={{alignItems:'center'}}>
@@ -201,7 +203,7 @@ export default function AdminPage() {
                       <div className={styles.statNumber} style={{fontSize:18}}>Hero</div>
                       <div className={styles.statLabel}>{featuredHero.title || 'Featured image'}</div>
                     </div>
-                    <a href="/admin/home/hero">Edit Hero</a>
+                    <Link href="/admin/home/hero">Edit Hero</Link>
                   </div>
                 </div>
               </div>
@@ -216,7 +218,7 @@ export default function AdminPage() {
                   <div className={styles.statLabel}>Projects</div>
                 </div>
               </div>
-              <a href="/admin/projects">Open Projects</a>
+              <Link href="/admin/projects">Open Projects</Link>
             </div>
               <div className="card-action">
                 <div style={{display:'flex', alignItems:'center', gap:10}}>
@@ -226,7 +228,7 @@ export default function AdminPage() {
                     <div className={styles.statLabel}>About posts</div>
                   </div>
                 </div>
-                <a href="/admin/about">Open About</a>
+                <Link href="/admin/about">Open About</Link>
               </div>
             <div className="card-action">
               <div style={{display:'flex', alignItems:'center', gap:10}}>
@@ -236,7 +238,7 @@ export default function AdminPage() {
                   <div className={styles.statLabel}>Messages</div>
                 </div>
               </div>
-              <a href="/admin/messages">Open Messages</a>
+              <Link href="/admin/messages">Open Messages</Link>
             </div>
             <div className="card-action">
               <div style={{display:'flex', alignItems:'center', gap:10}}>
@@ -246,7 +248,7 @@ export default function AdminPage() {
                   <div className={styles.statLabel}>Users</div>
                 </div>
               </div>
-              <a href="/admin/users">Manage Users</a>
+              <Link href="/admin/users">Manage Users</Link>
             </div>
             <div className="card-action">
               <div style={{marginTop:'auto'}}>

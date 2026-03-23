@@ -6,6 +6,10 @@ import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
 import * as Minio from 'minio'
 
+type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
+  setConfig?: (config: { FORBID_TAGS: string[] }) => void
+}
+
 const getErrMsg = (err: unknown) => {
   if (err instanceof Error) return err.message
   try { return String(err) } catch { return 'Unknown error' }
@@ -48,7 +52,8 @@ export async function POST(req: Request) {
   // Sanitize content server-side before saving
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
-  if (DOMPurify && typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
+  const configuredPurifier = DOMPurify as DomPurifyWithConfig
+  if (typeof configuredPurifier.setConfig === 'function') configuredPurifier.setConfig({ FORBID_TAGS: ['script', 'style'] })
   let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
   if (sanitized) sanitized = String(removeDebugBlockFromHtml(sanitized))
   // sanitize known metadata HTML fields to avoid storing unsafe markup

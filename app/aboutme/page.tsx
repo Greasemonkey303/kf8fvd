@@ -5,6 +5,10 @@ import { JSDOM } from 'jsdom'
 import { buildPublicUrl } from '@/lib/s3'
 import createDOMPurify from 'dompurify'
 
+type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
+  setConfig?: (config: { FORBID_TAGS: string[] }) => void
+}
+
 export const metadata = {
   title: 'About — KF8FVD',
   description: 'About Zachary (KF8FVD) — ham radio operator, maker, and technician in Kentwood, MI.',
@@ -37,7 +41,8 @@ export default async function Page() {
 
     const dom = new JSDOM('')
     const DOMPurify = createDOMPurify(dom.window as unknown as Window & typeof globalThis)
-    if (DOMPurify && typeof (DOMPurify as any).setConfig === 'function') (DOMPurify as any).setConfig({ FORBID_TAGS: ['script', 'style'] })
+    const configuredPurifier = DOMPurify as DomPurifyWithConfig
+    if (typeof configuredPurifier.setConfig === 'function') configuredPurifier.setConfig({ FORBID_TAGS: ['script', 'style'] })
     const sanitize = (s: unknown) => { if (!s) return ''; return DOMPurify.sanitize(String(s)) }
     const isJsonString = (s: string) => {
       if (!s) return false
