@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { isLocked, incrementFailure } from '@/lib/rateLimiter'
+import { verifyTurnstileToken } from '@/lib/turnstile'
 import { query } from '@/lib/db'
 
 type SGAttachment = {
@@ -86,16 +87,11 @@ export async function POST(req: Request) {
         try { await incrementFailure(ipKey, { reason: 'turnstile_missing' }) } catch (e) { void e }
         return jsonErr('MISSING_CAPTCHA', 'Missing CAPTCHA token', undefined, 400)
       }
-      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `secret=${encodeURIComponent(CF_SECRET)}&response=${encodeURIComponent(cfToken)}`,
-      })
-      const vr = await verifyRes.json()
-      if (!vr.success) {
-        console.warn('[api/contact] turnstile failed', vr)
+      const ok = await verifyTurnstileToken(cfToken)
+      if (!ok) {
+        console.warn('[api/contact] turnstile failed or rate-limited')
         try { await incrementFailure(ipKey, { reason: 'turnstile_failed' }) } catch (e) { void e }
-        return jsonErr('CAPTCHA_FAILED', 'CAPTCHA verification failed', vr, 400)
+        return jsonErr('CAPTCHA_FAILED', 'CAPTCHA verification failed', undefined, 400)
       }
     }
 

@@ -2,26 +2,9 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { isLocked, incrementFailure, resetKey } from '@/lib/rateLimiter'
+import { verifyTurnstileToken } from '@/lib/turnstile'
 
-async function verifyTurnstileToken(token?: string) {
-  const bypass = (process.env.CF_TURNSTILE_BYPASS || '').toLowerCase()
-  if (bypass === '1' || bypass === 'true') return true
-  const secret = process.env.CF_TURNSTILE_SECRET
-  if (!secret) return true
-  if (!token) return false
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ secret, response: token }),
-    })
-    const j = await res.json()
-    return !!j?.success
-  } catch (e) {
-    void e
-    return false
-  }
-}
+// verifyTurnstileToken now provided by '@/lib/turnstile'
 
 export async function POST(req: Request) {
   try {

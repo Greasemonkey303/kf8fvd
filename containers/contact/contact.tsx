@@ -83,6 +83,11 @@ export default function Contact() {
         if (cancelled) return
         const container = document.getElementById('cf-turnstile-container')
         if (!container) { tlog('contact: container missing after ready'); return }
+        // If a widget was already rendered into this container, skip rendering again.
+        try {
+          const rendered = (container as HTMLElement).dataset.turnstileRendered
+          if (rendered === '1') { tlog('contact: container already rendered, skipping'); return }
+        } catch (e) { void e }
         try {
           type Turnstile = { render?: (el: HTMLElement, opts: { sitekey?: string; callback?: (token: string)=>void }) => unknown; reset?: (id: number) => void }
           const win = window as unknown as Window & { turnstile?: Turnstile }

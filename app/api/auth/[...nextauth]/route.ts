@@ -5,6 +5,7 @@ import { query } from '../../../../lib/db'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { isLocked, incrementFailure, resetKey } from '@/lib/rateLimiter'
+import { verifyTurnstileToken } from '@/lib/turnstile'
 
 const isProd = process.env.NODE_ENV === 'production'
 if (isProd && !process.env.NEXTAUTH_SECRET) {
@@ -13,29 +14,7 @@ if (isProd && !process.env.NEXTAUTH_SECRET) {
   throw new Error('NEXTAUTH_SECRET is required in production')
 }
 
-async function verifyTurnstileToken(token?: string) {
-  // allow bypass via env var for troubleshooting
-  const bypass = (process.env.CF_TURNSTILE_BYPASS || '').toLowerCase()
-  // Only allow bypass in non-production environments for troubleshooting
-  if ((bypass === '1' || bypass === 'true') && process.env.NODE_ENV !== 'production') return true
-
-  const secret = process.env.CF_TURNSTILE_SECRET
-  // if no secret configured, skip verification (dev convenience)
-  if (!secret) return true
-  if (!token) return false
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ secret, response: token }),
-    })
-    const j = await res.json()
-    return !!j?.success
-  } catch (e) {
-    void e
-    return false
-  }
-}
+// using centralized verifier in lib/turnstile.ts
 
 function extractIpFromReq(req: unknown): string {
   try {

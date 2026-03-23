@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  const internalAppOrigin = process.env.INTERNAL_APP_ORIGIN || `http://127.0.0.1:${process.env.PORT || '3000'}`
   const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
 
   // Generate a per-request CSP nonce for production. Keep this lightweight
@@ -92,28 +93,21 @@ export async function middleware(req: NextRequest) {
       if (p && pathname.startsWith(p)) return res
     }
 
-    const rlUrl = new URL('/api/mw/rate', req.url).toString()
-    const rlRes = await fetch(rlUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', cookie: req.headers.get('cookie') || '' },
-      body: JSON.stringify({ ip, path: pathname }),
-      cache: 'no-store'
-    })
-    if (!rlRes.ok) {
-      if (rlRes.status === 429) {
-        const j = await rlRes.json().catch(() => ({} as Record<string, unknown>))
-        const retryFromBody = (typeof j === 'object' && j !== null && 'retryAfter' in j) ? String((j as Record<string, unknown>)['retryAfter']) : null
-        const retry = rlRes.headers.get('Retry-After') ?? retryFromBody ?? null
-        return new NextResponse('Too Many Requests', { status: 429, headers: retry ? { 'Retry-After': String(retry) } : undefined })
-      }
-    }
+    // NOTE: previously this middleware invoked the centralized rate-limiter API
+    // for admin routes. Per request, we now skip calling `/api/mw/rate` here so
+    // that admin pages aren't blocked by global rate limits. The rate limiter
+    // remains active for the login and contact endpoints (they perform their
+    // own checks). This avoids double-rate-limiting admin UI requests and
+    // prevents redirects caused by false positives while keeping protections
+    // in place for public endpoints.
   } catch {
     // Best-effort: do not block on rate limiter failures
   }
 
   // Verify admin session via server-side whoami
   try {
-    const whoami = new URL('/api/admin/whoami', req.url).toString()
+    const whoami = new URL('/api/admin/whoami', internalAppOrigin).toString()
+    try { console.log('[middleware] calling whoami url=', whoami, 'cookie=', String(req.headers.get('cookie') || '')) } catch (e) { void e }
     const whoRes = await fetch(whoami, { headers: { cookie: req.headers.get('cookie') || '' }, cache: 'no-store' })
     if (whoRes.ok) {
       const j = await whoRes.json()
@@ -126,7 +120,21 @@ export async function middleware(req: NextRequest) {
   // Not an admin — redirect to signin and preserve callback
   const signInUrl = new URL('/signin', req.url)
   signInUrl.searchParams.set('callbackUrl', req.nextUrl.pathname + req.nextUrl.search)
-  return NextResponse.redirect(signInUrl)
+  const redirectRes = NextResponse.redirect(signInUrl)
+  redirectRes.cookies.set('__Secure-next-auth.session-token', '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: true,
+    path: '/',
+    maxAge: 0,
+  })
+  redirectRes.cookies.set('next-auth.session-token', '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  })
+  return redirectRes
 }
 
 export const config = {

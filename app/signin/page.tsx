@@ -47,6 +47,11 @@ export default function SignInPage() {
         if (cancelled) return
         const container = document.getElementById('cf-turnstile-container')
         if (!container) { tlog('signin: container missing after ready'); return }
+        // If a widget was already rendered into this container, skip rendering again.
+        try {
+          const rendered = (container as HTMLElement).dataset.turnstileRendered
+          if (rendered === '1') { tlog('signin: container already rendered, skipping'); return }
+        } catch (e) { void e }
         try {
           const turn = getTurnstile()
           const id = turn && typeof turn.render === 'function' ? turn.render(container, {

@@ -1,18 +1,60 @@
-import { NextResponse } from 'next/server'
-import { requireAdmin, getSessionServer } from '@/lib/auth'
+import { NextResponse, NextRequest } from 'next/server'
+import { isAdminEmail, getSessionServer, getAdminUserByEmail } from '@/lib/auth'
+import jwt from 'jsonwebtoken'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const sessionRaw = await getSessionServer()
-    const admin = await requireAdmin()
+    try { console.log('[whoami] incoming cookies:', String(req.headers.get('cookie') || '')) } catch (e) { void e }
+    // Fallback: decode JWT directly from the session cookie if getToken doesn't
+    // return a usable token in this runtime. This keeps the whoami check robust
+    // across different Next.js/Edge runtimes and reverse-proxy setups.
+    let token: Record<string, unknown> | null = null
+    try {
+      const cookies = String(req.headers.get('cookie') || '')
+      const m = cookies.match(/(?:__Secure-next-auth.session-token|next-auth.session-token)=([^;\s]+)/)
+      if (m && m[1]) {
+        try {
+          const decoded = jwt.verify(m[1], String(process.env.NEXTAUTH_SECRET || ''))
+          if (decoded && typeof decoded === 'object') token = decoded as Record<string, unknown>
+        } catch (e) { void e }
+      }
+    } catch (e) { void e }
+    try { console.log('[whoami] tokenObj:', token) } catch (e) { void e }
     let user = null
-    if (sessionRaw && typeof sessionRaw === 'object' && 'user' in (sessionRaw as Record<string, unknown>)) {
-      const s = sessionRaw as Record<string, unknown>
-      const u = s.user as Record<string, unknown> | undefined
-      if (u && typeof u === 'object') {
-        const name = typeof u.name === 'string' ? u.name : undefined
-        const email = typeof u.email === 'string' ? u.email : undefined
-        if (name && email) user = { name, email }
+    let admin = false
+    // Prefer server-side session helper when available
+    try {
+      const s = await getSessionServer()
+      if (s && typeof s === 'object' && (s as Record<string, unknown>).user) {
+        const u = (s as Record<string, unknown>).user as Record<string, unknown>
+        if (u?.email && typeof u.email === 'string') {
+          const adminUser = await getAdminUserByEmail(String(u.email))
+          user = adminUser ? { email: adminUser.email, name: adminUser.name } : { email: u.email, name: typeof u.name === 'string' ? u.name : undefined }
+          admin = !!adminUser
+          return NextResponse.json({ admin: !!admin, user })
+        }
+      }
+    } catch (e) { void e }
+
+    if (token && typeof token === 'object') {
+      // Support tokens that embed the user object (e.g. `token.user.email`) as
+      // well as tokens that expose `email`/`name` at the top level. This makes
+      // server-side `whoami` resilient to the custom JWT encode/decode used by
+      // this app where the user object is stored under `token.user`.
+      const maybeUser = (token as any).user
+      const email = typeof (token as any).email === 'string' ? (token as any).email : (maybeUser && typeof maybeUser.email === 'string' ? maybeUser.email : undefined)
+      const name = typeof (token as any).name === 'string' ? (token as any).name : (maybeUser && typeof maybeUser.name === 'string' ? maybeUser.name : undefined)
+      if (email) {
+        user = name ? { name, email } : { email }
+        try {
+          const adminUser = await getAdminUserByEmail(email)
+          if (adminUser) {
+            user = { email: adminUser.email, name: adminUser.name }
+            admin = true
+          } else {
+            admin = await isAdminEmail(email)
+          }
+        } catch (e) { void e }
       }
     }
     return NextResponse.json({ admin: !!admin, user })

@@ -27,7 +27,13 @@ services:
       - "3000:3000"
     env_file:
       - .env.docker
+    environment:
+      # Use the secret from .env.docker and disable the dev bypass
+      CF_TURNSTILE_BYPASS: "0"
     restart: unless-stopped
+    entrypoint: ["node", "/usr/local/bin/docker-entrypoint.js"]
+    volumes:
+      - ./scripts/docker-entrypoint.js:/usr/local/bin/docker-entrypoint.js:ro
 
   caddy:
     image: caddy:2
