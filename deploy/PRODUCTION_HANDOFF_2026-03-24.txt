@@ -1,0 +1,91 @@
+KF8FVD production handoff
+Date: 2026-03-24
+
+What is done
+
+- Repo content from GitHub main was synced into /opt/kf8fvd without overwriting .env or the live data directory.
+- Previous docker-compose.yml and nginx.conf were backed up and moved to /opt/kf8fvd-backup/.deploy-backup-20260324-050921.
+- MySQL schema from deploy/kf8fvd-prduction-duildand-safe.sql was imported into the kf8fvd database.
+- First admin user was created:
+  - email: zach@kf8fvd.com
+  - name: Zachary
+  - role: admin
+- Host Node.js and npm were installed and verified.
+- Docker build context was fixed by excluding data/ in .dockerignore.
+- Application image kf8fvd-app:latest builds successfully.
+- App container is running as: kf8fvd
+- Nginx/proxy container is running as: kf8fvd-proxy
+- Cloudflare tunnel origin was switched to http://proxy:80.
+- Canonical host was changed to www.
+- Public behavior verified:
+  - https://www.kf8fvd.com -> 200
+  - https://kf8fvd.com -> 301 to https://www.kf8fvd.com/
+- Zero Trust Access apps were created for:
+  - /admin/*
+  - /api/admin/*
+  - /minio-admin/*
+- Local git was attached in /opt/kf8fvd and pushed to GitHub main.
+- Pushed commit: 36f3330
+
+Important local repo details
+
+- Branch: main
+- Remote: origin https://github.com/Greasemonkey303/kf8fvd
+- Working tree was clean after push.
+- Local-only git exclude was added in .git/info/exclude for data/ so production data does not appear in source control.
+
+Files changed and pushed
+
+- .dockerignore
+- nginx.conf
+
+What still needs to be checked or cleaned up
+
+1. Cloudflare Access apps should use www as the protected hostname if they still point at apex.
+   Desired paths:
+   - www.kf8fvd.com/admin/*
+   - www.kf8fvd.com/api/admin/*
+   - www.kf8fvd.com/minio-admin/*
+
+2. Verify browser behavior for all important routes:
+   - https://www.kf8fvd.com/
+   - https://www.kf8fvd.com/signin
+   - https://www.kf8fvd.com/admin/
+   - https://www.kf8fvd.com/minio-admin/
+
+3. App headers/config still mention apex in some places.
+   Remaining cleanup worth doing:
+   - replace remaining kf8fvd.com references used for CSP/report URLs and any canonical/public config values so everything consistently uses www.kf8fvd.com.
+
+4. Zero Trust is optional for app launch, but if kept enabled it should only protect admin/minio paths, not /signin or the public site root.
+
+5. Production hardening still worth doing later:
+   - reduce env leakage in docker-compose.yml so each service only gets the secrets it actually needs
+   - move more secrets out of build args/runtime env into a secret manager or mounted secret files
+
+Quick commands
+
+- Check containers:
+  docker ps
+
+- Check git state:
+  cd /opt/kf8fvd && git status -sb
+
+- Restart app and proxy:
+  cd /opt/kf8fvd && docker compose up -d --force-recreate kf8fvd proxy
+
+- View app logs:
+  docker logs --tail 100 kf8fvd
+
+- View proxy logs:
+  docker logs --tail 100 kf8fvd-proxy
+
+- View tunnel logs:
+  docker logs --tail 100 kf8fvd-tunnel
+
+Current deployment status
+
+- Production site is live on www.
+- Apex redirects to www.
+- App container name is kf8fvd.
+- Main branch on GitHub includes the server-side fixes made during this deployment.
