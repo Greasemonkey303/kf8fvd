@@ -15,7 +15,6 @@ type SessionTokenPayload = Record<string, unknown> & {
 
 export async function GET(req: NextRequest) {
   try {
-    try { console.log('[whoami] incoming cookies:', String(req.headers.get('cookie') || '')) } catch (e) { void e }
     // Fallback: decode JWT directly from the session cookie if getToken doesn't
     // return a usable token in this runtime. This keeps the whoami check robust
     // across different Next.js/Edge runtimes and reverse-proxy setups.
@@ -30,7 +29,6 @@ export async function GET(req: NextRequest) {
         } catch (e) { void e }
       }
     } catch (e) { void e }
-    try { console.log('[whoami] tokenObj:', token) } catch (e) { void e }
     let user = null
     let admin = false
     // Prefer server-side session helper when available

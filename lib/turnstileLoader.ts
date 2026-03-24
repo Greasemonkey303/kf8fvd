@@ -12,7 +12,7 @@ import { tlog } from './turnstileDebug'
 
 export function loadTurnstileScript(opts: LoaderOptions = {}) {
   const id = opts.id || 'cf-turnstile-script'
-  const src = opts.src || 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+  const src = opts.src || 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
   const timeoutMs = typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 10000
   return new Promise<HTMLScriptElement>((resolve, reject) => {
     if (typeof window === 'undefined') return reject(new Error('no-window'))

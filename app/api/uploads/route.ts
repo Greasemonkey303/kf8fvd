@@ -65,7 +65,9 @@ export async function POST(req: Request) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
-    console.log('uploads.presign (minio): bucket=', bucket, 'key=', key, 'contentType=', body.contentType)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('uploads.presign (minio): bucket=', bucket, 'key=', key, 'contentType=', body.contentType)
+    }
 
     // MinIO presigned PUT
     const expires = 300

@@ -29,7 +29,7 @@ export default function AdminProjects() {
 
   const load = React.useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/admin/projects')
+    const res = await fetch('/admin/api/projects')
     const data = await res.json()
     setItems(data.items || [])
     setLoading(false)
@@ -50,7 +50,7 @@ export default function AdminProjects() {
     if (!form.slug || !form.title) return
     const metadata = form.createDetails ? { details: form.details, images: detailImages } : undefined
     try {
-      await fetch('/api/admin/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+      await fetch('/admin/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
     } catch (err: unknown) {
       console.error('project create error', getErrMsg(err))
       return
@@ -286,7 +286,7 @@ export default function AdminProjects() {
         // fetch full rows so we can offer undo
         for (const id of selectedIds) {
           try {
-            const sres = await fetch(`/api/admin/projects?id=${encodeURIComponent(String(id))}`)
+            const sres = await fetch(`/admin/api/projects?id=${encodeURIComponent(String(id))}`)
             const sdata = await sres.json().catch(()=>({}))
             const row = (sdata && Array.isArray(sdata.items) && sdata.items[0]) ? sdata.items[0] : (sdata && sdata.item ? sdata.item : null)
             if (row) deleted.push(row)
@@ -294,7 +294,7 @@ export default function AdminProjects() {
         }
         // delete each id
         for (const id of selectedIds) {
-          try { await fetch(`/api/admin/projects?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' }) } catch {}
+          try { await fetch(`/admin/api/projects?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' }) } catch {}
         }
         setDeletedUndoBuffer({ items: deleted })
         setSelectedIds([])
@@ -307,7 +307,7 @@ export default function AdminProjects() {
       // publish/unpublish
       const val = (action === 'publish') ? 1 : 0
       for (const id of selectedIds) {
-        try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_published: val }) }) } catch {}
+        try { await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_published: val }) }) } catch {}
       }
       await load()
       setSelectedIds([])
@@ -323,7 +323,7 @@ export default function AdminProjects() {
     for (const it of itemsToRestore) {
       try {
         const payload = { slug: it.slug, title: it.title, content: it.content || '', metadata: it.metadata || {}, is_published: it.is_published ? 1 : 0 }
-        await fetch('/api/admin/projects', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+        await fetch('/admin/api/projects', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
       } catch (e) { console.error('undo create failed', e) }
     }
     setDeletedUndoBuffer(null)

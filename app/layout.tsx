@@ -39,7 +39,7 @@ export default async function RootLayout({
         <meta name="twitter:card" content="summary_large_image" />
         {/* Early theme initializer (external to avoid CSP inline blocks) */}
         <script src="/theme-init.js" defer nonce={nonce} />
-        <script id="cf-turnstile-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer nonce={nonce} />
+        <script id="cf-turnstile-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer nonce={nonce} />
         <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@graph": [

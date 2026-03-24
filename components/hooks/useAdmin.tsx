@@ -11,7 +11,7 @@ export default function useAdmin() {
     let mounted = true
     ;(async ()=>{
       try {
-        const res = await fetch('/api/admin/whoami')
+        const res = await fetch('/api/whoami-admin')
         const j = await res.json().catch(()=>({ admin: false }))
         if (!mounted) return
         setIsAdmin(!!j?.admin)

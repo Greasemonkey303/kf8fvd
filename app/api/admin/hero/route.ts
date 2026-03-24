@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth'
 import { query } from '@/lib/db'
 
 type Body = { id?: number; title?: string; subtitle?: string; content?: string }
 
 export async function GET(req: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const url = new URL(req.url)
     const id = url.searchParams.get('id')
@@ -20,6 +23,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const body = (await req.json()) as Body
     if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
@@ -39,6 +44,8 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   // allow partial updates: body must include id
   try {
     const body = await req.json()

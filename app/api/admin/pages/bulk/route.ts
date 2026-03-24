@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../../lib/auth'
 import { query } from '../../../../../lib/db'
-import * as Minio from 'minio'
+import { deletePrefixStrict } from '@/lib/objectStorage'
 
 const getErrMsg = (err: unknown) => {
   if (err instanceof Error) return err.message
@@ -30,52 +30,23 @@ export async function POST(req: Request) {
       // retrieve rows to return deleted items to client (for undo buffer)
       const rows = await query<Record<string, unknown>[]>(`SELECT id, slug, title, content, metadata, is_published FROM pages WHERE id IN (${placeholders})`, ids)
 
-      const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-      if (bucket) {
-        const minioClient = new Minio.Client({
-          endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
-          port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
-          useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
-          accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
-          secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
-        })
+      const candidates: string[] = []
+      if (process.env.S3_UPLOAD_PREFIX) candidates.push(process.env.S3_UPLOAD_PREFIX)
+      candidates.push('about/')
+      candidates.push('projects/')
+      candidates.push('pages/')
 
-        const candidates: string[] = []
-        if (process.env.S3_UPLOAD_PREFIX) candidates.push(process.env.S3_UPLOAD_PREFIX)
-        candidates.push('about/')
-        candidates.push('projects/')
-        candidates.push('pages/')
-
-        const normalize = (p: string) => String(p || '').replace(/^\/+/, '').replace(/\/+$/, '')
-        const seen = new Set<string>()
-        const objs: string[] = []
-        for (const r of rows) {
-          const slug = String(r.slug || '')
-          for (const rawPrefix of candidates) {
-            const np = normalize(rawPrefix)
-            if (!np) continue
-            const candidate = np.endsWith('/') ? `${np}${slug}/` : `${np}/${slug}/`
-            if (seen.has(candidate)) continue
-            seen.add(candidate)
-            try {
-              const stream = minioClient.listObjectsV2(bucket, candidate, true)
-              for await (const obj of stream) {
-                if (obj && (obj as { name?: string }).name) objs.push((obj as { name?: string }).name as string)
-              }
-            } catch (e) {
-              // ignore prefix-specific errors
-                void e
-              continue
-            }
-          }
-        }
-
-        if (objs.length > 0) {
-          try {
-            await minioClient.removeObjects(bucket, objs)
-          } catch (e) {
-            console.warn('Warning: removeObjects failed in bulk delete', getErrMsg(e))
-          }
+      const normalize = (p: string) => String(p || '').replace(/^\/+/, '').replace(/\/+$/, '')
+      const seen = new Set<string>()
+      for (const r of rows) {
+        const slug = String(r.slug || '')
+        for (const rawPrefix of candidates) {
+          const np = normalize(rawPrefix)
+          if (!np) continue
+          const candidate = np.endsWith('/') ? `${np}${slug}/` : `${np}/${slug}/`
+          if (seen.has(candidate)) continue
+          seen.add(candidate)
+          await deletePrefixStrict(candidate)
         }
       }
 

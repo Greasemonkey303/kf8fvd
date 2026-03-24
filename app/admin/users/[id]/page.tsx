@@ -15,7 +15,7 @@ export default function UserEditor({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/admin/users?page=1&limit=1000')
+      const res = await fetch('/admin/api/users?page=1&limit=1000')
       const data = await res.json().catch(() => ({} as unknown))
       const items = (data as { items?: unknown }).items as UserListItem[] | undefined
       const found = items?.find(u => String(u.id) === String(id))
@@ -26,7 +26,7 @@ export default function UserEditor({ params }: { params: { id: string } }) {
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
-    await fetch('/api/admin/users', { method: 'PUT', body: JSON.stringify(form) })
+    await fetch('/admin/api/users', { method: 'PUT', body: JSON.stringify(form) })
     router.push('/admin/users')
   }
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -34,7 +34,7 @@ export default function UserEditor({ params }: { params: { id: string } }) {
 
   async function confirmDelete() {
     try {
-      await fetch(`/api/admin/users?id=${form.id}`, { method: 'DELETE' })
+      await fetch(`/admin/api/users?id=${form.id}`, { method: 'DELETE' })
     } finally {
       setShowDeleteConfirm(false)
       router.push('/admin/users')

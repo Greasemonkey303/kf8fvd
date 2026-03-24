@@ -5,6 +5,8 @@ export async function proxy(req: NextRequest) {
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const internalAppOrigin = process.env.INTERNAL_APP_ORIGIN || `http://127.0.0.1:${process.env.PORT || '3000'}`
   const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
+  const pathname = req.nextUrl.pathname
+  const allowAdminInlineStyles = pathname.startsWith('/admin')
 
   // Generate a per-request CSP nonce for production. Keep this lightweight
   // to avoid adding heavy crypto dependencies in the proxy runtime.
@@ -27,7 +29,7 @@ export async function proxy(req: NextRequest) {
   // In production prefer nonces; in local/dev keep 'unsafe-inline' for developer convenience
   const scriptSrc = isLocalhost ? `${scriptSrcBase} 'unsafe-inline' 'unsafe-eval'` : `${scriptSrcBase} 'nonce-${nonce}'`
   const styleSrcBase = "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
-  const styleSrc = isLocalhost ? `${styleSrcBase} 'unsafe-inline'` : `${styleSrcBase} 'nonce-${nonce}'`
+  const styleSrc = (isLocalhost || allowAdminInlineStyles) ? `${styleSrcBase} 'unsafe-inline'` : `${styleSrcBase} 'nonce-${nonce}'`
 
   const connectSrc = `connect-src 'self' ${siteOrigin} http://127.0.0.1:3000 http://localhost:3000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com ws: wss:`
 
@@ -65,8 +67,6 @@ export async function proxy(req: NextRequest) {
     res.headers.set('Content-Security-Policy', CSP)
   }
 
-  const pathname = req.nextUrl.pathname
-
   // Skip proxy for internal assets and auth endpoints
   if (pathname.startsWith('/_next') || pathname.startsWith('/static') || pathname.startsWith('/api/auth')) {
     return res
@@ -97,7 +97,6 @@ export async function proxy(req: NextRequest) {
   // Verify admin session via server-side whoami
   try {
     const whoami = new URL('/api/admin/whoami', internalAppOrigin).toString()
-    try { console.log('[proxy] calling whoami url=', whoami, 'cookie=', String(req.headers.get('cookie') || '')) } catch (e) { void e }
     const whoRes = await fetch(whoami, { headers: { cookie: req.headers.get('cookie') || '' }, cache: 'no-store' })
     if (whoRes.ok) {
       const j = await whoRes.json()

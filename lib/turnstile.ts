@@ -1,3 +1,13 @@
+async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 export async function verifyTurnstileToken(token?: string): Promise<boolean> {
   const bypass = (process.env.CF_TURNSTILE_BYPASS || '').toLowerCase()
   if ((bypass === '1' || bypass === 'true') && process.env.NODE_ENV !== 'production') return true
@@ -12,11 +22,11 @@ export async function verifyTurnstileToken(token?: string): Promise<boolean> {
   while (attempt < maxAttempts) {
     attempt += 1
     try {
-      const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      const res = await fetchWithTimeout('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ secret, response: token }),
-      })
+      }, 5000)
 
       if (res.status === 429) {
         // respect Retry-After if provided

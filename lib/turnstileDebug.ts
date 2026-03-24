@@ -8,11 +8,12 @@ declare global {
 
 export function tlog(...args: unknown[]) {
   try {
-    if (typeof window === 'undefined') {
-      // server fallback
-      console.log('[KF8FVD-TURNSTILE]', ...args)
-      return
-    }
+    if (typeof window === 'undefined') return
+    const debugEnabled = process.env.NODE_ENV !== 'production'
+      || process.env.NEXT_PUBLIC_TURNSTILE_DEBUG === '1'
+      || window.localStorage?.getItem('kf8fvd_turnstile_debug') === '1'
+      || new URLSearchParams(window.location.search).get('turnstileDebug') === '1'
+    if (!debugEnabled) return
     // keep a lightweight in-memory log for easier copying
     window.__kf8fvdTurnstileLogs = window.__kf8fvdTurnstileLogs || []
     const now = new Date().toISOString()

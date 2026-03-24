@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
-import * as Minio from 'minio'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
+import { deleteObjectStrict, deletePrefixStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -135,38 +135,16 @@ export async function DELETE(req: Request) {
   const id = url.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   // find the project to get its slug so we can delete related objects
-  const rows = await query<{ slug: string }[]>('SELECT slug FROM projects WHERE id = ?', [id])
+  const rows = await query<{ slug: string; image_path?: string | null }[]>('SELECT slug, image_path FROM projects WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const slug = rows[0].slug
-
-  const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-  if (bucket) {
-    const minioClient = new Minio.Client({
-      endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
-      port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
-      useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
-      accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
-      secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
-    })
-
+  try {
     const prefix = `${process.env.S3_UPLOAD_PREFIX || 'projects/'}${slug}/`
-    const objs: string[] = []
-    try {
-      const stream = minioClient.listObjectsV2(bucket, prefix, true)
-      for await (const obj of stream) {
-        if (obj && obj.name) objs.push(obj.name)
-      }
-    } catch (e: unknown) {
-      return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
-    }
-
-    if (objs.length > 0) {
-      try {
-        await minioClient.removeObjects(bucket, objs)
-      } catch (e: unknown) {
-        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
-      }
-    }
+    await deletePrefixStrict(prefix)
+    const imageKey = resolveObjectKeyFromReference(rows[0].image_path)
+    if (imageKey) await deleteObjectStrict(imageKey)
+  } catch (e: unknown) {
+    return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
   }
 
   await query('DELETE FROM projects WHERE id = ?', [id])

@@ -35,7 +35,7 @@ export default function PageEditor({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/admin/pages?page=1&limit=1000')
+      const res = await fetch('/admin/api/pages?page=1&limit=1000')
       const data = await res.json()
       const found = (data.items || []).find((p: unknown) => String((p as Record<string, unknown>).id) === String(id))
       if (found) {
@@ -48,7 +48,7 @@ export default function PageEditor({ params }: { params: { id: string } }) {
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
-    await fetch('/api/admin/pages', { method: 'PUT', body: JSON.stringify(form) })
+    await fetch('/admin/api/pages', { method: 'PUT', body: JSON.stringify(form) })
     router.push('/admin/pages')
   }
 

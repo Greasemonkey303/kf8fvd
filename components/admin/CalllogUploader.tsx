@@ -26,7 +26,7 @@ export default function CalllogUploader() {
       fd.append('file', file)
       if (replaceAll) fd.append('replace', '1')
 
-      const res = await fetch('/api/admin/calllog', { method: 'POST', body: fd })
+      const res = await fetch('/admin/api/calllog', { method: 'POST', body: fd })
       let j: unknown = null
       try { j = await res.json() } catch (_) { j = null }
 

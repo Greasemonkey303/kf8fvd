@@ -17,7 +17,7 @@ export async function GET() {
     const item = Array.isArray(rows) && rows.length ? rows[0] : { id: null, is_on: 0 }
     return NextResponse.json({ item })
   } catch (err) {
-    console.error('api/admin/onair GET error', err)
+    console.error('admin/onair GET error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
 }
@@ -48,7 +48,7 @@ export async function PATCH(req: Request) {
     const updated = await query<Record<string, unknown>[]>('SELECT * FROM onair ORDER BY id ASC LIMIT 1')
     return NextResponse.json({ item: updated && updated.length ? updated[0] : { is_on } })
   } catch (err) {
-    console.error('api/admin/onair PATCH error', err)
+    console.error('admin/onair PATCH error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
 }

@@ -29,7 +29,7 @@ export default function AdminHeroPage() {
   async function load() {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/hero')
+      const res = await fetch('/admin/api/hero')
       const j = await res.json()
       const item = Array.isArray(j.items) && j.items.length ? j.items[0] : null
       setHero(item)
@@ -73,7 +73,7 @@ export default function AdminHeroPage() {
     setSaving(true)
     try {
       const payload = { id: hero.id, title: hero.title, subtitle: hero.subtitle, content: hero.content }
-      await fetch('/api/admin/hero', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      await fetch('/admin/api/hero', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       await load()
     } catch (err) { console.error('save hero error', err) }
     setSaving(false)
@@ -83,7 +83,7 @@ export default function AdminHeroPage() {
     setSaving(true)
     try {
       const payload = { title: 'New Hero', subtitle: '', content: '' }
-      const res = await fetch('/api/admin/hero', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await fetch('/admin/api/hero', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await res.json()
       setHero(j.item)
       await load()
@@ -132,7 +132,7 @@ export default function AdminHeroPage() {
       // auto-feature if no featured exists
       const currentlyHasFeatured = images.find(i => Number(i.is_featured) === 1)
       const shouldFeature = !currentlyHasFeatured
-      await fetch('/api/admin/hero/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hero_id: hero.id, url: storedKey, alt: file.name, is_featured: shouldFeature ? 1 : 0 }) })
+      await fetch('/admin/api/hero/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hero_id: hero.id, url: storedKey, alt: file.name, is_featured: shouldFeature ? 1 : 0 }) })
       setUploadSuccess(true)
       setTimeout(()=> setUploadSuccess(false), 2500)
       setUploadProgress(100)
@@ -169,7 +169,7 @@ export default function AdminHeroPage() {
 
   async function updateImageMeta(id: number, alt: string) {
     try {
-      await fetch('/api/admin/hero/image', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, alt }) })
+      await fetch('/admin/api/hero/image', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, alt }) })
       await load()
     } catch (e) { console.error('updateImageMeta error', e) }
   }
@@ -190,13 +190,13 @@ export default function AdminHeroPage() {
 
   async function setFeaturedImage(id: number) {
     try {
-      await fetch('/api/admin/hero/image', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, set_featured: true }) })
+      await fetch('/admin/api/hero/image', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, set_featured: true }) })
       await load()
     } catch (e) { console.error(e) }
   }
 
   async function deleteImage(id: number) {
-    const res = await fetch(`/api/admin/hero/image?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
+    const res = await fetch(`/admin/api/hero/image?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
     if (!res.ok) {
       let msg = `Delete failed: ${res.status} ${res.statusText}`
       try {

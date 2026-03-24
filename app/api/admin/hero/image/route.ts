@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth'
 import { query, transaction } from '@/lib/db'
 import * as Minio from 'minio'
+import { deleteObjectStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 
 export async function POST(req: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const body = await req.json()
     const { hero_id, url, alt, is_featured, sort_order } = body || {}
@@ -19,21 +23,7 @@ export async function POST(req: Request) {
     // Attempt to generate a WebP variant for faster delivery when possible.
     try {
       // Resolve object key from the stored URL
-      let objectKey: string | undefined = undefined
-      try {
-        const u = new URL(String(url), 'http://localhost')
-        const k = u.searchParams.get('key')
-        if (k) objectKey = k
-        else {
-          const p = u.pathname || ''
-          const pclean = p.replace(/^\//, '')
-          const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-          if (bucket && pclean.startsWith(bucket + '/')) objectKey = pclean.slice(bucket.length + 1)
-          else objectKey = pclean
-        }
-      } catch {
-        objectKey = String(url)
-      }
+      const objectKey = resolveObjectKeyFromReference(url) || undefined
 
       const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
       if (bucket && objectKey) {
@@ -126,6 +116,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const body = await req.json()
     const { id, set_featured, sort_order, alt, url } = body || {}
@@ -157,6 +149,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const url = new URL(req.url)
     const id = url.searchParams.get('id')
@@ -167,45 +161,17 @@ export async function DELETE(req: Request) {
     const hero_id = row.hero_id
     const urlVal = row.url
 
-    // attempt to delete object from S3/MinIO if possible
     try {
-      let objectKey: string | undefined = undefined
-      try {
-        const u = new URL(String(urlVal), 'http://localhost')
-        const k = u.searchParams.get('key')
-        if (k) objectKey = k
-        else {
-          const p = u.pathname || ''
-          const pclean = p.replace(/^\//, '')
-          const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-          if (bucket && pclean.startsWith(bucket + '/')) objectKey = pclean.slice(bucket.length + 1)
-          else objectKey = pclean
-        }
-      } catch {
-        objectKey = String(urlVal)
-      }
-
-      if (objectKey) {
-        const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-        if (bucket) {
-          const minioClient = new Minio.Client({
-            endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
-            port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
-            useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
-            accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
-            secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
-          })
-          try {
-            // removeObjects expects an array
-            await minioClient.removeObjects(bucket, [objectKey])
-          } catch (e) {
-            // log but do not block deletion of DB row
-            console.error('minio removeObjects error', e)
-          }
-        }
+      const objectKey = resolveObjectKeyFromReference(urlVal)
+      if (objectKey) await deleteObjectStrict(objectKey)
+      const variantsRaw = row.variants
+      let variants: Record<string, unknown> | null = null
+      try { variants = variantsRaw ? (typeof variantsRaw === 'string' ? JSON.parse(variantsRaw) : variantsRaw as Record<string, unknown>) : null } catch { variants = null }
+      if (variants && typeof variants === 'object') {
+        await Promise.all(Object.values(variants).map((value) => deleteObjectStrict(value)))
       }
     } catch (e) {
-      console.error('s3 delete attempt failed', e)
+      return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
     }
 
     await query('DELETE FROM hero_image WHERE id = ?', [Number(id)])

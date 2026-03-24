@@ -63,7 +63,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
   async function load() {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/pages?page=1&limit=1000')
+      const res = await fetch('/admin/api/pages?page=1&limit=1000')
       const json = await res.json()
       const items = (json?.items || []) as Array<Record<string, unknown>>
       const found = items.find(i => String(i['id']) === String(idParam) || String(i['slug']) === String(idParam))
@@ -343,7 +343,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       if (deleteModal.mode === 'card') {
         const idx = Number((deleteModal as Record<string, unknown>)?.idx ?? -1)
         if (idx < 0) { setDeleteModal({ open: false }); return }
-        const res = await fetch(`/api/admin/pages?id=${id}&card=${idx}`, { method: 'DELETE' })
+        const res = await fetch(`/admin/api/pages?id=${id}&card=${idx}`, { method: 'DELETE' })
         if (!res.ok) { alert('Delete failed'); return }
         setCards(prev => {
           const copy = prev.slice()
@@ -361,12 +361,12 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
         try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
       } else if (deleteModal.mode === 'named') {
         const key = String((deleteModal as Record<string, unknown>)?.namedKey || '')
-        const res = await fetch(`/api/admin/pages?id=${id}&card=${encodeURIComponent(key)}`, { method: 'DELETE' })
+        const res = await fetch(`/admin/api/pages?id=${id}&card=${encodeURIComponent(key)}`, { method: 'DELETE' })
         if (!res.ok) { alert('Delete failed'); return }
         try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
         await load()
       } else if (deleteModal.mode === 'page') {
-        const res = await fetch(`/api/admin/pages?id=${id}`, { method: 'DELETE' })
+        const res = await fetch(`/admin/api/pages?id=${id}`, { method: 'DELETE' })
         if (res.ok) router.push('/admin/about')
       } else if (deleteModal.mode === 'image') {
         const url = deleteModal.imageUrl
@@ -452,7 +452,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       const safeMetadata = { ...metadata, cards }
       const payload: Record<string, unknown> = { id, slug: slug || undefined, title, content: '', metadata: safeMetadata, is_published: isPublished ? 1 : 0 }
       const method = id ? 'PUT' : 'POST'
-      const res = await fetch('/api/admin/pages', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await fetch('/admin/api/pages', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!res.ok) { const err = await res.json().catch(()=>({})); alert('Save failed: ' + (err?.error || res.status)); return }
       const json = await res.json()
       if (!id && json?.id) setId(json.id)

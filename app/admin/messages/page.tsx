@@ -37,7 +37,7 @@ export default function Page() {
   async function load(p = 1) {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/messages?page=${p}&limit=${limit}`)
+      const res = await fetch(`/admin/messages/data?page=${p}&limit=${limit}`, { cache: 'no-store' })
       const j = await res.json()
       setItems(j.items || [])
     } catch (e) {
@@ -47,20 +47,24 @@ export default function Page() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    void load()
+    const pollId = window.setInterval(() => { void load(page) }, 30000)
+    return () => window.clearInterval(pollId)
+  }, [page])
 
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
   if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   async function mark(id: number, read: boolean) {
-    await fetch('/api/admin/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
+    await fetch('/admin/messages/data', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
     await load(page)
   }
 
   // PATCH without reloading the whole list (optimistic update)
   async function markNoReload(id: number, read: boolean) {
     try {
-      await fetch('/api/admin/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
+      await fetch('/admin/messages/data', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
       setItems(prev => prev.map(i => i.id === id ? { ...i, is_read: read } : i))
       if (selected && selected.id === id) setSelected({ ...selected, is_read: read })
     } catch (e) {
@@ -69,7 +73,7 @@ export default function Page() {
   }
 
   async function markAllRead() {
-    await fetch('/api/admin/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark_all_read' }) })
+    await fetch('/admin/messages/data', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark_all_read' }) })
     await load(page)
   }
 
@@ -83,7 +87,7 @@ export default function Page() {
     const { id, fromModal } = confirmDelete
     setDeleting(true)
     try {
-      await fetch(`/api/admin/messages?id=${id}`, { method: 'DELETE' })
+      await fetch(`/admin/messages/data?id=${id}`, { method: 'DELETE' })
       setConfirmDelete(null)
       if (fromModal) setSelected(null)
       await load(page)
@@ -126,11 +130,11 @@ export default function Page() {
           </thead>
           <tbody>
             {items.map(it => (
-              <tr key={it.id} style={{fontWeight: it.is_read ? 400 : 700}}>
+              <tr key={it.id} className={it.is_read ? styles.readRow : styles.unreadRow}>
                 <td className={styles.td}>{it.created_at ? (new Date(it.created_at).toLocaleString()) : '-'}</td>
                 <td className={styles.td}>{it.name || '-'}</td>
                 <td className={styles.td}>{it.email || '-'}</td>
-                <td className={styles.td} style={{maxWidth:420}} dangerouslySetInnerHTML={{__html: makeSafeHtmlFromText(String(it.message || '').substring(0, 1000))}} />
+                <td className={`${styles.td} ${styles.messagePreview}`} dangerouslySetInnerHTML={{__html: makeSafeHtmlFromText(String(it.message || '').substring(0, 1000))}} />
                 <td className={styles.td}>
                   <div className={styles.controls}>
                     <button className={styles.btnGhost} onClick={() => viewMessage(it)}>View</button>
@@ -149,8 +153,8 @@ export default function Page() {
       {selected && (
         <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={closeModal} initialFocusRef={closeModalBtnRef as unknown as React.RefObject<HTMLElement>} titleId={`msg-title-${selected.id}`}>
           <div className={styles.modalHeader}>
-            <div style={{fontWeight:700}} id={`msg-title-${selected.id}`}>{selected.name || 'Message'}</div>
-            <div style={{marginLeft:'auto', display:'flex', gap:8}}>
+            <div className={styles.modalTitle} id={`msg-title-${selected.id}`}>{selected.name || 'Message'}</div>
+            <div className={styles.modalActions}>
               <button className={styles.btnGhost} onClick={() => { markNoReload(selected.id, false); setSelected({ ...selected, is_read: false }) }}>Mark unread</button>
               <button className={styles.btnGhost} onClick={() => { window.location.href = `mailto:${selected.email || ''}` }}>Email</button>
               <button className={styles.btnGhost} onClick={() => { setConfirmDelete({ id: selected.id, name: selected.name, fromModal: true }) }}>Delete</button>
@@ -158,17 +162,17 @@ export default function Page() {
             </div>
           </div>
           <div className={styles.modalBody}>
-            <div style={{color:'var(--white-85)', marginBottom:8}}>When: {selected.created_at ? new Date(selected.created_at).toLocaleString() : '-'}</div>
-            <div style={{display:'flex', gap:12, flexWrap:'wrap', marginBottom:8}}>
-              <div style={{color:'var(--white-85)'}}>From: {selected.name || '-'}</div>
-              <div style={{color:'var(--white-85)'}}>Email: {selected.email ? <a href={`mailto:${selected.email}`}>{selected.email}</a> : '-'}</div>
-              <div style={{color:'var(--white-85)'}}>IP: {selected.ip || '-'}</div>
+            <div className={styles.metaSummary}>When: {selected.created_at ? new Date(selected.created_at).toLocaleString() : '-'}</div>
+            <div className={styles.metaSummaryRow}>
+              <div className={styles.metaSummary}>From: {selected.name || '-'}</div>
+              <div className={styles.metaSummary}>Email: {selected.email ? <a href={`mailto:${selected.email}`}>{selected.email}</a> : '-'}</div>
+              <div className={styles.metaSummary}>IP: {selected.ip || '-'}</div>
             </div>
-            <div style={{border:'1px solid rgba(255,255,255,0.04)', borderRadius:8, padding:12, background:'var(--card-bg)'}} dangerouslySetInnerHTML={{ __html: (selected.message_sanitized ? (purify ? purify.sanitize(String(selected.message_sanitized)) : String(selected.message_sanitized)) : makeSafeHtmlFromText(selected.message || '')) }} />
+            <div className={styles.messageBody} dangerouslySetInnerHTML={{ __html: (selected.message_sanitized ? (purify ? purify.sanitize(String(selected.message_sanitized)) : String(selected.message_sanitized)) : makeSafeHtmlFromText(selected.message || '')) }} />
 
             {selected.attachments && selected.attachments.length > 0 && (
-              <div style={{marginTop:12}}>
-                <div style={{fontWeight:700, marginBottom:6}}>Attachments</div>
+              <div className={styles.attachmentsBlock}>
+                <div className={styles.attachmentsTitle}>Attachments</div>
                 <ul>
                   {selected.attachments.map((a: Attachment, i: number) => (
                     <li key={i} className={styles.attachment}>
@@ -184,18 +188,18 @@ export default function Page() {
                 </ul>
               </div>
             )}
-            <div style={{marginTop:12, color:'var(--white-66)', fontSize:13}}>User agent: {selected.user_agent || '-'}</div>
+            <div className={styles.userAgent}>User agent: {selected.user_agent || '-'}</div>
           </div>
         </Modal>
       )}
       {confirmDelete && (
         <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => setConfirmDelete(null)} initialFocusRef={confirmCancelRef as unknown as React.RefObject<HTMLElement>} titleId="confirm-delete-title" descriptionId="confirm-delete-desc">
           <div className={styles.modalHeader}>
-            <div style={{fontWeight:700}} id="confirm-delete-title">Confirm delete</div>
+            <div className={styles.modalTitle} id="confirm-delete-title">Confirm delete</div>
           </div>
           <div className={styles.modalBody}>
             <div id="confirm-delete-desc">Are you sure you want to delete this message{confirmDelete.name ? ` from ${confirmDelete.name}` : ''}? This action cannot be undone.</div>
-            <div style={{display:'flex', gap:8, justifyContent:'flex-end', marginTop:12}}>
+            <div className={styles.confirmActions}>
               <button ref={confirmCancelRef} className={styles.btnGhost} onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancel</button>
               <button className={styles.btnDanger} onClick={() => doDelete()} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</button>
             </div>

@@ -49,6 +49,9 @@
 .table { width: 100%; border-collapse: collapse; background: transparent }
 .th { text-align: left; padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color:var(--logo-silver); font-size:13px }
 .td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.02); color:var(--white-95); vertical-align:top }
+.readRow { font-weight: 400 }
+.unreadRow { font-weight: 700 }
+.messagePreview { max-width: 420px }
 .rowHover:hover { background: rgba(255,255,255,0.015) }
 .empty { color:var(--white-66); padding:18px }
 
@@ -95,6 +98,15 @@
 }
 .modalHeader { display:flex; gap:12px; align-items:center; margin-bottom:12px }
 .modalBody { display:flex; flex-direction:column; gap:12px }
+.modalTitle { font-weight: 700 }
+.modalActions { margin-left: auto; display:flex; gap:8px; flex-wrap:wrap }
+.metaSummary { color: var(--white-85) }
+.metaSummaryRow { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px }
+.messageBody { border:1px solid rgba(255,255,255,0.04); border-radius:8px; padding:12px; background:var(--card-bg) }
+.attachmentsBlock { margin-top:12px }
+.attachmentsTitle { font-weight:700; margin-bottom:6px }
+.userAgent { margin-top:12px; color:var(--white-66); font-size:13px }
+.confirmActions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
 .attachment { color: var(--white-85); font-size:0.95rem; margin-bottom:6px }
 
 @media (max-width: 520px) {

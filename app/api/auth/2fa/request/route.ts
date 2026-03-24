@@ -6,12 +6,23 @@ import { verifyTurnstileToken } from '@/lib/turnstile'
 
 // verifyTurnstileToken now provided by '@/lib/turnstile'
 
+async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
     const email = (body?.email || '').toString().trim().toLowerCase()
     const password = (body?.password || '').toString()
     const cfToken = body?.cf_turnstile_response || null
+    const allowBypass = process.env.NODE_ENV !== 'production' && String(body?._bypass || '') === '1'
     if (!email || !password) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
     // rate-limit: per-IP and per-email
@@ -21,7 +32,7 @@ export async function POST(req: Request) {
     if (await isLocked(ipKey) || await isLocked(emailKey)) return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
 
     // Allow bypassing Turnstile for local debug by sending `_bypass: '1'` in the request body.
-    if (process.env.CF_TURNSTILE_SECRET && String(body?._bypass || '') !== '1') {
+    if (process.env.CF_TURNSTILE_SECRET && !allowBypass) {
       const ok = await verifyTurnstileToken(String(cfToken || ''))
       if (!ok) return NextResponse.json({ error: 'Captcha validation failed' }, { status: 400 })
     }
@@ -56,8 +67,9 @@ export async function POST(req: Request) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
     await query('INSERT INTO two_factor_codes (user_id, email, code_hash, expires_at) VALUES (?, ?, ?, ?)', [user.id, user.email, codeHash, expiresAt])
-    try { console.log('[api/auth/2fa/request] generated code for', { userId: user.id, email: user.email }) } catch (e) { void e }
-    try { console.log('[api/auth/2fa/request] code (debug):', code) } catch (e) { void e }
+    if (process.env.NODE_ENV !== 'production') {
+      try { console.log('[api/auth/2fa/request] generated code for', { userId: user.id, email: user.email }) } catch (e) { void e }
+    }
 
     // Send email via SendGrid if configured
     const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
@@ -81,11 +93,14 @@ export async function POST(req: Request) {
       }
 
       try {
-        await fetch('https://api.sendgrid.com/v3/mail/send', {
+        const sendgridRes = await fetchWithTimeout('https://api.sendgrid.com/v3/mail/send', {
           method: 'POST',
           headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(bodyReq)
-        })
+        }, 5000)
+        if (!sendgridRes.ok) {
+          try { console.warn('[api/auth/2fa/request] sendgrid non-2xx', sendgridRes.status) } catch (e) { void e }
+        }
       } catch (e) {
         // log but don't fail the request
         console.warn('[api/auth/2fa/request] sendgrid error', e)
@@ -94,7 +109,9 @@ export async function POST(req: Request) {
 
     // In development, allow returning the code in the response when DEBUG_2FA=1
     // or when the client explicitly requests it with `_debug: '1'` in the POST body.
-    if ((process.env.DEBUG_2FA || '').toString() === '1' || String(body?._debug || '') === '1') return NextResponse.json({ ok: true, debugCode: code })
+    if (process.env.NODE_ENV !== 'production' && (((process.env.DEBUG_2FA || '').toString() === '1') || String(body?._debug || '') === '1')) {
+      return NextResponse.json({ ok: true, debugCode: code })
+    }
     return NextResponse.json({ ok: true })
   } catch (e) {
     void e

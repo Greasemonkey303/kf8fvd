@@ -33,7 +33,7 @@ export default function AdminAboutList() {
   async function load() {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/pages?page=1&limit=1000')
+      const res = await fetch('/admin/api/pages?page=1&limit=1000')
       const data = await res.json()
       const rows: Record<string, unknown>[] = data.items || []
       const cards: AdminCard[] = []
@@ -102,7 +102,7 @@ export default function AdminAboutList() {
     setCreating(true)
     try {
       const metadata = { aboutCard: { title: form.title, subtitle: form.subtitle, content: form.description, image: form.image_path } }
-      const res = await fetch('/api/admin/pages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, title: form.title, content: '', metadata, is_published: form.is_published ? 1 : 0 }) })
+      const res = await fetch('/admin/api/pages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, title: form.title, content: '', metadata, is_published: form.is_published ? 1 : 0 }) })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) { alert('Create failed: ' + (j?.error || res.status)); return }
     } catch (err) { console.error(err); alert('Create failed'); return } finally { setCreating(false) }
@@ -212,7 +212,7 @@ export default function AdminAboutList() {
     setSavingOrder(true)
     try {
       const order = newItems.map(i => String(i.id))
-      const res = await fetch('/api/admin/pages/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }) })
+      const res = await fetch('/admin/api/pages/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }) })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) { alert('Save order failed: ' + (j?.error || res.status)); return }
       try { toast?.showToast && toast.showToast('Order saved', 'success') } catch{}
@@ -248,7 +248,7 @@ export default function AdminAboutList() {
   const performBulkAction = async (action: 'publish' | 'unpublish' | 'delete') => {
     if (!selectedIds || selectedIds.length === 0) return
     try {
-      const res = await fetch('/api/admin/pages/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds, action }) })
+      const res = await fetch('/admin/api/pages/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds, action }) })
       const j = await res.json().catch(()=>({}))
       if (!res.ok) { alert('Bulk action failed: ' + (j?.error || res.status)); return }
       if (action === 'delete') {
@@ -277,7 +277,7 @@ export default function AdminAboutList() {
     for (const it of itemsToRestore) {
       try {
         const payload = { slug: String((it as Record<string, unknown>)['slug'] || ''), title: String((it as Record<string, unknown>)['title'] || ''), content: String((it as Record<string, unknown>)['content'] || ''), metadata: (it as Record<string, unknown>)['metadata'] || {}, is_published: (it as Record<string, unknown>)['is_published'] ? 1 : 0 }
-        await fetch('/api/admin/pages', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+        await fetch('/admin/api/pages', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
       } catch (e) { console.error('undo create failed', e) }
     }
     setDeletedUndoBuffer(null)

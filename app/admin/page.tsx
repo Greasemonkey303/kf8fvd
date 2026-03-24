@@ -7,10 +7,20 @@ import { useRouter } from 'next/navigation'
 import styles from './admin.module.css'
 import { buildPublicUrl } from '@/lib/s3'
 
+type DashboardMessage = {
+  id: number
+  name?: string | null
+  email?: string | null
+  message?: string | null
+  is_read?: boolean
+  created_at?: string
+}
+
 export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [counts, setCounts] = useState({ projects: 0, messages: 0, users: 0, aboutPosts: 0 })
+  const [recentMessages, setRecentMessages] = useState<DashboardMessage[]>([])
   const [featuredHero, setFeaturedHero] = useState<{ url?: string; title?: string } | null>(null)
   const [onAir, setOnAir] = useState<boolean | null>(null)
   const [onairSaving, setOnairSaving] = useState(false)
@@ -19,9 +29,27 @@ export default function AdminPage() {
 
   const mountedRef = useRef(true)
 
+  const fetchDashboard = async () => {
+    try {
+      const res = await fetch('/admin/dashboard-data', { cache: 'no-store' })
+      const j = await res.json().catch(() => ({ counts: null, recentMessages: [] }))
+      if (!mountedRef.current) return
+      setCounts({
+        projects: Number(j?.counts?.projects ?? 0),
+        messages: Number(j?.counts?.messages ?? 0),
+        users: Number(j?.counts?.users ?? 0),
+        aboutPosts: Number(j?.counts?.aboutPosts ?? 0)
+      })
+      setRecentMessages(Array.isArray(j?.recentMessages) ? j.recentMessages.slice(0, 5) : [])
+    } catch {
+      if (!mountedRef.current) return
+      setRecentMessages([])
+    }
+  }
+
   const fetchOnAir = async () => {
     try {
-      const r = await fetch('/api/admin/onair')
+      const r = await fetch('/admin/onair', { cache: 'no-store' })
       const j = await r.json()
       if (!mountedRef.current) return
       const isOn = j?.item && (j.item.is_on === 1 || j.item.is_on === true)
@@ -33,41 +61,7 @@ export default function AdminPage() {
   }
 
   useEffect(()=>{
-    ;(async ()=>{
-      try {
-        const [pRes, mRes, uRes, aboutRes] = await Promise.all([
-          fetch('/api/admin/projects'),
-          fetch('/api/admin/messages'),
-          fetch('/api/admin/users'),
-          fetch('/api/admin/pages')
-        ])
-        const p = await pRes.json().catch(()=>({ items:[] }))
-        const m = await mRes.json().catch(()=>({ items:[] }))
-        const u = await uRes.json().catch(()=>({ items:[] }))
-        const a = await aboutRes.json().catch(()=>({ items:[] }))
-        // count about cards across pages.metadata
-        let aboutCount = 0
-        try {
-          const rows = Array.isArray(a.items) ? a.items : []
-          for (const r of rows) {
-            try {
-              const md = r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata) : null
-              if (md) {
-                if (Array.isArray(md.cards) && md.cards.length > 0) aboutCount += md.cards.length
-                else {
-                  if (md.aboutCard) aboutCount++
-                  if (md.topologyCard) aboutCount++
-                  if (md.hamshackCard) aboutCount++
-                }
-              }
-            } catch {}
-          }
-        } catch {}
-        setCounts({ projects: (p.items||[]).length, messages: (typeof m.total === 'number' ? m.total : (m.items||[]).length), users: (u.items||[]).length, aboutPosts: aboutCount })
-      } catch {
-        // ignore
-      }
-    })()
+    void fetchDashboard()
     // fetch featured hero for dashboard quick card
     ;(async ()=>{
       try {
@@ -86,7 +80,11 @@ export default function AdminPage() {
 
     // fetch on-air status for admin control (initial)
     const timeoutId = window.setTimeout(() => { void fetchOnAir() }, 0)
-    return () => window.clearTimeout(timeoutId)
+    const pollId = window.setInterval(() => { void fetchDashboard() }, 30000)
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.clearInterval(pollId)
+    }
   }, [])
 
   function getPreviewSrc(urlVal: unknown) {
@@ -113,7 +111,7 @@ export default function AdminPage() {
     setOnairSaving(true)
     try {
       const newState = !onAir
-      const res = await fetch('/api/admin/onair', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_on: newState ? 1 : 0, updated_by: session?.user?.email || null }) })
+      const res = await fetch('/admin/onair', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_on: newState ? 1 : 0, updated_by: session?.user?.email || null }) })
       const j = await res.json()
       if (res.ok && j?.item) setOnAir(Boolean(j.item.is_on))
       else setOnairError(j?.error || 'Failed to update')
@@ -203,7 +201,7 @@ export default function AdminPage() {
                       <div className={styles.statNumber} style={{fontSize:18}}>Hero</div>
                       <div className={styles.statLabel}>{featuredHero.title || 'Featured image'}</div>
                     </div>
-                    <Link href="/admin/home/hero">Edit Hero</Link>
+                    <Link prefetch={false} href="/admin/home/hero">Edit Hero</Link>
                   </div>
                 </div>
               </div>
@@ -218,7 +216,7 @@ export default function AdminPage() {
                   <div className={styles.statLabel}>Projects</div>
                 </div>
               </div>
-              <Link href="/admin/projects">Open Projects</Link>
+              <Link prefetch={false} href="/admin/projects">Open Projects</Link>
             </div>
               <div className="card-action">
                 <div style={{display:'flex', alignItems:'center', gap:10}}>
@@ -228,7 +226,7 @@ export default function AdminPage() {
                     <div className={styles.statLabel}>About posts</div>
                   </div>
                 </div>
-                <Link href="/admin/about">Open About</Link>
+                <Link prefetch={false} href="/admin/about">Open About</Link>
               </div>
             <div className="card-action">
               <div style={{display:'flex', alignItems:'center', gap:10}}>
@@ -238,7 +236,7 @@ export default function AdminPage() {
                   <div className={styles.statLabel}>Messages</div>
                 </div>
               </div>
-              <Link href="/admin/messages">Open Messages</Link>
+              <Link prefetch={false} href="/admin/messages">Open Messages</Link>
             </div>
             <div className="card-action">
               <div style={{display:'flex', alignItems:'center', gap:10}}>
@@ -248,13 +246,48 @@ export default function AdminPage() {
                   <div className={styles.statLabel}>Users</div>
                 </div>
               </div>
-              <Link href="/admin/users">Manage Users</Link>
+              <Link prefetch={false} href="/admin/users">Manage Users</Link>
             </div>
             <div className="card-action">
               <div style={{marginTop:'auto'}}>
                 <button onClick={() => signOut()} className={styles.btnGhost}>Sign Out</button>
               </div>
             </div>
+          </div>
+          <div style={{marginTop:20}}>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10}}>
+              <h3 style={{margin:0}}>Recent Messages</h3>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <button className={styles.btnGhost} onClick={() => { void fetchDashboard() }}>Refresh</button>
+                <Link prefetch={false} href="/admin/messages">Open all messages</Link>
+              </div>
+            </div>
+            {recentMessages.length === 0 ? (
+              <div className="card-action">
+                <div className={styles.smallMuted}>No messages yet.</div>
+              </div>
+            ) : (
+              <div style={{display:'grid', gap:10}}>
+                {recentMessages.map((item) => (
+                  <div key={item.id} className="card-action" style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16}}>
+                    <div style={{minWidth:0, flex:1}}>
+                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap'}}>
+                        <strong>{item.name || 'Visitor'}</strong>
+                        <span className={styles.smallMuted}>{item.email || 'No email provided'}</span>
+                        {!item.is_read ? <span style={{background:'#e11d48', color:'#fff', borderRadius:999, padding:'2px 8px', fontSize:12, fontWeight:700}}>New</span> : null}
+                      </div>
+                      <div className={styles.smallMuted} style={{marginBottom:6}}>
+                        {item.created_at ? new Date(item.created_at).toLocaleString() : '-'}
+                      </div>
+                      <div style={{whiteSpace:'pre-wrap', overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical'}}>
+                        {String(item.message || '').trim() || 'No message body'}
+                      </div>
+                    </div>
+                    <Link prefetch={false} href="/admin/messages">View</Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

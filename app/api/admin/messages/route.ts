@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
 
+export const dynamic = 'force-dynamic'
+
+function jsonNoStore(body: unknown, init?: ResponseInit) {
+  const response = NextResponse.json(body, init)
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  response.headers.set('Pragma', 'no-cache')
+  response.headers.set('Expires', '0')
+  return response
+}
+
 export async function GET(req: Request) {
   const admin = await requireAdmin()
-  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!admin) return jsonNoStore({ error: 'Unauthorized' }, { status: 401 })
   const url = new URL(req.url)
   const page = Math.max(parseInt(url.searchParams.get('page') || '1', 10), 1)
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '100', 10), 1), 1000)
@@ -15,7 +25,7 @@ export async function GET(req: Request) {
   if (unreadOnly === 'true' || unreadOnly === '1') {
     const rows = await query<{ unread: number }[]>('SELECT COUNT(*) as unread FROM messages WHERE is_deleted=0 AND is_read=0')
     const unread = (rows && rows[0] && typeof rows[0].unread === 'number') ? rows[0].unread : 0
-    return NextResponse.json({ unread })
+    return jsonNoStore({ unread })
   }
 
   const rows = await query<Array<Record<string, unknown>>>(`SELECT id, name, email, message, message_sanitized, attachments, ip, user_agent, is_read, created_at FROM messages WHERE is_deleted=0 ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`)
@@ -37,7 +47,7 @@ export async function GET(req: Request) {
         try {
           if (a && typeof a === 'object' && (a as Record<string, unknown>).dir && (a as Record<string, unknown>).filename) {
             const obj = a as Record<string, unknown>
-            return { ...obj, url: `/api/admin/messages/attachments/${encodeURIComponent(String(obj.dir))}/${encodeURIComponent(String(obj.filename))}` }
+            return { ...obj, url: `/admin/messages/attachments/${encodeURIComponent(String(obj.dir))}/${encodeURIComponent(String(obj.filename))}` }
           }
         } catch (e) { void e }
         return a as Record<string, unknown>
@@ -49,7 +59,7 @@ export async function GET(req: Request) {
     created_at: r.created_at,
   }))
 
-  return NextResponse.json({ items, page, limit, total, unread })
+  return jsonNoStore({ items, page, limit, total, unread })
 }
 
 export async function PATCH(req: Request) {

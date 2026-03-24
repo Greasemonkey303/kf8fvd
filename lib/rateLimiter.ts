@@ -19,6 +19,7 @@ const store = new Map<string, Entry>()
 // avoid relying on the full ioredis types and to satisfy eslint rules.
 type RedisLike = {
   on?: (event: string, handler: (...args: unknown[]) => void) => void
+  connect?: () => Promise<unknown>
   pttl?: (key: string) => Promise<number>
   eval?: (script: string, numKeys: number, ...args: unknown[]) => Promise<unknown>
   incr?: (key: string) => Promise<number>
@@ -27,6 +28,7 @@ type RedisLike = {
   del?: (...keys: string[]) => Promise<number>
   exists?: (key: string) => Promise<number>
   decr?: (key: string) => Promise<number>
+  disconnect?: (reconnect?: boolean) => void
 }
 
 function now() { return Date.now() }
@@ -54,7 +56,21 @@ function rateLimitDisabled() {
 }
 
 let _redis: RedisLike | null = null
+let redisDisabledUntil = 0
+
+function markRedisUnavailable(reason?: unknown) {
+  redisDisabledUntil = Date.now() + 30_000
+  try {
+    _redis?.disconnect?.(false)
+  } catch (e) {
+    void e
+  }
+  _redis = null
+  try { logRateEvent('warn', 'redis_temporarily_disabled', { until: redisDisabledUntil, reason: reason ? String(reason) : undefined }) } catch {}
+}
+
 export async function getRedis() {
+  if (redisDisabledUntil > Date.now()) return null
   if (_redis) return _redis
   const url = getRedisUrl()
   if (!url) return null
@@ -65,8 +81,11 @@ export async function getRedis() {
     try {
       // Some ioredis versions accept (url, options). Cast options to unknown to avoid strict typing issues.
       _redis = new RedisCtor(url, ({
-        // limit retries per request to avoid long blocking
-        maxRetriesPerRequest: 3,
+        // fail fast so auth routes can fall back to DB/in-memory instead of hanging
+        maxRetriesPerRequest: 1,
+        connectTimeout: 1000,
+        lazyConnect: true,
+        enableOfflineQueue: false,
         // exponential-ish backoff: 1s, 2s, 3s... capped at 30s
         retryStrategy: (times: number) => Math.min(1000 * times, 30000),
         // attempt reconnect on most errors
@@ -79,13 +98,23 @@ export async function getRedis() {
     if (_redis && typeof _redis.on === 'function') {
       _redis.on('connect', () => { try { console.info('[rateLimiter] redis connect') } catch {} })
       _redis.on('ready', () => { try { console.info('[rateLimiter] redis ready') } catch {} })
-      _redis.on('error', (e: unknown) => { try { console.warn('[rateLimiter] redis error', e) } catch {} })
-      _redis.on('close', () => { try { console.warn('[rateLimiter] redis closed') } catch {} })
+      _redis.on('error', (e: unknown) => {
+        try { console.warn('[rateLimiter] redis error', e) } catch {}
+        markRedisUnavailable(e)
+      })
+      _redis.on('close', () => {
+        try { console.warn('[rateLimiter] redis closed') } catch {}
+        markRedisUnavailable('close')
+      })
       _redis.on('reconnecting', (delay: unknown) => { try { console.info('[rateLimiter] redis reconnecting', delay) } catch {} })
+    }
+    if (_redis && typeof _redis.connect === 'function') {
+      await _redis.connect()
     }
     return _redis
   } catch (e) {
     try { console.warn('[rateLimiter] failed to initialize redis', e) } catch {}
+    markRedisUnavailable(e)
     return null
   }
 }
@@ -127,6 +156,7 @@ export async function isLocked(key: string) {
       }
     } catch (e) {
       try { console.warn('[rateLimiter] redis isLocked error', e) } catch {}
+      markRedisUnavailable(e)
     }
   }
   // DB fallback: check auth_locks table
@@ -229,6 +259,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       return { locked: false, remaining: Math.max(0, max - cur), redisTtl: lockTtl }
     } catch (err) {
       try { logRateEvent('error', 'redis_increment_error', { key, err: String(err) }) } catch {}
+      markRedisUnavailable(err)
     }
   }
 
@@ -366,6 +397,7 @@ export async function resetKey(key: string) {
       try { const { query } = await import('./db'); await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch {}
     } catch (err) {
       try { logRateEvent('error', 'redis_reset_failed', { key, err: String(err) }) } catch {}
+      markRedisUnavailable(err)
     }
   }
   // also remove any DB fallback counters

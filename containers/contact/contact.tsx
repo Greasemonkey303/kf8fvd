@@ -34,9 +34,8 @@ export default function Contact() {
   const confirmCancelRef = useRef<HTMLButtonElement | null>(null)
   const [mounted, setMounted] = useState(false)
   const [totalSize, setTotalSize] = useState(0)
-  const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
+  const [cfWidgetId, setCfWidgetId] = useState<string | number | null>(null)
   const [cfToken, setCfToken] = useState<string | null>(null)
-  const cfIntervalRef = useRef<number | null>(null)
   const [runtimeSiteKey, setRuntimeSiteKey] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
@@ -57,7 +56,6 @@ export default function Contact() {
     tlog('contact useEffect mount', { sitekeyPresent: !!envSiteKey })
     if (envSiteKey) {
       loadTurnstileScript().then(() => tlog('contact script loaded')).catch(e => tlog('contact script load error', e))
-      setRuntimeSiteKey(envSiteKey)
       return
     }
     // fetch runtime sitekey if available
@@ -68,6 +66,25 @@ export default function Contact() {
       }
     }).catch(e => tlog('contact fetch runtime key failed', e))
   },[])
+
+  function clearTurnstileToken() {
+    setCfToken(null)
+    try {
+      const input = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
+      if (input) input.value = ''
+    } catch (e) { void e }
+  }
+
+  function resetTurnstileWidget() {
+    clearTurnstileToken()
+    try {
+      type TurnstileReset = { reset?: (id: string | number) => void }
+      const win = window as unknown as Window & { turnstile?: TurnstileReset }
+      if (win.turnstile && cfWidgetId != null && typeof win.turnstile.reset === 'function') {
+        win.turnstile.reset(cfWidgetId)
+      }
+    } catch (e) { void e }
+  }
 
   // When script loads, render turnstile widget programmatically and capture token via callback
   useEffect(()=>{
@@ -89,10 +106,40 @@ export default function Contact() {
           if (rendered === '1') { tlog('contact: container already rendered, skipping'); return }
         } catch (e) { void e }
         try {
-          type Turnstile = { render?: (el: HTMLElement, opts: { sitekey?: string; callback?: (token: string)=>void }) => unknown; reset?: (id: number) => void }
+          type Turnstile = {
+            render?: (el: HTMLElement, opts: {
+              sitekey?: string
+              callback?: (token: string)=>void
+              'error-callback'?: () => void
+              'expired-callback'?: () => void
+              'timeout-callback'?: () => void
+            }) => unknown
+            reset?: (id: string | number) => void
+          }
           const win = window as unknown as Window & { turnstile?: Turnstile }
-          const id = win.turnstile && typeof win.turnstile.render === 'function' ? win.turnstile.render(container, { sitekey, callback: (token: string) => setCfToken(token) }) : undefined
-          setCfWidgetId(typeof id === 'number' ? id : null)
+          const id = win.turnstile && typeof win.turnstile.render === 'function' ? win.turnstile.render(container, {
+            sitekey,
+            callback: (token: string) => {
+              setCfToken(token)
+              try {
+                const input = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
+                if (input) input.value = token
+              } catch (e) { void e }
+            },
+            'error-callback': () => {
+              clearTurnstileToken()
+              window.setTimeout(() => resetTurnstileWidget(), 250)
+            },
+            'expired-callback': () => {
+              clearTurnstileToken()
+              window.setTimeout(() => resetTurnstileWidget(), 250)
+            },
+            'timeout-callback': () => {
+              clearTurnstileToken()
+              window.setTimeout(() => resetTurnstileWidget(), 250)
+            },
+          }) : undefined
+          setCfWidgetId(typeof id === 'string' || typeof id === 'number' ? id : null)
           ;(container as HTMLElement).dataset.turnstileRendered = '1'
           tlog('contact render success', { id })
         } catch (err) {
@@ -102,7 +149,10 @@ export default function Contact() {
         tlog('contact loader error', err)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      clearTurnstileToken()
+    }
   },[runtimeSiteKey])
 
   function validate(){
@@ -204,8 +254,6 @@ export default function Contact() {
     setConfirmError(null)
     setLoading(true)
     try {
-      // small analytics/log
-      console.log('[analytics] contact.submit')
       const fd = new FormData()
       fd.append('name', name)
       fd.append('email', email)
@@ -262,9 +310,7 @@ export default function Contact() {
       setUploadProgress(null)
       // reset turnstile widget to avoid reusing token
       try {
-        const win = window as unknown as Window & { turnstile?: { reset?: (id:number)=>void } }
-        if (win.turnstile && cfWidgetId != null && typeof win.turnstile.reset === 'function') win.turnstile.reset(cfWidgetId)
-        setCfToken(null)
+        resetTurnstileWidget()
       } catch {}
 
       setSuccess(true)
@@ -396,6 +442,7 @@ export default function Contact() {
               {(process.env.NEXT_PUBLIC_CF_TURNSTILE_SITEKEY || runtimeSiteKey) && (
                 <div className="mt-12">
                   <div id="cf-turnstile-container"></div>
+                  <input type="hidden" name="cf-turnstile-response" />
                   {!cfToken && <div className={styles.small} role="status" aria-live="polite">Please complete the CAPTCHA to enable sending.</div>}
                 </div>
               )}

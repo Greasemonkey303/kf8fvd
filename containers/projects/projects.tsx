@@ -117,7 +117,7 @@ export default function Projects() {
                       const val = prompt('Edit image URL', p.image_path || '')
                       if (val === null) return
                       try {
-                        const res = await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: val }) })
+                        const res = await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: val }) })
                         if (!res.ok) throw new Error('Save failed')
                         setItems(prev => prev.map(it => it.id === p.id ? { ...it, image_path: val } : it))
                       } catch (error: unknown) { alert('Could not save: ' + getErrorMessage(error)) }
@@ -132,7 +132,7 @@ export default function Projects() {
                         // ignore delete errors
                       }
                       try {
-                        await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: '' }) })
+                        await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: '' }) })
                         setItems(prev => prev.map(it => it.id === p.id ? { ...it, image_path: '' } : it))
                       } catch (error: unknown) { alert('Could not clear image_path: ' + getErrorMessage(error)) }
                     }}>🗑</button>
@@ -150,7 +150,7 @@ export default function Projects() {
                           const j = await upl.json()
                           if (!upl.ok) throw new Error(j?.error || 'Upload failed')
                           const url = j.publicUrl || j.key
-                          await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: url }) })
+                          await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, image_path: url }) })
                           setItems(prev => prev.map(it => it.id === p.id ? { ...it, image_path: url } : it))
                         } catch (error: unknown) {
                           alert('Upload failed: ' + getErrorMessage(error))

@@ -1,5 +1,7 @@
 import { getServerSession } from 'next-auth/next'
 import type { NextAuthOptions } from 'next-auth'
+import { headers } from 'next/headers'
+import jwt from 'jsonwebtoken'
 import { authOptions } from '../app/api/auth/[...nextauth]/route'
 import { query } from './db'
 
@@ -11,7 +13,25 @@ export type AdminUser = {
 
 export async function getSessionServer(): Promise<Record<string, unknown> | null> {
   const session = await getServerSession(authOptions as NextAuthOptions)
-  return session as Record<string, unknown> | null
+  if (session) return session as unknown as Record<string, unknown>
+
+  try {
+    const hdrs = await headers()
+    const cookieHeader = String(hdrs.get('cookie') || '')
+    const match = cookieHeader.match(/(?:__Secure-next-auth.session-token|next-auth.session-token)=([^;\s]+)/)
+    if (!match?.[1] || !process.env.NEXTAUTH_SECRET) return null
+    const decoded = jwt.verify(match[1], process.env.NEXTAUTH_SECRET)
+    if (!decoded || typeof decoded !== 'object') return null
+    const token = decoded as Record<string, unknown>
+    const tokenUser = (token.user && typeof token.user === 'object') ? token.user as Record<string, unknown> : null
+    const email = typeof token.email === 'string' ? token.email : (tokenUser && typeof tokenUser.email === 'string' ? tokenUser.email : null)
+    const name = typeof token.name === 'string' ? token.name : (tokenUser && typeof tokenUser.name === 'string' ? tokenUser.name : undefined)
+    if (!email) return null
+    return { user: name ? { email, name } : { email } }
+  } catch (e) {
+    void e
+    return null
+  }
 }
 
 export async function getAdminUserByEmail(email: string): Promise<AdminUser | null> {

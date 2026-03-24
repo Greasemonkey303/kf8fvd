@@ -4,7 +4,7 @@ import { query } from '../../../../lib/db'
 import { marked } from 'marked'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
-import * as Minio from 'minio'
+import { deleteObjectStrict, deleteObjectsStrict, deletePrefixStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -181,37 +181,6 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   const cardParam = url.searchParams.get('card')
   // Helper to extract an S3 object key from various URL forms stored in metadata
-  const extractKey = (val: unknown): string | null => {
-    if (!val) return null
-    try {
-      const s = String(val)
-      // Our proxied path: /api/uploads/get/<encoded-key>
-      const proxyPrefix = '/api/uploads/get/'
-      if (s.startsWith(proxyPrefix)) {
-        const enc = s.slice(proxyPrefix.length)
-        try { return decodeURIComponent(enc) } catch { return enc }
-      }
-      // Full presigned or s3 URLs
-      if (s.indexOf('X-Amz-Algorithm') !== -1 || s.indexOf('minio') !== -1 || s.indexOf('127.0.0.1') !== -1 || s.indexOf('amazonaws.com') !== -1) {
-        try {
-          const u = new URL(s)
-          let path = u.pathname.replace(/^\//, '')
-          const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-          if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
-          return path
-        } catch {
-          return null
-        }
-      }
-      // Leading slash path that may represent an object key
-      if (s.startsWith('/')) return s.replace(/^\//, '')
-      // Otherwise, if it's a plain-looking key, return it
-      if (!s.startsWith('http')) return s
-      return null
-    } catch {
-      return null
-    }
-  }
   // If a card param was provided, attempt to remove only that card from the page metadata
   if (cardParam !== null && cardParam !== undefined) {
     // load metadata for the page
@@ -232,32 +201,21 @@ export async function DELETE(req: Request) {
       if (card) {
         const cardRec = card as Record<string, unknown>
         if (cardRec.image) {
-          const k = extractKey(cardRec.image)
+          const k = resolveObjectKeyFromReference(cardRec.image)
           if (k) keysToDelete.push(k)
         }
         if (Array.isArray(cardRec.images)) {
           for (const im of cardRec.images as unknown[]) {
-            const k = extractKey(im)
+            const k = resolveObjectKeyFromReference(im)
             if (k) keysToDelete.push(k)
           }
         }
       }
 
-      const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-      if (bucket && keysToDelete.length) {
-        const minioClient = new Minio.Client({
-          endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
-          port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
-          useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
-          accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
-          secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
-        })
-        try {
-          await minioClient.removeObjects(bucket, keysToDelete)
-        } catch (e: unknown) {
-          console.warn('Warning: removeObjects failed for card-level keys', getErrMsg(e))
-          // Do not fail the entire request if objects were already deleted or removal errors occur
-        }
+      try {
+        await deleteObjectsStrict(keysToDelete)
+      } catch (e: unknown) {
+        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
       }
 
       // remove the card from metadata and persist
@@ -279,30 +237,19 @@ export async function DELETE(req: Request) {
       const keysToDelete: string[] = []
       const cardRec = card as Record<string, unknown>
       if (cardRec.image) {
-        const k = extractKey(cardRec.image)
+        const k = resolveObjectKeyFromReference(cardRec.image)
         if (k) keysToDelete.push(k)
       }
       if (Array.isArray(cardRec.images)) {
         for (const im of cardRec.images as unknown[]) {
-          const k = extractKey(im)
+          const k = resolveObjectKeyFromReference(im)
           if (k) keysToDelete.push(k)
         }
       }
-      const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-      if (bucket && keysToDelete.length) {
-        const minioClient = new Minio.Client({
-          endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
-          port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
-          useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
-          accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
-          secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
-        })
-        try {
-          await minioClient.removeObjects(bucket, keysToDelete)
-        } catch (e: unknown) {
-          console.warn('Warning: removeObjects failed for named card keys', getErrMsg(e))
-          // Swallow removal errors to avoid failing when objects are already gone
-        }
+      try {
+        await deleteObjectsStrict(keysToDelete)
+      } catch (e: unknown) {
+        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
       }
       // remove the named card and persist
       delete meta[keyName]
@@ -323,35 +270,11 @@ export async function DELETE(req: Request) {
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const slug = rows[0].slug
 
-  const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-  if (bucket) {
-    const minioClient = new Minio.Client({
-      endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
-      port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
-      useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
-      accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
-      secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
-    })
-
+  try {
     const prefix = `${process.env.S3_UPLOAD_PREFIX || 'pages/'}${slug}/`
-    const objs: string[] = []
-    try {
-      const stream = minioClient.listObjectsV2(bucket, prefix, true)
-      for await (const obj of stream) {
-        if (obj && obj.name) objs.push(obj.name)
-      }
-    } catch (e: unknown) {
-      return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
-    }
-
-    if (objs.length > 0) {
-      try {
-        await minioClient.removeObjects(bucket, objs)
-      } catch (e: unknown) {
-        console.warn('Warning: removeObjects failed for page-level keys', getErrMsg(e))
-        // Continue — do not propagate S3 removal errors to the client
-      }
-    }
+    await deletePrefixStrict(prefix)
+  } catch (e: unknown) {
+    return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
   }
 
   await query('DELETE FROM pages WHERE id = ?', [id])

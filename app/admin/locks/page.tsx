@@ -21,7 +21,7 @@ export default function LocksPage() {
       const headers: Record<string, string> = {}
       if (adminKey) headers['x-admin-key'] = adminKey
       else if (adminUser && adminPass) headers['authorization'] = 'Basic ' + btoa(`${adminUser}:${adminPass}`)
-      const res = await fetch('/api/admin/auth-locks', { headers })
+      const res = await fetch('/admin/api/auth-locks', { headers })
       const j = (await res.json().catch(() => ({}))) as Record<string, unknown>
       if (!res.ok) {
         const msg = j && typeof j === 'object' && 'error' in j ? String((j as Record<string, unknown>)['error']) : 'Failed'
@@ -41,7 +41,7 @@ export default function LocksPage() {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (adminKey) headers['x-admin-key'] = adminKey
       else if (adminUser && adminPass) headers['authorization'] = 'Basic ' + btoa(`${adminUser}:${adminPass}`)
-      const res = await fetch('/api/admin/auth-locks', { method: 'POST', headers, body: JSON.stringify({ key: k }) })
+      const res = await fetch('/admin/api/auth-locks', { method: 'POST', headers, body: JSON.stringify({ key: k }) })
       const j = (await res.json().catch(() => ({}))) as Record<string, unknown>
       if (!res.ok) {
         const msg = j && typeof j === 'object' && 'error' in j ? String((j as Record<string, unknown>)['error']) : 'Failed'

@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { JSDOM } from 'jsdom'
 import createDOMPurify from 'dompurify'
+import { deleteObjectStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -79,6 +80,14 @@ export async function DELETE(req: Request) {
   const url = new URL(req.url)
   const id = url.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const rows = await query<{ image_path?: string | null }[]>('SELECT image_path FROM credential_sections WHERE id = ?', [id])
+  if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  try {
+    const key = resolveObjectKeyFromReference(rows[0].image_path)
+    if (key) await deleteObjectStrict(key)
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
+  }
   await query('DELETE FROM credential_sections WHERE id = ?', [id])
   return NextResponse.json({ ok: true })
 }

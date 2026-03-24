@@ -43,7 +43,7 @@ export default function CreateUserPage() {
     if (!form.roles || form.roles.length === 0) return setError('Select at least one role')
     setSubmitting(true)
     try {
-      const res = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const res = await fetch('/admin/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       const j = await res.json()
       if (!res.ok) throw new Error(j?.error || 'Create failed')
       setSuccess(true)

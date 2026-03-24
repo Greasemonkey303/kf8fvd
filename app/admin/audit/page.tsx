@@ -28,7 +28,7 @@ export default function AuditPage() {
       const headers: Record<string, string> = {}
       if (adminKey) headers['x-admin-key'] = adminKey
       else if (adminUser && adminPass) headers['authorization'] = 'Basic ' + btoa(`${adminUser}:${adminPass}`)
-      const res = await fetch(`/api/admin/admin-actions?limit=${limit}&offset=${off}`, { headers })
+      const res = await fetch(`/admin/api/admin-actions?limit=${limit}&offset=${off}`, { headers })
       const j = (await res.json().catch(() => ({}))) as Record<string, unknown>
       if (!res.ok) {
         const msg = j && typeof j === 'object' && 'error' in j ? String((j as Record<string, unknown>)['error']) : 'Failed'
@@ -50,7 +50,7 @@ export default function AuditPage() {
       const headers: Record<string, string> = {}
       if (adminKey) headers['x-admin-key'] = adminKey
       else if (adminUser && adminPass) headers['authorization'] = 'Basic ' + btoa(`${adminUser}:${adminPass}`)
-      const res = await fetch(`/api/admin/admin-actions?limit=${limit}&offset=${offset}&format=csv`, { headers })
+      const res = await fetch(`/admin/api/admin-actions?limit=${limit}&offset=${offset}&format=csv`, { headers })
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as Record<string, unknown>
         const msg = j && typeof j === 'object' && 'error' in j ? String((j as Record<string, unknown>)['error']) : 'Failed to export'

@@ -13,7 +13,7 @@ export default function AdminPages() {
 
   async function load(p = 1) {
     setLoading(true)
-    const res = await fetch(`/api/admin/pages?page=${p}&limit=20`)
+    const res = await fetch(`/admin/api/pages?page=${p}&limit=20`)
     const data = await res.json()
     setPages(data.items || [])
     setLoading(false)
@@ -28,9 +28,9 @@ export default function AdminPages() {
     e.preventDefault()
     if (!form.slug || !form.title) return
     if (form.id) {
-      await fetch('/api/admin/pages', { method: 'PUT', body: JSON.stringify(form) })
+      await fetch('/admin/api/pages', { method: 'PUT', body: JSON.stringify(form) })
     } else {
-      await fetch('/api/admin/pages', { method: 'POST', body: JSON.stringify(form) })
+      await fetch('/admin/api/pages', { method: 'POST', body: JSON.stringify(form) })
     }
     setForm({ id: 0, slug: '', title: '', content: '', is_published: false })
     await load()
@@ -38,7 +38,7 @@ export default function AdminPages() {
 
   async function remove(id: number) {
     if (!confirm('Delete this page?')) return
-    await fetch('/api/admin/pages?id=' + id, { method: 'DELETE' })
+    await fetch('/admin/api/pages?id=' + id, { method: 'DELETE' })
     await load()
   }
 

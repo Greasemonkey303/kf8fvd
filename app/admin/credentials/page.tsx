@@ -41,7 +41,7 @@ export default function AdminCredentials() {
 
   async function load() {
     setLoading(true)
-    const res = await fetch('/api/admin/credentials')
+    const res = await fetch('/admin/api/credentials')
     const data = await res.json()
     setItems(data.items || [])
     try { console.debug('[admin/credentials] load items', (data.items || []).map((i: Partial<CredItem>)=>({ id: i.id, sort_order: i.sort_order, section: i.section }))) } catch {}
@@ -51,7 +51,7 @@ export default function AdminCredentials() {
   async function loadSections() {
     setSectionsLoading(true)
     try {
-      const res = await fetch('/api/admin/credential-sections')
+      const res = await fetch('/admin/api/credential-sections')
       const data = await res.json()
       setSections(data.items || [])
     } catch (err) { console.error('loadSections err', err) }
@@ -66,9 +66,9 @@ export default function AdminCredentials() {
     try {
       const isUpdate = !!form.id
       if (isUpdate) {
-        await fetch('/api/admin/credentials', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+        await fetch('/admin/api/credentials', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       } else {
-        await fetch('/api/admin/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+        await fetch('/admin/api/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       }
       // clear any saved draft for this slug
       try { localStorage.removeItem(draftKey()) } catch (err) { /* ignore */ }
@@ -235,7 +235,7 @@ export default function AdminCredentials() {
       const payload: Section = { ...sectionForm }
       if (!payload.name) { alert('Name is required'); return }
       if (!payload.slug) payload.slug = String(payload.name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-')
-      const res = await fetch('/api/admin/credential-sections', { method: isUpdate ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await fetch('/admin/api/credential-sections', { method: isUpdate ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) { alert(data?.error || 'Error saving section'); return }
       const newSlug = payload.slug || (sectionForm.slug || String(sectionForm.name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-'))
@@ -252,7 +252,7 @@ export default function AdminCredentials() {
     if (!id) return
     if (!confirm('Delete this section?')) return
     try {
-      await fetch(`/api/admin/credential-sections?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
+      await fetch(`/admin/api/credential-sections?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
       await loadSections()
       try { toast?.showToast && toast.showToast('Section deleted', 'success') } catch {}
     } catch (err) { console.error('deleteSection err', err) }
@@ -273,7 +273,7 @@ export default function AdminCredentials() {
     try {
       // store deleted item for possible undo
       setDeletedUndoBuffer({ items: [it], ts: Date.now() })
-      await fetch(`/api/admin/credentials?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
+      await fetch(`/admin/api/credentials?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
       await load()
       setSelectedIds(s => s.filter(x => x !== id))
       try { toast?.showToast && toast.showToast('Deleted', 'success') } catch {}
@@ -301,7 +301,7 @@ export default function AdminCredentials() {
     }
 
     try {
-      const res = await fetch('/api/admin/credentials/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ids }) })
+      const res = await fetch('/admin/api/credentials/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ids }) })
       const data = await res.json()
       if (!res.ok) {
         alert(data?.error || 'Bulk action failed')
@@ -323,7 +323,7 @@ export default function AdminCredentials() {
     for (const it of list) {
       try {
         const payload: Partial<CredItem> = { section: it.section, slug: it.slug, title: it.title, tag: it.tag, authority: it.authority, image_path: it.image_path || '', description: it.description || '', is_published: it.is_published || 0, sort_order: it.sort_order || 0 }
-        await fetch('/api/admin/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        await fetch('/admin/api/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       } catch (err) { console.error('undo create err', err) }
     }
     setDeletedUndoBuffer(null)
@@ -361,7 +361,7 @@ export default function AdminCredentials() {
     try {
       const payload = items.map(it => ({ id: it.id, sort_order: it.sort_order || 0 }))
       try { console.debug('[admin/credentials] manual saveOrder payload', payload) } catch {}
-      const res = await fetch('/api/admin/credentials/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
+      const res = await fetch('/admin/api/credentials/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(()=>({}))
       try { console.debug('[admin/credentials] manual saveOrder response', res.status, data) } catch {}
       setNeedOrderSave(false)
@@ -374,7 +374,7 @@ export default function AdminCredentials() {
     try {
       const payload = (sections || []).map((s) => ({ id: s.id, sort_order: s.sort_order || 0 }))
       try { console.debug('[admin/credentials] manual saveSectionOrder payload', payload) } catch {}
-      const res = await fetch('/api/admin/credential-sections/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
+      const res = await fetch('/admin/api/credential-sections/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(() => ({}))
       try { console.debug('[admin/credentials] manual saveSectionOrder response', res.status, data) } catch {}
       if (!res.ok) { alert('Save section order failed: ' + (data?.error || res.status)); return }
@@ -426,7 +426,7 @@ export default function AdminCredentials() {
     try {
       const payload = newItems.map(it => ({ id: it.id, sort_order: it.sort_order || 0 }))
       try { console.debug('[admin/credentials] posting order payload', payload) } catch {}
-      const res = await fetch('/api/admin/credentials/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
+      const res = await fetch('/admin/api/credentials/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(() => ({}))
       try { console.debug('[admin/credentials] order response', res.status, data) } catch {}
       if (!res.ok) { console.error('Save order failed', data); setNeedOrderSave(true) } else {
@@ -480,7 +480,7 @@ export default function AdminCredentials() {
     // persist section order immediately
     try {
       const payload = newSections.map((s) => ({ id: s.id, sort_order: s.sort_order || 0 }))
-      const res = await fetch('/api/admin/credential-sections/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
+      const res = await fetch('/admin/api/credential-sections/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { alert('Save section order failed: ' + (data?.error || res.status)); setNeedSectionOrderSave(true) } else {
         setNeedSectionOrderSave(false)
@@ -573,7 +573,7 @@ export default function AdminCredentials() {
     // persist moved card section immediately (so s3_prefix can be recomputed server-side)
     try {
       try { console.debug('[admin/credentials] updating moved item section', { id: moved.id, section: moved.section, slug: moved.slug }) } catch {}
-      const res = await fetch('/api/admin/credentials', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moved.id, section: moved.section, slug: moved.slug, title: moved.title, tag: moved.tag, authority: moved.authority, image_path: moved.image_path, description: moved.description, is_published: moved.is_published ? 1 : 0, sort_order: moved.sort_order || 0 }) })
+      const res = await fetch('/admin/api/credentials', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moved.id, section: moved.section, slug: moved.slug, title: moved.title, tag: moved.tag, authority: moved.authority, image_path: moved.image_path, description: moved.description, is_published: moved.is_published ? 1 : 0, sort_order: moved.sort_order || 0 }) })
       try { console.debug('[admin/credentials] update moved item response', res.status) } catch {}
     } catch (err) {
       console.error('persist moved card section error', err)
@@ -582,7 +582,7 @@ export default function AdminCredentials() {
     try {
       const payload = newItems.map(it => ({ id: it.id, sort_order: it.sort_order || 0 }))
       try { console.debug('[admin/credentials] posting order payload (card drop)', payload) } catch {}
-      const res = await fetch('/api/admin/credentials/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
+      const res = await fetch('/admin/api/credentials/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(() => ({}))
       try { console.debug('[admin/credentials] order response (card drop)', res.status, data) } catch {}
       if (!res.ok) { console.error('Save order failed', data); setNeedOrderSave(true) }

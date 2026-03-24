@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import * as Minio from 'minio'
+import { deleteObjectStrict } from '@/lib/objectStorage'
 
 export async function POST(req: Request) {
   const admin = await requireAdmin()
@@ -36,21 +36,9 @@ export async function POST(req: Request) {
 
   if (!objectKey) return NextResponse.json({ error: 'Unable to determine object key' }, { status: 400 })
 
-  const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-  if (!bucket) return NextResponse.json({ error: 'Bucket not configured' }, { status: 500 })
-
-  const minioClient = new Minio.Client({
-    endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
-    port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
-    useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
-    accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
-    secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
-  })
-
   try {
-      // try batch removeObjects API which supports await in this client
-      await minioClient.removeObjects(bucket, [objectKey])
-      return NextResponse.json({ ok: true, key: objectKey })
+      const result = await deleteObjectStrict(objectKey)
+      return NextResponse.json({ ok: true, key: result.key, deleted: result.deleted, missing: result.missing })
   } catch (e: unknown) {
       let msg = 'Unknown error'
       if (e instanceof Error) msg = e.message

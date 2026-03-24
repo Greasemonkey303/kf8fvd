@@ -20,7 +20,7 @@ export default function SignInPage() {
     try { return Boolean(localStorage.getItem('kf8fvd_remember_email')) } catch { return false }
   })
   const [error, setError] = useState<string | null>(null);
-  const [cfWidgetId, setCfWidgetId] = useState<number | null>(null)
+  const [cfWidgetId, setCfWidgetId] = useState<string | number | null>(null)
   const [cfToken, setCfToken] = useState<string | null>(null)
   const [runtimeSiteKey, setRuntimeSiteKey] = useState<string | null>(null)
   // removed interval polling; use loader instead
@@ -32,7 +32,23 @@ export default function SignInPage() {
   const [otp, setOtp] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
 
-  const getTurnstile = () => (typeof window !== 'undefined' ? (window as unknown as { turnstile?: { render?: (el: HTMLElement, opts?: { sitekey?: string; callback?: (token: string) => void }) => number | string; reset?: (id: number) => void } }).turnstile : undefined)
+  const getTurnstile = () => (typeof window !== 'undefined' ? (window as unknown as { turnstile?: { render?: (el: HTMLElement, opts?: { sitekey?: string; callback?: (token: string) => void; 'error-callback'?: () => void; 'expired-callback'?: () => void; 'timeout-callback'?: () => void }) => number | string; reset?: (id: number | string) => void } }).turnstile : undefined)
+
+  function clearTurnstileToken() {
+    setCfToken(null)
+    try {
+      const inp = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
+      if (inp) inp.value = ''
+    } catch (e) { void e }
+  }
+
+  function resetTurnstileWidget() {
+    clearTurnstileToken()
+    try {
+      const t = getTurnstile()
+      if (t && cfWidgetId != null && typeof t.reset === 'function') t.reset(cfWidgetId)
+    } catch (e) { void e }
+  }
 
   useEffect(()=>{
     let cancelled = false
@@ -63,10 +79,22 @@ export default function SignInPage() {
                 const inp = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
                 if (inp) inp.value = token
               } catch {}
-            }
+            },
+            'error-callback': () => {
+              clearTurnstileToken()
+              window.setTimeout(() => resetTurnstileWidget(), 250)
+            },
+            'expired-callback': () => {
+              clearTurnstileToken()
+              window.setTimeout(() => resetTurnstileWidget(), 250)
+            },
+            'timeout-callback': () => {
+              clearTurnstileToken()
+              window.setTimeout(() => resetTurnstileWidget(), 250)
+            },
           }) : undefined
           tlog('signin render success', { id })
-          setCfWidgetId(typeof id === 'number' ? id : null)
+          setCfWidgetId(typeof id === 'string' || typeof id === 'number' ? id : null)
           ;(container as HTMLElement).dataset.turnstileRendered = '1'
         } catch (err) {
           tlog('signin render error', err)
@@ -149,8 +177,7 @@ export default function SignInPage() {
       const j = await res.json()
       if (!res.ok || j?.error) {
         setError(j?.error || 'Sign in request failed')
-        try { const t = getTurnstile(); if (t && cfWidgetId != null && typeof t.reset === 'function') t.reset(cfWidgetId) } catch {}
-        setCfToken(null)
+        resetTurnstileWidget()
         return
       }
       setCodeRequested(true)

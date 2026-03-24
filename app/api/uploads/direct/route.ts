@@ -38,8 +38,9 @@ export async function POST(req: Request) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
-    // log minimal upload attempt data (no file contents)
-    console.log('direct upload attempt', { bucket, key, filename, contentType })
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('direct upload attempt', { bucket, key, filename, contentType })
+    }
     const buffer = Buffer.from(await file.arrayBuffer())
     await new Promise<void>((resolve, reject) => {
       // pass buffer length and annotate callback with Error|null
@@ -48,7 +49,9 @@ export async function POST(req: Request) {
           console.error('minio.putObject error', err)
           return reject(err)
         }
-        console.log('minio.putObject success', { bucket, key })
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('minio.putObject success', { bucket, key })
+        }
         resolve()
       })
     })

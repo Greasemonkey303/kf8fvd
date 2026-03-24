@@ -121,6 +121,27 @@
   align-items: center;
 }
 
+.userCluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.user {
+  color: var(--white-100);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.adminLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.12);
+}
+
 .nav a {
   color: var(--white-100);
   font-weight: 600;

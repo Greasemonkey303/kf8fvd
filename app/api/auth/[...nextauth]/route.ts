@@ -51,9 +51,6 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials, req) {
         const creds = (credentials ?? {}) as Record<string, string | undefined>
-        try {
-          console.log('[auth] authorize called for', { email: creds.email ? String(creds.email) : null, hasOtp: !!creds.otp })
-        } catch (e) { void e }
         // If a server-side Turnstile secret is configured and the client provided a token, verify it.
         // We only verify when a token is present so that the separate 2FA request flow (which verifies Turnstile)
         // can complete the authentication without requiring a fresh token on the final OTP submit.
@@ -100,10 +97,8 @@ export const authOptions: NextAuthOptions = {
 
           const codes = await query<Record<string, unknown>[]>('SELECT id, code_hash FROM two_factor_codes WHERE user_id = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1', [user.id])
           const codeRow = Array.isArray(codes) && codes.length ? codes[0] : null
-          try { console.log('[auth] verifying otp for user', user.id, { foundCode: !!codeRow }) } catch (e) { void e }
           if (!codeRow) return null
           const ok = bcrypt.compareSync(String(otp), String(codeRow.code_hash))
-          try { console.log('[auth] otp compare result', !!ok) } catch (e) { void e }
           if (!ok) {
             try { await incrementFailure(emailKey, { reason: 'invalid_otp' }) } catch (e) { void e }
             try { await incrementFailure(ipKey, { reason: 'invalid_otp' }) } catch (e) { void e }

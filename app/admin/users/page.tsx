@@ -15,7 +15,7 @@ export default function AdminUsers() {
 
   async function load() {
     setLoading(true)
-    const res = await fetch('/api/admin/users')
+    const res = await fetch('/admin/api/users')
     const data = await res.json()
     setUsers((data && data.items) ? data.items : [])
     setLoading(false)
@@ -29,7 +29,7 @@ export default function AdminUsers() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.email || !form.password) return
-    await fetch('/api/admin/users', { method: 'POST', body: JSON.stringify(form) })
+    await fetch('/admin/api/users', { method: 'POST', body: JSON.stringify(form) })
     setForm({ name: '', email: '', password: '', roles: [] })
     await load()
   }

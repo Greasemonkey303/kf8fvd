@@ -109,7 +109,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   useEffect(()=>{
     (async ()=>{
       try { console.log('[admin] loading project editor id=', id) } catch{}
-      const res = await fetch('/api/admin/projects?page=1&limit=1000')
+      const res = await fetch('/admin/api/projects?page=1&limit=1000')
       const data = await res.json()
       const itemsArray = Array.isArray(data.items) ? (data.items as Array<Record<string, unknown>>) : []
       const found = itemsArray.find(p => String((p as Record<string, unknown>).id) === String(id))
@@ -119,7 +119,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
       if (!projectFound) {
         try { console.log('[admin] not in list; trying single fetch for id=', id) } catch{}
         try {
-          const sres = await fetch(`/api/admin/projects?id=${encodeURIComponent(String(id))}`)
+          const sres = await fetch(`/admin/api/projects?id=${encodeURIComponent(String(id))}`)
           if (sres.ok) {
             const sdata = await sres.json()
             try { console.log('[admin] single fetch returned', sdata) } catch{}
@@ -168,7 +168,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
         // fetch any stored objects for this slug and merge them so admin sees all linked images
         ;(async () => {
           try {
-            const mres = await fetch(`/api/admin/projects/migrate?slug=${encodeURIComponent((projectFound as Record<string, unknown>).slug as string)}`)
+            const mres = await fetch(`/admin/api/projects/migrate?slug=${encodeURIComponent((projectFound as Record<string, unknown>).slug as string)}`)
             if (mres.ok) {
               const mdata = await mres.json()
               const urls: string[] = Array.isArray(mdata.urls) ? mdata.urls : []
@@ -288,7 +288,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   async function save(e?: React.FormEvent) {
     if (e) e.preventDefault()
     const metadata = { ...(form.details ? { details: form.details } : {}), images }
-    await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+    await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
     try { toast.showToast && toast.showToast('Project saved', 'success') } catch {}
     router.push('/admin/projects')
   }
@@ -306,7 +306,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     const newForm = { ...form, image_path: val }
     setForm(newForm)
     try {
-      await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: val }) })
+      await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: val }) })
     } catch { /* ignore save error */ }
   }
 
@@ -323,7 +323,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
       const url = j.publicUrl || j.key
       const newForm = { ...form, image_path: url }
       setForm(newForm)
-      try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: url }) }) } catch { /* ignore */ }
+      try { await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: url }) }) } catch { /* ignore */ }
       try { toast.showToast && toast.showToast('Main image uploaded', 'success') } catch{}
     } catch (e: unknown) {
       let msg = 'Unknown error'
@@ -350,7 +350,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     // persist new ordering
     try {
       const metadata = { ...(form.details ? { details: form.details } : {}), images: copy }
-      fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
+      fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
     } catch { /* ignore */ }
   }
 
@@ -364,7 +364,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     // persist edited URL
     try {
       const metadata = { ...(form.details ? { details: form.details } : {}), images: copy }
-      fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
+      fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
     } catch { /* ignore */ }
   }
 
@@ -398,7 +398,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
               ;(async ()=>{
                   try {
                   const metadata = { ...(form.details ? { details: form.details } : {}), images: next }
-                  await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
+                  await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
                     try { toast.showToast && toast.showToast('Image uploaded', 'success') } catch{}
                 } catch { /* ignore autosave errors */ }
               })()
@@ -429,7 +429,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     if (!choice) return
     try {
       if (choice.type === 'project') {
-        await fetch(`/api/admin/projects?id=${form.id}`, { method: 'DELETE' })
+        await fetch(`/admin/api/projects?id=${form.id}`, { method: 'DELETE' })
         router.push('/admin/projects')
         return
       }
@@ -448,7 +448,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
         const newForm = { ...form }
         if (newForm.image_path === src) newForm.image_path = ''
         const metadata = { ...(newForm.details ? { details: newForm.details } : {}), images: copy }
-        try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) }) } catch {}
+        try { await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) }) } catch {}
         setImages(copy)
         setForm(newForm)
         return
@@ -457,7 +457,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
         try { await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: form.image_path }) }) } catch {}
         const newForm = { ...form, image_path: '' }
         setForm(newForm)
-        try { await fetch('/api/admin/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: '' }) }) } catch {}
+        try { await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: '' }) }) } catch {}
         return
       }
     } catch (e) {
