@@ -111,7 +111,6 @@ function scanFile(relativePath) {
     while ((match = pattern.regex.exec(text)) !== null) {
       const lineText = text.slice(match.index, text.indexOf('\n', match.index) === -1 ? text.length : text.indexOf('\n', match.index)).trim()
       if (/^(?:\/\/|#|\*|\/\*|\*\/|-\s)/.test(lineText)) continue
-      const value = pattern.getValue(match)
       if (pattern.name === 'secret-assignment' && shouldIgnoreValue(match[2])) continue
       findings.push({
         file: relativePath,

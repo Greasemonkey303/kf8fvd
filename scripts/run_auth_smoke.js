@@ -6,7 +6,7 @@ async function waitForServer(base){
     try{
       const res = await fetch(base+'/',{method:'GET'})
       if (res.ok) return true
-    }catch(e){}
+    }catch{}
     await wait(1000)
   }
   return false
@@ -55,7 +55,7 @@ async function main(){
     try{
       const txt = await r2.text()
       console.log('Sign-in body:', txt.slice(0,200))
-    }catch(e){}
+    }catch{}
 
     console.log('Requesting forgot-password...')
     const r3 = await fetch(base + '/api/forgot-password', {

@@ -50,7 +50,6 @@ async function main(){
     const redisPort = env.REDIS_PORT || process.env.REDIS_PORT || '6379'
 
     // Attempt Redis delete if configured
-    let Redis = null
     if (redisUrl || redisHost) {
       try {
         const ioredis = await import('ioredis')
@@ -61,7 +60,6 @@ async function main(){
         console.log('Deleting redis keys:', countKey, lockKey)
         await client.del(countKey, lockKey)
         try { await client.quit() } catch {}
-        Redis = true
       } catch (e) {
         console.warn('Redis cleanup skipped (error initializing redis):', e)
       }

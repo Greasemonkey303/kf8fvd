@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useEffectEvent, useState, useRef } from 'react'
+import Image from 'next/image'
 import { useRouter, useParams } from 'next/navigation'
 import { buildPublicUrl } from '@/lib/s3'
 import styles from '../../admin.module.css'
@@ -24,7 +25,7 @@ type ProjectForm = {
   details?: string
 }
 
-export default function ProjectEditor({ params }: { params: { id?: string } }) {
+export default function ProjectEditor() {
   const routeParams = useParams()
   const id = routeParams?.id
   const router = useRouter()
@@ -50,7 +51,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
         const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
         if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
         return buildPublicUrl(path)
-      } catch (e) {
+      } catch {
         return buildPublicUrl(s)
       }
     }
@@ -151,15 +152,12 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     })()
   }, [id])
 
-  // Debounced local draft autosave (stores to localStorage only)
-  const draftKey = (idOrSlug?: string) => `admin_project_draft:${idOrSlug || form.slug || `project-${form.id}`}`
-
   // restore draft if present after initial load
   useEffect(()=>{
     if (initialLoadRef.current) return
     try {
       // prefer slug-based key when available
-      const key = draftKey(form.slug || `project-${form.id}`)
+      const key = `admin_project_draft:${form.slug || `project-${form.id}`}`
       const raw = window.localStorage.getItem(key)
       if (raw) {
         try {
@@ -168,13 +166,12 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
             // merge draft into current form but don't overwrite non-empty server values unless draft has them
             setForm(f => ({ ...f, ...((obj.form && typeof obj.form === 'object') ? obj.form : {}) }))
             setImages(prev=> Array.isArray(obj.images) ? obj.images : prev)
-            try { toast.showToast && toast.showToast('Restored local draft', 'info') } catch{}
           }
         } catch {}
       }
       draftIdRef.current = key
     } catch {}
-  }, [loading])
+  }, [form.id, form.slug, loading])
 
   // If details are empty after load, try fetching the public project page and extract `.story` HTML
   useEffect(()=>{
@@ -210,14 +207,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
           }
         } catch { detailsHtml = story.innerHTML }
         if (detailsHtml && detailsHtml.trim()) {
-          // populate editor and form (local only)
           setForm(f=>({ ...f, details: detailsHtml }))
-          // save draft immediately
-          try {
-            const key = draftKey()
-            window.localStorage.setItem(key, JSON.stringify({ form: { ...form, details: detailsHtml }, images }))
-            try { toast.showToast && toast.showToast('Populated details from public page (local only)', 'info') } catch{}
-          } catch {}
         }
       } catch {}
       didFetchPublicRef.current = true
@@ -228,26 +218,33 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     if (initialLoadRef.current) return
     if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current)
     autosaveTimerRef.current = window.setTimeout(()=>{
-        try {
-        const key = draftKey()
+      try {
+        const key = `admin_project_draft:${form.slug || `project-${form.id}`}`
         const payload = { form, images, savedAt: Date.now() }
         window.localStorage.setItem(key, JSON.stringify(payload))
-        try { toast.showToast && toast.showToast('Draft saved locally', 'success') } catch{}
       } catch {
-        try { toast.showToast && toast.showToast('Could not save draft locally', 'error') } catch{}
+        // ignore draft write failures
       }
     }, 800)
     return () => { if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current) }
-  // only watch editable fields
-  }, [form.title, form.subtitle, form.slug, form.description, form.details, images])
+  }, [form, images])
 
   async function save(e?: React.FormEvent) {
     if (e) e.preventDefault()
+    setSaving(true)
     const metadata = { ...(form.details ? { details: form.details } : {}), images }
-    await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
-    try { toast.showToast && toast.showToast('Project saved', 'success') } catch {}
-    router.push('/admin/projects')
+    try {
+      await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+      toast.showToast?.('Project saved', 'success')
+      router.push('/admin/projects')
+    } finally {
+      setSaving(false)
+    }
   }
+
+  const handleSaveShortcut = useEffectEvent(() => {
+    void save()
+  })
 
   // removed local-only removeImage in favor of deleteImage which persists changes
 
@@ -280,13 +277,13 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
       const newForm = { ...form, image_path: url }
       setForm(newForm)
       try { await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, image_path: url }) }) } catch { /* ignore */ }
-      try { toast.showToast && toast.showToast('Main image uploaded', 'success') } catch{}
+      toast.showToast?.('Main image uploaded', 'success')
     } catch (e: unknown) {
       let msg = 'Unknown error'
       if (e instanceof Error) msg = e.message
       else msg = String(e)
       alert('Upload failed: ' + msg)
-      try { toast.showToast && toast.showToast('Upload failed', 'error') } catch{}
+      toast.showToast?.('Upload failed', 'error')
     }
   }
 
@@ -352,10 +349,10 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
               const next = [...prev.slice(0,5), url]
               setUploadProgress(0)
               ;(async ()=>{
-                  try {
+                try {
                   const metadata = { ...(form.details ? { details: form.details } : {}), images: next }
                   await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, metadata }) })
-                    try { toast.showToast && toast.showToast('Image uploaded', 'success') } catch{}
+                  toast.showToast?.('Image uploaded', 'success')
                 } catch { /* ignore autosave errors */ }
               })()
               return next
@@ -396,7 +393,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
           const res = await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: src }) })
           const data = await res.json().catch(()=>({}))
           if (!res.ok) throw new Error(data?.error || 'Delete failed')
-        } catch (e) {
+        } catch {
           // ignore delete errors but continue to remove locally
         }
         const copy = images.slice()
@@ -425,12 +422,12 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
     const handler = (ev: KeyboardEvent) => {
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
         ev.preventDefault()
-        save()
+        handleSaveShortcut()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [form, images])
+  }, [])
 
   return (
     <div>
@@ -503,7 +500,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                 <div className={styles.imgGallery} style={{marginTop:8}}>
                   {images.slice(0,4).map((src, idx)=> (
                     <div key={idx} style={{position:'relative', width:96}}>
-                      <img src={toPublicUrl(src)} onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined, cursor:'pointer'}} />
+                      <Image src={toPublicUrl(src) || ''} alt={`Project gallery image ${idx + 1}`} width={96} height={96} unoptimized onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined, cursor:'pointer'}} />
                       <div className={styles.controls}>
                         <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, -1)} disabled={idx===0} title="Move left">◀</button>
                         <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, 1)} disabled={idx===Math.min(images.length,4)-1} title="Move right">▶</button>
@@ -548,7 +545,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                   <div className={styles.smallMuted} style={{marginBottom:6}}>Main image (shown on list/cards)</div>
                   <div style={{display:'flex', gap:12, alignItems:'center'}}>
                     <div style={{position:'relative'}}>
-                      <img src={toPublicUrl(form.image_path) || undefined} alt="Main" style={{width:320, height:200, objectFit:'cover', borderRadius:6, background:'#0b2430'}} />
+                      <Image src={toPublicUrl(form.image_path) || ''} alt={form.title || 'Main project image'} width={320} height={200} unoptimized style={{width:320, height:200, objectFit:'cover', borderRadius:6, background:'#0b2430'}} />
                       <div style={{position:'absolute', right:8, top:8, display:'flex', gap:6}}>
                         <button type="button" className={styles.btnGhost} onClick={editMainImage} title="Edit main image URL">✎</button>
                         <button type="button" className={styles.btnGhost} onClick={deleteMainImage} title="Delete main image">🗑</button>
@@ -630,7 +627,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                             <div className={projectStyles.media}>
                               {form.image_path ? (
                                 <div className={projectStyles.mainPhotoWrap} style={{maxWidth:320}}>
-                                  <img src={toPublicUrl(form.image_path)} alt={form.title} className={projectStyles.mainPhoto} />
+                                  <Image src={toPublicUrl(form.image_path) || ''} alt={form.title || 'Project preview image'} width={320} height={240} unoptimized className={projectStyles.mainPhoto} />
                                 </div>
                               ) : null}
                             </div>
@@ -649,7 +646,7 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
                     <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
                       <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
                         <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
-                          {form.image_path ? <img src={toPublicUrl(form.image_path)} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}
+                          {form.image_path ? <Image src={toPublicUrl(form.image_path) || ''} alt={form.title || 'Project preview image'} width={140} height={100} unoptimized style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: safeDescription }} />

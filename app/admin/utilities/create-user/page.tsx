@@ -43,7 +43,7 @@ export default function CreateUserPage() {
       const j = await res.json()
       if (!res.ok) throw new Error(j?.error || 'Create failed')
       setSuccess(true)
-      try { toast?.showToast && toast.showToast('User created', 'success') } catch {}
+      toast?.showToast?.('User created', 'success')
       setForm({ name: '', email: '', password: '', roles: [] })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

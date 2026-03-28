@@ -10,7 +10,7 @@
 // Load environment from .env.local when running from project root
 try {
   require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env.local') });
-} catch (e) {
+} catch {
   // ignore if dotenv isn't available
 }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useEffectEvent, useId, useMemo, useState } from 'react'
 import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
 import RichTextEditor from '../../../components/admin/RichTextEditor'
@@ -11,6 +11,8 @@ import Image from 'next/image'
 
 type ProjectItem = { id: number; slug: string; title: string; subtitle?: string; image_path?: string; description?: string; external_link?: string; is_published: number }
 
+const EMPTY_FORM = { slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' }
+
 export default function AdminProjects() {
   const [items, setItems] = useState<ProjectItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -19,7 +21,7 @@ export default function AdminProjects() {
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState(query)
   const [slugEdited, setSlugEdited] = useState(false)
-  const [form, setForm] = useState({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
+  const [form, setForm] = useState(EMPTY_FORM)
   const [detailImages, setDetailImages] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -34,6 +36,19 @@ export default function AdminProjects() {
 
   useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t) }, [load])
   const toast = useToast()
+  const draftId = useId()
+  const currentDraftKey = useMemo(() => `admin_project_draft:${form.slug || draftId}`, [draftId, form.slug])
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    toast?.showToast?.(message, type)
+  }, [toast])
+  const clearDraft = useCallback((key = currentDraftKey) => {
+    try { localStorage.removeItem(key) } catch {}
+  }, [currentDraftKey])
+  const resetForm = useCallback(() => {
+    setForm(EMPTY_FORM)
+    setDetailImages([])
+    setSlugEdited(false)
+  }, [])
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
   if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
@@ -53,12 +68,15 @@ export default function AdminProjects() {
       return
     }
     // clear any saved draft for this slug
-    try { localStorage.removeItem(`admin_project_draft:${form.slug}`) } catch (err: unknown) { console.error('localStorage remove error', getErrMsg(err)) }
-    setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
-    setDetailImages([])
+    clearDraft(`admin_project_draft:${form.slug}`)
+    resetForm()
     await load()
-    try { if (toast?.showToast) toast.showToast('Project created', 'success') } catch (err: unknown) { console.error('toast error', getErrMsg(err)) }
-  }, [form, detailImages, load, toast])
+    showToast('Project created', 'success')
+  }, [clearDraft, detailImages, form, load, resetForm, showToast])
+
+  const handleSubmitShortcut = useEffectEvent(() => {
+    void submit()
+  })
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(query), 300)
@@ -70,24 +88,15 @@ export default function AdminProjects() {
     const handler = (ev: KeyboardEvent) => {
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
         ev.preventDefault()
-        // call submit handler (form submit)
-        submit()
+        handleSubmitShortcut()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [submit])
+  }, [])
 
   // Debounced autosave to server when slug exists
   const autosaveTimer = React.useRef<number | null>(null)
-  // Draft autosave (localStorage). We avoid creating server records until user explicitly submits.
-  const draftIdRef = React.useRef<string | null>(null)
-  
-
-  // Generate a stable temp draft id once (do not call Date.now() during render)
-  useEffect(() => {
-    if (!draftIdRef.current) draftIdRef.current = `temp-${Date.now()}`
-  }, [])
 
   useEffect(() => {
     // debounce localStorage writes
@@ -95,29 +104,31 @@ export default function AdminProjects() {
     autosaveTimer.current = window.setTimeout(() => {
       try {
         const payload = { form, detailImages, updated: Date.now() }
-        try { localStorage.setItem(`admin_project_draft:${form.slug || draftIdRef.current}`, JSON.stringify(payload)) } catch {}
-        // lightweight toast for autosave
-        try { if (toast?.showToast) toast.showToast('Draft saved locally', 'info') } catch{}
+        try { localStorage.setItem(currentDraftKey, JSON.stringify(payload)) } catch {}
+        showToast('Draft saved locally', 'info')
       } catch {}
     }, 800)
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
-  }, [form, detailImages, toast])
+  }, [currentDraftKey, detailImages, form, showToast])
 
   // On mount, restore any temp draft (when slug not yet set)
   useEffect(()=>{
     try {
-      const key = `admin_project_draft:${draftIdRef.current}`
+      const key = `admin_project_draft:${draftId}`
       const raw = localStorage.getItem(key)
       if (raw) {
         const p = JSON.parse(raw)
         if (p && p.form) {
-          setForm(f=>({ ...f, ...p.form }))
-          setDetailImages(p.detailImages || [])
-          try { if (toast?.showToast) toast.showToast('Restored unsaved draft', 'info') } catch{}
+          const timeoutId = window.setTimeout(() => {
+            setForm(f => ({ ...f, ...p.form }))
+            setDetailImages(p.detailImages || [])
+            showToast('Restored unsaved draft', 'info')
+          }, 0)
+          return () => window.clearTimeout(timeoutId)
         }
       }
     } catch {}
-  }, [toast])
+  }, [draftId, showToast])
 
   // When slug becomes available, if there's a draft for that slug, load it
   useEffect(()=>{
@@ -132,13 +143,13 @@ export default function AdminProjects() {
           t = window.setTimeout(() => {
             setForm(f=>({ ...f, ...p.form }))
             setDetailImages(p.detailImages || [])
-            try { if (toast?.showToast) toast.showToast('Loaded draft for slug', 'info') } catch{}
+            showToast('Loaded draft for slug', 'info')
           }, 0)
         }
       }
     } catch {}
     return () => { if (t) window.clearTimeout(t) }
-  }, [form.slug, toast])
+  }, [form.slug, showToast])
 
   // Derived filtered items for client-side search (debounced)
   const filtered = items.filter(i => {
@@ -168,7 +179,7 @@ export default function AdminProjects() {
       const d = await direct.json()
       if (direct.ok && d.publicUrl) {
         setForm({...form, image_path: d.publicUrl || d.key})
-        try { if (toast?.showToast) toast.showToast('Main image uploaded', 'success') } catch {}
+          showToast('Main image uploaded', 'success')
         setUploadProgress(0)
         return
       }
@@ -274,7 +285,7 @@ export default function AdminProjects() {
         setDeletedUndoBuffer({ items: deleted })
         setSelectedIds([])
         await load()
-        try { if (toast?.showToast) toast.showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success') } catch{}
+        showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success')
         setTimeout(()=> setDeletedUndoBuffer(null), 10000)
         return
       }
@@ -286,7 +297,7 @@ export default function AdminProjects() {
       }
       await load()
       setSelectedIds([])
-      try { if (toast?.showToast) toast.showToast('Bulk action complete', 'success') } catch{}
+      showToast('Bulk action complete', 'success')
     } catch (e) {
       alert('Bulk action failed: ' + String(e))
     }
@@ -303,7 +314,7 @@ export default function AdminProjects() {
     }
     setDeletedUndoBuffer(null)
     await load()
-    try { if (toast?.showToast) toast.showToast('Undo complete', 'success') } catch{}
+    showToast('Undo complete', 'success')
   }
 
   // Upload multiple files for details images with progress and limits
@@ -330,7 +341,7 @@ export default function AdminProjects() {
           if (xhr.status >= 200 && xhr.status < 300) {
             const url = res.publicUrl || res.key
                 setDetailImages(prev => [...prev.slice(0,5), url])
-                try { if (toast.showToast) toast.showToast('Detail image uploaded', 'success') } catch {}
+                showToast('Detail image uploaded', 'success')
             setUploadProgress(0)
             resolve()
           } else {
@@ -462,10 +473,9 @@ export default function AdminProjects() {
                     <button suppressHydrationWarning className={styles.btnGhost} type="submit">Create</button>
                     <button type="button" className={styles.btnGhost} onClick={()=>setPreviewOpen(true)}>Preview</button>
                     <button type="button" className={styles.btnDanger} onClick={()=>{
-                      try { localStorage.removeItem(`admin_project_draft:${form.slug || draftIdRef.current}`) } catch{}
-                      setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
-                      setDetailImages([])
-                      try { if (toast?.showToast) toast.showToast('Draft discarded', 'info') } catch{}
+                      clearDraft()
+                      resetForm()
+                      showToast('Draft discarded', 'info')
                     }}>Discard draft</button>
                 </div>
                 </form>

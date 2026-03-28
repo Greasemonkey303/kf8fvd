@@ -16,7 +16,7 @@ try{
       if(!process.env[k]) process.env[k]=v
     })
   }
-}catch(e){}
+}catch{}
 
 (async()=>{
   try{

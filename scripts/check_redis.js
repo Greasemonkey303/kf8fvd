@@ -16,7 +16,7 @@ function loadEnv(file = '.env.local') {
         if (!process.env[key]) process.env[key] = val;
       }
     });
-  } catch (e) {
+  } catch {
     // ignore
   }
 }

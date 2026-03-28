@@ -96,7 +96,7 @@ function OnAirBadge() {
         if (!mounted) return
         const isOn = j?.item && (j.item.is_on === 1 || j.item.is_on === true)
         setOnAir(Boolean(isOn))
-      } catch (e) {
+      } catch {
         // fallback to heuristic when API unavailable
         fallbackCheck()
       }
@@ -155,13 +155,7 @@ interface QsoEntry {
   display?: string;
 }
 
-type HeroImage = {
-  is_featured?: number | boolean;
-  url?: string;
-}
-
 export default function Dashboard() {
-  const [featured, setFeatured] = useState<{ url?: string; title?: string } | null>(null)
   const [space, setSpace] = useState<{kIndex:number; f107:number; source:string} | null>(null);
   const [qsos, setQsos] = useState<Array<string | QsoEntry> | null>(null);
   const [bandGrid, setBandGrid] = useState<Record<string, number[]> | null>(null);
@@ -219,7 +213,6 @@ export default function Dashboard() {
     let hydrateTimerLog: ReturnType<typeof setTimeout> | null = null;
     let fetchTimerSpace: ReturnType<typeof setTimeout> | null = null;
     let fetchTimerLog: ReturnType<typeof setTimeout> | null = null;
-    let fetchTimerFeatured: ReturnType<typeof setTimeout> | null = null;
 
     // hydrate from cache first for faster UI
     try {
@@ -305,29 +298,12 @@ export default function Dashboard() {
       })
       .catch(() => { if (mounted) setQsos([]) });
 
-    // fetch featured hero for dashboard
-    fetch('/api/hero')
-      .then(r => r.json())
-      .then(j => {
-        if (!mounted) return
-        fetchTimerFeatured = setTimeout(() => {
-          if (!mounted) return
-          const h = j?.hero || null
-          const imgs = Array.isArray(j?.images) ? (j.images as HeroImage[]) : []
-          const f = imgs.find((item) => Number(item.is_featured) === 1) || imgs[0] || null
-          if (f) setFeatured({ url: f.url, title: h?.title || '' })
-          else setFeatured(null)
-        }, 0)
-      })
-      .catch(()=>{})
-
     return () => {
       mounted = false;
       if (hydrateTimerSpace) clearTimeout(hydrateTimerSpace);
       if (hydrateTimerLog) clearTimeout(hydrateTimerLog);
       if (fetchTimerSpace) clearTimeout(fetchTimerSpace);
       if (fetchTimerLog) clearTimeout(fetchTimerLog);
-      if (fetchTimerFeatured) clearTimeout(fetchTimerFeatured);
     };
   }, []);
 

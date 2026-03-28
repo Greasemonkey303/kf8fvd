@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useEffectEvent, useId, useMemo, useState } from 'react'
 import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
 import RichTextEditor from '../../../components/admin/RichTextEditor'
@@ -12,6 +12,8 @@ import { useToast } from '../../../components/toast/ToastProvider'
 type AboutItem = { id: number | string; slug: string; title: string; subtitle?: string; image_path?: string; description?: string; is_published: number }
 type AdminCard = AboutItem & { editLink?: string; position?: number }
 
+const EMPTY_FORM = { slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true }
+
 export default function AdminAboutList() {
   const [items, setItems] = useState<AboutItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,11 +22,23 @@ export default function AdminAboutList() {
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState(query)
   const [slugEdited, setSlugEdited] = useState(false)
-  const [form, setForm] = useState({ slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true })
+  const [form, setForm] = useState(EMPTY_FORM)
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [previewOpen, setPreviewOpen] = useState(false)
   const toast = useToast()
   const [creating, setCreating] = useState(false)
+  const draftId = useId()
+  const currentDraftKey = useMemo(() => `admin_about_draft:${form.slug || draftId}`, [draftId, form.slug])
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    toast?.showToast?.(message, type)
+  }, [toast])
+  const resetForm = useCallback(() => {
+    setForm(EMPTY_FORM)
+    setSlugEdited(false)
+  }, [])
+  const clearDraft = useCallback((key = currentDraftKey) => {
+    try { localStorage.removeItem(key) } catch {}
+  }, [currentDraftKey])
 
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
   if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
@@ -68,7 +82,7 @@ export default function AdminAboutList() {
                   if (hamshackCard) cards.push({ id: `${row['id']}-hamshack`, slug: `${row['slug']}#hamshack`, title: (hamshackCard['title'] as string) || '', subtitle: (hamshackCard['subtitle'] as string) || '', image_path: (hamshackCard['image'] as string) || '', description: (hamshackCard['content'] as string) || '', is_published: typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0), editLink: `/admin/about/${row['id']}?card=2`, position: (typeof hamshackCard['position'] === 'number') ? (hamshackCard['position'] as number) : undefined })
                 }
               }
-            } catch (e) {
+            } catch {
               // ignore malformed metadata
             }
           })
@@ -88,8 +102,8 @@ export default function AdminAboutList() {
       } else {
         setItems(cards)
       }
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
+      console.error(error)
     } finally { setLoading(false) }
   }
 
@@ -105,11 +119,15 @@ export default function AdminAboutList() {
       const j = await res.json().catch(() => ({}))
       if (!res.ok) { alert('Create failed: ' + (j?.error || res.status)); return }
     } catch (err) { console.error(err); alert('Create failed'); return } finally { setCreating(false) }
-    try { localStorage.removeItem(`admin_about_draft:${form.slug}`) } catch {}
-    setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true })
+    clearDraft(`admin_about_draft:${form.slug}`)
+    resetForm()
     await load()
-    try { toast?.showToast && toast.showToast('Section created', 'success') } catch{}
+    showToast('Section created', 'success')
   }
+
+  const handleSubmitShortcut = useEffectEvent(() => {
+    void submit()
+  })
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(query), 300)
@@ -121,44 +139,41 @@ export default function AdminAboutList() {
     const handler = (ev: KeyboardEvent) => {
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
         ev.preventDefault()
-        submit()
+        handleSubmitShortcut()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [form])
+  }, [])
 
   // Draft autosave (localStorage). We avoid creating server records until user explicitly submits.
   const autosaveTimer = React.useRef<number | null>(null)
-  const draftIdRef = React.useRef<string | null>(null)
-  useEffect(() => { if (!draftIdRef.current) draftIdRef.current = `temp-${Date.now()}` }, [])
-  const draftKey = () => `admin_about_draft:${form.slug || draftIdRef.current}`
 
   useEffect(() => {
     if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current)
     autosaveTimer.current = window.setTimeout(() => {
       try {
         const payload = { form, updated: Date.now() }
-        try { localStorage.setItem(draftKey(), JSON.stringify(payload)) } catch {}
+        localStorage.setItem(currentDraftKey, JSON.stringify(payload))
       } catch {}
     }, 800)
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
-  }, [form])
+  }, [currentDraftKey, form])
 
   // Restore temp draft
   useEffect(() => {
     try {
-      const key = `admin_about_draft:${draftIdRef.current}`
+      const key = `admin_about_draft:${draftId}`
       const raw = localStorage.getItem(key)
       if (raw) {
         const p = JSON.parse(raw)
         if (p && p.form) {
           setForm(f => ({ ...f, ...p.form }))
-          try { toast?.showToast && toast.showToast('Restored unsaved draft', 'info') } catch{}
+          showToast('Restored unsaved draft', 'info')
         }
       }
     } catch {}
-  }, [])
+  }, [draftId, showToast])
 
   // When slug becomes available, if there's a draft for that slug, load it
   useEffect(() => {
@@ -187,8 +202,6 @@ export default function AdminAboutList() {
     return String(i.title || '').toLowerCase().includes(q) || String(i.slug || '').toLowerCase().includes(q) || String(i.subtitle || '').toLowerCase().includes(q)
   })
 
-  const [savingOrder, setSavingOrder] = useState(false)
-
   const moveItemInArray = <T,>(arr: T[], from: number, to: number): T[] => {
     const copy = arr.slice()
     const [item] = copy.splice(from, 1)
@@ -197,18 +210,16 @@ export default function AdminAboutList() {
   }
 
   const saveOrder = async <T extends { id?: string | number }>(newItems: T[]) => {
-    setSavingOrder(true)
     try {
       const order = newItems.map(i => String(i.id))
       const res = await fetch('/admin/api/pages/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }) })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) { alert('Save order failed: ' + (j?.error || res.status)); return }
-      try { toast?.showToast && toast.showToast('Order saved', 'success') } catch{}
+      showToast('Order saved', 'success')
     } catch (err) {
       console.error('saveOrder error', err)
-      try { toast?.showToast && toast.showToast('Order save failed', 'error') } catch{}
+      showToast('Order save failed', 'error')
     } finally {
-      setSavingOrder(false)
       await load()
     }
   }
@@ -246,16 +257,16 @@ export default function AdminAboutList() {
         // clear selection and refresh
         setSelectedIds([])
         await load()
-        try { toast?.showToast && toast.showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success') } catch{}
+        showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success')
         // auto-clear undo buffer after 10s
         setTimeout(()=> setDeletedUndoBuffer(null), 10000)
         return
       }
       await load()
       setSelectedIds([])
-      try { toast?.showToast && toast.showToast('Bulk action complete', 'success') } catch{}
-    } catch (e) {
-      alert('Bulk action failed: ' + String(e))
+      showToast('Bulk action complete', 'success')
+    } catch (error) {
+      alert('Bulk action failed: ' + String(error))
     }
   }
 
@@ -270,7 +281,7 @@ export default function AdminAboutList() {
     }
     setDeletedUndoBuffer(null)
     await load()
-    try { toast?.showToast && toast.showToast('Undo complete', 'success') } catch{}
+    showToast('Undo complete', 'success')
   }
 
   const getErrMsg = (err: unknown) => { if (err instanceof Error) return err.message; try { return String(err) } catch { return 'Unknown error' } }
@@ -293,7 +304,7 @@ export default function AdminAboutList() {
       const d = await direct.json()
       if (direct.ok && d.publicUrl) {
         setForm(f => ({ ...f, image_path: d.publicUrl || d.key }))
-        try { toast?.showToast && toast.showToast('Main image uploaded', 'success') } catch{}
+        showToast('Main image uploaded', 'success')
         setUploadProgress(0)
         return
       }
@@ -323,6 +334,12 @@ export default function AdminAboutList() {
 
     setForm(f => ({ ...f, image_path: data.publicUrl || data.key }))
     setUploadProgress(0)
+  }
+
+  const handleDiscardDraft = () => {
+    clearDraft()
+    resetForm()
+    showToast('Draft discarded', 'info')
   }
 
   return (
@@ -377,7 +394,7 @@ export default function AdminAboutList() {
                   <div style={{ display: 'flex', gap: 2 }}>
                     <button suppressHydrationWarning className={styles.btnGhost} type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create'}</button>
                     <button type="button" className={styles.btnGhost} onClick={() => setPreviewOpen(true)}>Preview</button>
-                    <button type="button" className={styles.btnDanger} onClick={() => { try { localStorage.removeItem(`admin_about_draft:${form.slug || draftIdRef.current}`) } catch {} ; setForm({ slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true }); try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch {} }}>Discard draft</button>
+                    <button type="button" className={styles.btnDanger} onClick={handleDiscardDraft}>Discard draft</button>
                   </div>
                 </form>
               </div>

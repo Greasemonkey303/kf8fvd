@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { tlog } from '@/lib/turnstileDebug'
 import { loadTurnstileScript, waitForTurnstileReady, fetchTurnstileSiteKey } from '@/lib/turnstileLoader'
 import Modal from '@/components/modal/Modal'
@@ -88,15 +88,15 @@ export default function Contact() {
     }).catch(e => tlog('contact fetch runtime key failed', e))
   },[])
 
-  function clearTurnstileToken() {
+  const clearTurnstileToken = useCallback(() => {
     setCfToken(null)
     try {
       const input = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
       if (input) input.value = ''
     } catch (e) { void e }
-  }
+  }, [])
 
-  function resetTurnstileWidget() {
+  const resetTurnstileWidget = useCallback(() => {
     clearTurnstileToken()
     try {
       type TurnstileReset = { reset?: (id: string | number) => void }
@@ -105,7 +105,7 @@ export default function Contact() {
         win.turnstile.reset(cfWidgetId)
       }
     } catch (e) { void e }
-  }
+  }, [cfWidgetId, clearTurnstileToken])
 
   // When script loads, render turnstile widget programmatically and capture token via callback
   useEffect(()=>{
@@ -174,7 +174,7 @@ export default function Contact() {
       cancelled = true
       clearTurnstileToken()
     }
-  },[runtimeSiteKey])
+  }, [runtimeSiteKey, clearTurnstileToken, resetTurnstileWidget])
 
   function validate(){
     const e: Record<string,string> = {}
@@ -256,11 +256,11 @@ export default function Contact() {
     setPreviewName(file.name)
   }
 
-  function closePreview() {
+  const closePreview = useCallback(() => {
     if (previewSrc) URL.revokeObjectURL(previewSrc)
     setPreviewSrc(null)
     setPreviewName(null)
-  }
+  }, [previewSrc])
 
   function removeFile(idx: number){ setFiles(files.filter((_,i)=> i!==idx)) }
 
@@ -382,7 +382,7 @@ export default function Contact() {
       window.addEventListener('keydown', onKey)
       return () => window.removeEventListener('keydown', onKey)
     }
-  },[previewSrc, confirmOpen])
+  }, [previewSrc, confirmOpen, closePreview])
 
 
   // focus global error when present

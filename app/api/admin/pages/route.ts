@@ -4,7 +4,7 @@ import { query } from '../../../../lib/db'
 import { marked } from 'marked'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
-import { deleteObjectStrict, deleteObjectsStrict, deletePrefixStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { deleteObjectsStrict, deletePrefixStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void

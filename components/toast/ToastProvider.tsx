@@ -4,8 +4,9 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 
 type ToastType = 'success' | 'error' | 'info'
 type Toast = { id: number; message: string; type?: ToastType }
+type ToastContextValue = { showToast: (message: string, type?: ToastType) => void }
 
-const ToastContext = createContext({ showToast: (m: string, t?: ToastType) => {} })
+const ToastContext = createContext<ToastContextValue>({ showToast: () => {} })
 
 export const useToast = () => useContext(ToastContext)
 

@@ -192,7 +192,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write h
   const [sourceMode, setSourceMode] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [sourceValue, setSourceValue] = useState(normalizeHtml(value))
+  const [draftSourceValue, setDraftSourceValue] = useState('')
   const expandedHeight = Math.max(minHeight, expandedMinHeight ?? minHeight + 180)
 
   const editor = useEditor({
@@ -230,13 +230,12 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write h
 
   useEffect(() => {
     const next = normalizeHtml(value)
-    setSourceValue(next)
     if (!editor) return
     const current = normalizeHtml(editor.getHTML())
-    if (current !== next) {
+    if (!sourceMode && current !== next) {
       editor.commands.setContent(next || '<p></p>', { emitUpdate: false })
     }
-  }, [editor, value])
+  }, [editor, sourceMode, value])
 
   if (!editor) {
     return <div className={styles.richTextLoading}>Loading editor…</div>
@@ -276,10 +275,10 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write h
 
   const toggleSourceMode = () => {
     if (!sourceMode && editor) {
-      setSourceValue(normalizeHtml(editor.getHTML()))
+      setDraftSourceValue(normalizeHtml(editor.getHTML()))
     }
     if (sourceMode && editor) {
-      editor.commands.setContent(normalizeHtml(sourceValue) || '<p></p>')
+      editor.commands.setContent(normalizeHtml(draftSourceValue) || '<p></p>')
     }
     setSourceMode(current => !current)
   }
@@ -429,10 +428,10 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write h
         {sourceMode ? (
           <textarea
             className={styles.richTextSource}
-            value={sourceValue}
+            value={draftSourceValue}
             onChange={(event) => {
               const next = event.target.value
-              setSourceValue(next)
+              setDraftSourceValue(next)
               onChange(next)
             }}
             style={{ minHeight: currentMinHeight }}

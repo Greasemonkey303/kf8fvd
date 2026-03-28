@@ -32,11 +32,11 @@ export default function UnlockButton({ keyName }: { keyName: string }) {
           } else {
             window.location.reload()
           }
-        } catch (_) { window.location.reload() }
+        } catch { window.location.reload() }
       } else {
         alert('Unlock failed: ' + (j.error || res.status))
       }
-    } catch (err) {
+    } catch {
       alert('Unlock error')
     } finally {
       setLoading(false)

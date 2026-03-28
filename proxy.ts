@@ -18,7 +18,7 @@ export async function proxy(req: NextRequest) {
         crypto.getRandomValues(arr)
         return Array.from(arr).map(b => ('0' + b.toString(16)).slice(-2)).join('')
       }
-    } catch (e) {
+    } catch {
       // fallthrough
     }
     return (Math.random().toString(36).slice(2) + Date.now().toString(36))

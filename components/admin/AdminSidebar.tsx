@@ -18,7 +18,7 @@ export default function AdminSidebar({ admin }: { admin: { name?: string; email?
         const j = await res.json()
         if (!mounted) return
         if (j && typeof j.unread === 'number') setUnread(Number(j.unread))
-      } catch (e) {
+      } catch {
         // ignore
       }
     }

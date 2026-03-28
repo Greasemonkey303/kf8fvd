@@ -37,7 +37,7 @@ export default function Modal({ children, onClose, overlayClassName, contentClas
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        onClose && onClose()
+        onClose?.()
         return
       }
       if (e.key === 'Tab') {

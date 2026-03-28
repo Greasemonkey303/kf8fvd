@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect } from 'react'
 import styles from './imageModal.module.css'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
@@ -12,7 +12,6 @@ type Props = {
 }
 
 export default function ImageModal({ src, alt = '', onClose }: Props) {
-  const closeRef = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
     if (!src) return
     const prev = document.activeElement as HTMLElement | null
@@ -43,15 +42,15 @@ export default function ImageModal({ src, alt = '', onClose }: Props) {
           } else {
             if (active === last) { e.preventDefault(); first.focus(); }
           }
-        } catch (err) { /* ignore focus trap errors */ }
+        } catch { /* ignore focus trap errors */ }
       }
     }
     window.addEventListener('keydown', onKey)
 
     return () => {
       window.removeEventListener('keydown', onKey)
-      try { if (doc.getAttribute('data-modal-open')) doc.removeAttribute('data-modal-open') } catch(e) {}
-      try { doc.style.overflow = prevOverflow || '' } catch(e) {}
+      try { if (doc.getAttribute('data-modal-open')) doc.removeAttribute('data-modal-open') } catch {}
+      try { doc.style.overflow = prevOverflow || '' } catch {}
       if (prev && typeof prev.focus === 'function') prev.focus()
     }
   }, [onClose, src])

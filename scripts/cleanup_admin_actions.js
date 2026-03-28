@@ -19,7 +19,7 @@ try {
       if (!process.env[key]) process.env[key] = val
     })
   }
-} catch (e) {
+} catch {
   // ignore
 }
 

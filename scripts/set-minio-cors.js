@@ -6,7 +6,7 @@ const { execSync } = require('child_process')
 let S3Client, PutBucketCorsCommand
 try {
   ;({ S3Client, PutBucketCorsCommand } = require('@aws-sdk/client-s3'))
-} catch (e) {
+} catch {
   // AWS SDK not installed — we'll fall back to CLI or mc
 }
 
@@ -28,7 +28,7 @@ function loadDotEnvIfPresent() {
         if (!process.env[name]) process.env[name] = value
       }
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 }
@@ -78,7 +78,7 @@ function tryAwsCli() {
     execSync(cmd, { stdio: 'inherit', env: process.env })
     console.log('CORS applied successfully via AWS CLI')
     return true
-  } catch (err) {
+  } catch {
     return false
   }
 }
@@ -121,13 +121,13 @@ async function tryProgrammaticSdk() {
 (async () => {
   try {
     if (await tryProgrammaticSdk()) {
-      try { fs.unlinkSync(tmpPath) } catch (e) {}
+      try { fs.unlinkSync(tmpPath) } catch {}
       process.exit(0)
     }
 
     // Try AWS CLI
     if (tryAwsCli()) {
-      try { fs.unlinkSync(tmpPath) } catch (e) {}
+      try { fs.unlinkSync(tmpPath) } catch {}
       process.exit(0)
     }
 
@@ -135,15 +135,15 @@ async function tryProgrammaticSdk() {
     try {
       execSync('mc --version', { stdio: 'ignore' })
       suggestMcInstructions()
-      try { fs.unlinkSync(tmpPath) } catch (e) {}
+      try { fs.unlinkSync(tmpPath) } catch {}
       process.exit(0)
-    } catch (e) {
+    } catch {
       finalInstructions()
       process.exit(1)
     }
   } catch (err) {
     console.error('Unexpected error in CORS helper:', err)
-    try { fs.unlinkSync(tmpPath) } catch (e) {}
+    try { fs.unlinkSync(tmpPath) } catch {}
     process.exit(1)
   }
 })()

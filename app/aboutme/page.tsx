@@ -155,7 +155,7 @@ export default async function Page() {
     }
 
     return <About data={data} />
-  } catch (err) {
+  } catch {
     return <About />
   }
 }

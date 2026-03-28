@@ -35,7 +35,7 @@ const urls = urlsEnv.split(',').map(s => s.trim()).filter(Boolean)
     } catch (err) {
       console.error('  error connecting or operating:', err && err.message ? err.message : err)
     } finally {
-      try { r.disconnect() } catch(_){}
+      try { r.disconnect() } catch {}
     }
   }
   console.log('If you have a multi-node Redis you can force a failover and re-run this script to verify client behavior.')

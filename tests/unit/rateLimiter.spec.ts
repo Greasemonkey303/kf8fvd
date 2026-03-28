@@ -9,7 +9,7 @@ const KEY = 'key:unit:1'
 
 beforeEach(async () => {
   // ensure any cached redis client or in-memory store is cleared between tests
-  try { __test_resetInternalState() } catch (e) {}
+  try { __test_resetInternalState() } catch {}
   // Force in-memory fallback for tests
   delete process.env.REDIS_URL
   delete process.env.REDIS_HOST

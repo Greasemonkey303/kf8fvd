@@ -60,7 +60,7 @@ export default function ProjectEditorSidebar({
         const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
         if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
         return buildPublicUrl(path)
-      } catch (e) {
+      } catch {
         return buildPublicUrl(s)
       }
     }

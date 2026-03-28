@@ -50,7 +50,7 @@ function percentile(arr, p) {
   const latencies = []
   const start = Date.now()
 
-  async function worker(id) {
+  async function worker() {
     while (true) {
       const i = pointer++
       if (i >= totalRequests) return
@@ -58,7 +58,7 @@ function percentile(arr, p) {
       try {
         await r.eval(lua, 2, countKey, lockKey, windowMs, max, lockMs)
         latencies.push(Date.now() - s)
-      } catch (e) {
+      } catch {
         errors++
       }
     }
@@ -75,5 +75,5 @@ function percentile(arr, p) {
     console.log('latency ms — avg:', (latencies.reduce((a,b)=>a+b,0)/latencies.length).toFixed(2), 'p50:', percentile(latencies,50), 'p95:', percentile(latencies,95))
   }
 
-  try { r.disconnect() } catch (_) {}
+  try { r.disconnect() } catch {}
 })()

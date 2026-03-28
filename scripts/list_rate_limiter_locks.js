@@ -14,7 +14,7 @@
       const locks = []
       for (const k of keys) {
         let ttl = null
-        try { if (typeof client.pttl === 'function') { const t = await client.pttl(k); ttl = (typeof t === 'number' && t > 0) ? t : null } } catch(e){}
+        try { if (typeof client.pttl === 'function') { const t = await client.pttl(k); ttl = (typeof t === 'number' && t > 0) ? t : null } } catch {}
         const name = decodeURIComponent(String(k).slice('rl:lock:'.length))
         locks.push({ redisKey: k, key: name, ttlMs: ttl, expiresAt: ttl ? Date.now() + ttl : null })
       }

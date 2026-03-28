@@ -81,7 +81,7 @@ export async function fetchTurnstileSiteKey() {
     if (!res.ok) return null
     const j = await res.json()
     return (j && typeof j.turnstileSiteKey === 'string') ? j.turnstileSiteKey : null
-  } catch (e) {
+  } catch {
     return null
   }
 }

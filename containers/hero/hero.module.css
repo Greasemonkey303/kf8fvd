@@ -28,25 +28,14 @@
   width: 100%;
   height: 100%;
   display: block;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
   object-fit: cover;
   transform: scale(1);
   will-change: transform;
   animation: bgZoom 18s ease-in-out infinite alternate;
   filter: none;
-}
-
-/* Ensure <picture> + <img> fallback covers the hero area */
-.bg img,
-.bgImg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  transform: scale(1);
-  will-change: transform;
-  animation: bgZoom 18s ease-in-out infinite alternate;
 }
 
 .hero .inner {

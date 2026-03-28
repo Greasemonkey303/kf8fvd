@@ -10,7 +10,7 @@ type Props = { images?: string[] }
 
 export default function HotspotGallery({ images }: Props){
   const storageKey = 'kf8fvd-hotspot-images-v1'
-  const [stored, setStored] = useState<string[]>(() => {
+  const [stored] = useState<string[]>(() => {
     try { const s = JSON.parse(localStorage.getItem(storageKey) || '[]'); return Array.isArray(s) ? s : [] } catch { return [] }
   })
   const imgs = [ ...(images && images.length>0 ? images : [
@@ -27,23 +27,6 @@ export default function HotspotGallery({ images }: Props){
     window.addEventListener('keydown', onKey)
     return ()=> window.removeEventListener('keydown', onKey)
   },[])
-
-  async function handleFiles(files: FileList | null) {
-    if (!files) return;
-    const added: string[] = []
-    for (let i=0;i<files.length;i++){
-      const f = files[i];
-      if (!f.type.startsWith('image/')) continue;
-      const data = await new Promise<string>((res)=>{
-        const r = new FileReader(); r.onload = ()=> res(String(r.result)); r.readAsDataURL(f);
-      })
-      added.push(data)
-    }
-    if (added.length===0) return;
-    const merged = [...added, ...stored].slice(0, 12)
-    try { localStorage.setItem(storageKey, JSON.stringify(merged)); } catch { }
-    setStored(merged)
-  }
 
   useEffect(()=>{
     if (open) {

@@ -73,7 +73,7 @@ export default function UserEditor({ params }: { params: { id: string } }) {
                 <div className={styles.checkGroup}>
                   {AVAILABLE_ROLES.map(r => (
                     <label key={r} className={styles.checkboxWrap}>
-                      <input type="checkbox" checked={form.roles.includes(r)} onChange={e=>{
+                      <input type="checkbox" checked={form.roles.includes(r)} onChange={()=>{
                         const next = form.roles.includes(r) ? form.roles.filter(x=>x!==r) : [...form.roles, r]
                         setForm({...form, roles: next})
                       }} className={styles.checkboxInput} />

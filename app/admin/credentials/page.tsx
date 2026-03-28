@@ -4,7 +4,6 @@ import React, { useEffect, useState, useRef } from 'react'
 import styles from '../admin.module.css'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
-import CredentialCard from '../../../components/credentials/CredentialCard'
 import RichTextEditor from '../../../components/admin/RichTextEditor'
 import createDOMPurify from 'dompurify'
 import Image from 'next/image'
@@ -14,41 +13,50 @@ type Section = { id?: number | null; name?: string; slug?: string; subtitle?: st
 type LocalDraft = { key: string; payload: { form?: Partial<CredItem>; updated?: number } } | null
 type DeletedUndo = { items: CredItem[]; ts: number } | null
 
+const EMPTY_FORM: CredItem = { id: null, section: '', slug: '', title: '', tag: '', authority: '', image_path: '', description: '', is_published: 1, sort_order: 0 }
+const EMPTY_SECTION_FORM: Section = { id: null, name: '', slug: '', subtitle: '', image_path: '', sort_order: 0 }
+
 export default function AdminCredentials() {
   const [items, setItems] = useState<CredItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState<CredItem>({ id: null, section: '', slug: '', title: '', tag: '', authority: '', image_path: '', description: '', is_published: 1, sort_order: 0 })
+  const [form, setForm] = useState<CredItem>(EMPTY_FORM)
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [uploadCompleted, setUploadCompleted] = useState<boolean>(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const toast = useToast()
   const autosaveTimer = React.useRef<number | null>(null)
-  const draftIdRef = React.useRef<string | null>(null)
-  const draftKey = () => `admin_credential_draft:${form.slug || draftIdRef.current}`
+  const draftId = React.useId()
   const [pendingDraftTemp, setPendingDraftTemp] = useState<LocalDraft>(null)
   const [pendingDraftSlug, setPendingDraftSlug] = useState<LocalDraft>(null)
-  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [selectedIds, setSelectedIds] = useState<(string|number)[]>([])
   const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<DeletedUndo>(null)
   const [needOrderSave, setNeedOrderSave] = useState(false)
   const [sections, setSections] = useState<Section[]>([])
   const [sectionsLoading, setSectionsLoading] = useState(true)
   const [showSectionsPanel, setShowSectionsPanel] = useState(false)
-  const [sectionForm, setSectionForm] = useState<Section>({ id: null, name: '', slug: '', subtitle: '', image_path: '', sort_order: 0 })
+  const [sectionForm, setSectionForm] = useState<Section>(EMPTY_SECTION_FORM)
   const [slugEdited, setSlugEdited] = useState(false)
   const [sectionSlugEdited, setSectionSlugEdited] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const currentDraftKey = React.useMemo(() => `admin_credential_draft:${form.slug || draftId}`, [draftId, form.slug])
+  const showToast = React.useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    toast?.showToast?.(message, type)
+  }, [toast])
+  const clearDraft = React.useCallback(() => {
+    try { localStorage.removeItem(currentDraftKey) } catch {}
+  }, [currentDraftKey])
+  const resetForm = React.useCallback(() => {
+    setForm(EMPTY_FORM)
+    setSlugEdited(false)
+  }, [])
 
-  async function load() {
-    setLoading(true)
+  const load = React.useCallback(async () => {
     const res = await fetch('/admin/api/credentials')
     const data = await res.json()
     setItems(data.items || [])
     try { console.debug('[admin/credentials] load items', (data.items || []).map((i: Partial<CredItem>)=>({ id: i.id, sort_order: i.sort_order, section: i.section }))) } catch {}
-    setLoading(false)
-  }
+  }, [])
 
-  async function loadSections() {
+  const loadSections = React.useCallback(async () => {
     setSectionsLoading(true)
     try {
       const res = await fetch('/admin/api/credential-sections')
@@ -56,11 +64,11 @@ export default function AdminCredentials() {
       setSections(data.items || [])
     } catch (err) { console.error('loadSections err', err) }
     setSectionsLoading(false)
-  }
+  }, [])
 
-  useEffect(() => { const t = setTimeout(() => { load(); loadSections() }, 0); return () => clearTimeout(t) }, [])
+  useEffect(() => { const t = setTimeout(() => { void load(); void loadSections() }, 0); return () => clearTimeout(t) }, [load, loadSections])
 
-  async function submit(e?: React.FormEvent) {
+  const submit = React.useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!form.slug || !form.title || !form.section) return
     try {
@@ -71,30 +79,24 @@ export default function AdminCredentials() {
         await fetch('/admin/api/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       }
       // clear any saved draft for this slug
-      try { localStorage.removeItem(draftKey()) } catch (err) { /* ignore */ }
-      setForm({ id: null, section: '', slug: '', title: '', tag: '', authority: '', image_path: '', description: '', is_published: 1, sort_order: 0 })
-      setSlugEdited(false)
+      clearDraft()
+      resetForm()
       await load()
-      try { toast?.showToast && toast.showToast(isUpdate ? 'Credential updated' : 'Credential created', 'success') } catch {}
+      showToast(isUpdate ? 'Credential updated' : 'Credential created', 'success')
     } catch (err) { console.error('create error', err) }
-  }
+  }, [clearDraft, form, load, resetForm, showToast])
 
   // Ctrl/Cmd+S handler for save
   useEffect(() => {
     const handler = (ev: KeyboardEvent) => {
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
         ev.preventDefault()
-        submit()
+        void submit()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [form])
-
-  // Generate a stable temp draft id once
-  useEffect(() => {
-    if (!draftIdRef.current) draftIdRef.current = `temp-${Date.now()}`
-  }, [])
+  }, [submit])
 
   // Debounced autosave to localStorage (modeled after Projects admin)
   useEffect(() => {
@@ -102,27 +104,29 @@ export default function AdminCredentials() {
     autosaveTimer.current = window.setTimeout(() => {
       try {
         const payload = { form, updated: Date.now() }
-        try { localStorage.setItem(draftKey(), JSON.stringify(payload)) } catch {}
-        setLastSavedAt(Date.now())
-        try { toast?.showToast && toast.showToast('Draft saved locally', 'info') } catch {}
+        try { localStorage.setItem(currentDraftKey, JSON.stringify(payload)) } catch {}
+        showToast('Draft saved locally', 'info')
       } catch {}
     }, 800)
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
-  }, [form])
+  }, [currentDraftKey, form, showToast])
 
   // On mount, check for a temp draft but do not auto-apply — show a prompt
   useEffect(()=>{
     try {
-      const key = `admin_credential_draft:${draftIdRef.current}`
+      const key = `admin_credential_draft:${draftId}`
       const raw = localStorage.getItem(key)
       if (raw) {
         const p = JSON.parse(raw)
         if (p && p.form) {
-          setPendingDraftTemp({ key, payload: p })
+          const timeoutId = window.setTimeout(() => {
+            setPendingDraftTemp({ key, payload: p })
+          }, 0)
+          return () => window.clearTimeout(timeoutId)
         }
       }
     } catch {}
-  }, [])
+  }, [draftId])
 
   // When slug becomes available, if there's a draft for that slug, show a prompt
   useEffect(()=>{
@@ -148,7 +152,7 @@ export default function AdminCredentials() {
       const p = draftObj.payload
       if (p && p.form) {
         setForm(f=>({ ...f, ...p.form }))
-        try { toast?.showToast && toast.showToast('Draft loaded', 'info') } catch{}
+        showToast('Draft loaded', 'info')
       }
     } catch (err) { console.error('apply draft error', err) }
     setPendingDraftTemp(null)
@@ -160,7 +164,7 @@ export default function AdminCredentials() {
     try { localStorage.removeItem(draftObj.key) } catch {}
     setPendingDraftTemp(null)
     setPendingDraftSlug(null)
-    try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch{}
+    showToast('Draft discarded', 'info')
   }
 
   useEffect(() => {
@@ -199,7 +203,7 @@ export default function AdminCredentials() {
               setForm(f => ({ ...f, image_path: url, s3_prefix: uploadSlug }))
               setUploadProgress(0)
               setUploadCompleted(true)
-              try { toast?.showToast && toast.showToast('Image uploaded', 'success') } catch{}
+              showToast('Image uploaded', 'success')
               resolve()
               return
             }
@@ -229,12 +233,12 @@ export default function AdminCredentials() {
       const data = await res.json()
       if (!res.ok) { alert(data?.error || 'Error saving section'); return }
       const newSlug = payload.slug || (sectionForm.slug || String(sectionForm.name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-'))
-      setSectionForm({ id: null, name: '', slug: '', subtitle: '', image_path: '', sort_order: 0 })
+      setSectionForm(EMPTY_SECTION_FORM)
       setSectionSlugEdited(false)
       await loadSections()
       // auto-select the newly created section in the credential form
       setForm(f => ({ ...f, section: newSlug }))
-      try { toast?.showToast && toast.showToast(isUpdate ? 'Section updated' : 'Section created', 'success') } catch {}
+      showToast(isUpdate ? 'Section updated' : 'Section created', 'success')
     } catch (err) { console.error('submitSection err', err) }
   }
 
@@ -244,7 +248,7 @@ export default function AdminCredentials() {
     try {
       await fetch(`/admin/api/credential-sections?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
       await loadSections()
-      try { toast?.showToast && toast.showToast('Section deleted', 'success') } catch {}
+      showToast('Section deleted', 'success')
     } catch (err) { console.error('deleteSection err', err) }
   }
 
@@ -266,7 +270,7 @@ export default function AdminCredentials() {
       await fetch(`/admin/api/credentials?id=${encodeURIComponent(String(id))}`, { method: 'DELETE' })
       await load()
       setSelectedIds(s => s.filter(x => x !== id))
-      try { toast?.showToast && toast.showToast('Deleted', 'success') } catch {}
+      showToast('Deleted', 'success')
       // clear undo buffer after 30s
       setTimeout(() => setDeletedUndoBuffer(null), 30_000)
     } catch (err) {
@@ -299,7 +303,7 @@ export default function AdminCredentials() {
       }
       setSelectedIds([])
       await load()
-      try { toast?.showToast && toast.showToast(action === 'delete' ? 'Deleted selected' : action === 'publish' ? 'Published selected' : 'Unpublished selected', 'success') } catch {}
+      showToast(action === 'delete' ? 'Deleted selected' : action === 'publish' ? 'Published selected' : 'Unpublished selected', 'success')
       if (action === 'delete') setTimeout(() => setDeletedUndoBuffer(null), 30_000)
     } catch (err) {
       console.error('bulk action error', err)
@@ -318,7 +322,7 @@ export default function AdminCredentials() {
     }
     setDeletedUndoBuffer(null)
     await load()
-    try { toast?.showToast && toast.showToast('Undo complete', 'success') } catch {}
+    showToast('Undo complete', 'success')
   }
 
   function moveItemUp(id?: number) {
@@ -356,7 +360,7 @@ export default function AdminCredentials() {
       try { console.debug('[admin/credentials] manual saveOrder response', res.status, data) } catch {}
       setNeedOrderSave(false)
       await load()
-      try { toast?.showToast && toast.showToast('Order saved', 'success') } catch {}
+      showToast('Order saved', 'success')
     } catch (err) { console.error('save order err', err) }
   }
 
@@ -370,10 +374,10 @@ export default function AdminCredentials() {
       if (!res.ok) { alert('Save section order failed: ' + (data?.error || res.status)); return }
       setNeedSectionOrderSave(false)
       await loadSections()
-      try { toast?.showToast && toast.showToast('Sections order saved', 'success') } catch{}
+      showToast('Sections order saved', 'success')
     } catch (err) {
       console.error('saveSectionOrder err', err)
-      try { toast?.showToast && toast.showToast('Sections order failed', 'error') } catch{}
+      showToast('Sections order failed', 'error')
     }
   }
 
@@ -422,7 +426,7 @@ export default function AdminCredentials() {
       if (!res.ok) { console.error('Save order failed', data); setNeedOrderSave(true) } else {
         setNeedOrderSave(false)
         await load()
-        try { toast?.showToast && toast.showToast('Order saved', 'success') } catch {}
+        showToast('Order saved', 'success')
       }
     } catch (err) {
       console.error('save order err', err)
@@ -475,7 +479,7 @@ export default function AdminCredentials() {
       if (!res.ok) { alert('Save section order failed: ' + (data?.error || res.status)); setNeedSectionOrderSave(true) } else {
         setNeedSectionOrderSave(false)
         await loadSections()
-        try { toast?.showToast && toast.showToast('Sections order saved', 'success') } catch{}
+        showToast('Sections order saved', 'success')
       }
     } catch (err) {
       console.error('saveSectionOrder err', err)
@@ -488,7 +492,6 @@ export default function AdminCredentials() {
 
   // Card drag support within/between sections
   const cardDragRef = useRef<{ section: string; index: number } | null>(null)
-  const [cardDragOver, setCardDragOver] = useState<{ section: string; index: number } | null>(null)
 
   function handleCardDragStart(e: React.DragEvent, section: string, idx: number) {
     cardDragRef.current = { section, index: idx }
@@ -496,14 +499,11 @@ export default function AdminCredentials() {
     e.dataTransfer.effectAllowed = 'move'
   }
 
-  function handleCardDragOver(e: React.DragEvent, section: string, idx: number) {
+  function handleCardDragOver(e: React.DragEvent) {
     e.preventDefault()
-    setCardDragOver({ section, index: idx })
   }
 
-  function handleCardDragLeave() {
-    setCardDragOver(null)
-  }
+  function handleCardDragLeave() {}
 
   async function handleCardDrop(e: React.DragEvent, targetSection: string, targetIndex: number) {
     e.preventDefault()
@@ -513,9 +513,9 @@ export default function AdminCredentials() {
       try { src = JSON.parse(srcStr) } catch { src = null }
     }
     const srcObj = src || cardDragRef.current
-    if (!srcObj) { setCardDragOver(null); cardDragRef.current = null; return }
+    if (!srcObj) { cardDragRef.current = null; return }
     const { section: srcSection, index: srcIndex } = srcObj
-    if (srcSection === targetSection && srcIndex === targetIndex) { setCardDragOver(null); cardDragRef.current = null; return }
+    if (srcSection === targetSection && srcIndex === targetIndex) { cardDragRef.current = null; return }
 
     // Build grouped map
     const grouped: Record<string, CredItem[]> = {}
@@ -533,7 +533,7 @@ export default function AdminCredentials() {
     // find source item
     const srcList = grouped[srcSection] || []
     const [moved] = srcList.splice(srcIndex, 1)
-    if (!moved) { setCardDragOver(null); cardDragRef.current = null; return }
+    if (!moved) { cardDragRef.current = null; return }
 
     // if moving between sections, update its section property
     moved.section = targetSection
@@ -557,7 +557,6 @@ export default function AdminCredentials() {
     setItems(newItems)
     setNeedOrderSave(true)
     try { console.debug('[admin/credentials] handleCardDrop newItems', newItems.map((i)=>({ id: i.id, section: i.section, sort_order: i.sort_order }))) } catch {}
-    setCardDragOver(null)
     cardDragRef.current = null
 
     // persist moved card section immediately (so s3_prefix can be recomputed server-side)
@@ -579,7 +578,7 @@ export default function AdminCredentials() {
       else {
         setNeedOrderSave(false)
         await load()
-        try { toast?.showToast && toast.showToast('Order saved', 'success') } catch{}
+        showToast('Order saved', 'success')
       }
     } catch (err) {
       console.error('save order err', err)
@@ -730,9 +729,9 @@ export default function AdminCredentials() {
                     <button className={styles.btnGhost} type="submit">{form.id ? 'Save' : 'Create'}</button>
                     <button type="button" className={styles.btnGhost} onClick={()=>setPreviewOpen(true)}>Preview</button>
                     {form.id ? (
-                      <button type="button" className={styles.btnGhost} onClick={()=>{ try { localStorage.removeItem(draftKey()) } catch{}; setForm({ id: null, section: '', slug: '', title: '', tag: '', authority: '', image_path: '', description: '', is_published: 1, sort_order: 0 }); setSlugEdited(false) }}>Cancel edit</button>
+                      <button type="button" className={styles.btnGhost} onClick={()=>{ clearDraft(); resetForm() }}>Cancel edit</button>
                     ) : null}
-                    <button type="button" className={styles.btnGhost} onClick={()=>{ try { localStorage.removeItem(draftKey()) } catch{}; setForm({ id: null, section: '', slug: '', title: '', tag: '', authority: '', image_path: '', description: '', is_published: 1, sort_order: 0 }); setSlugEdited(false); try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch{} }}>Discard draft</button>
+                    <button type="button" className={styles.btnGhost} onClick={()=>{ clearDraft(); resetForm(); showToast('Draft discarded', 'info') }}>Discard draft</button>
                   </div>
                 </form>
               </div>
@@ -796,7 +795,7 @@ export default function AdminCredentials() {
                           <div className="flex gap-2">
                             <button className={styles.btnGhost} type="button" onClick={() => submitSection()}>{sectionForm.id ? 'Save' : 'Create'}</button>
                             {sectionForm.id ? (
-                              <button className={styles.btnGhost} type="button" onClick={() => setSectionForm({ id: null, name: '', slug: '', subtitle: '', image_path: '', sort_order: 0 })}>Cancel</button>
+                              <button className={styles.btnGhost} type="button" onClick={() => setSectionForm(EMPTY_SECTION_FORM)}>Cancel</button>
                             ) : null}
                           </div>
                         </form>
@@ -850,7 +849,7 @@ export default function AdminCredentials() {
 
                       <div>
                         {(groupedItems.groups[String((s as Record<string, unknown>)['slug'] || '')] || []).map((it, idx: number) => (
-                          <div key={it.id} className={styles.credentialRow} draggable onDragStart={(e)=>handleCardDragStart(e, String(s.slug || ''), idx)} onDragOver={(e)=>handleCardDragOver(e, String(s.slug || ''), idx)} onDragLeave={handleCardDragLeave} onDrop={(e)=>handleCardDrop(e, String(s.slug || ''), idx)}>
+                          <div key={it.id} className={styles.credentialRow} draggable onDragStart={(e)=>handleCardDragStart(e, String(s.slug || ''), idx)} onDragOver={handleCardDragOver} onDragLeave={handleCardDragLeave} onDrop={(e)=>handleCardDrop(e, String(s.slug || ''), idx)}>
                             <div className={styles.credentialRowInner}>
                               <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6}} aria-hidden>≡</div>
                               <input type="checkbox" checked={it.id != null && selectedIds.includes(Number(it.id))} onChange={()=>{ if (it.id != null) toggleSelect(Number(it.id)) }} />
@@ -895,7 +894,7 @@ export default function AdminCredentials() {
                   {groupedItems.others && groupedItems.others.length > 0 ? (
                     <div style={{marginTop:12}}>
                       <div style={{fontWeight:700, marginBottom:8}}>Uncategorized</div>
-                      {groupedItems.others.map((it, idx: number) => (
+                      {groupedItems.others.map((it) => (
                         <div key={it.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
                           <div style={{display:'flex', alignItems:'center', gap:8, flex:1}}>
                             <input type="checkbox" checked={it.id != null && selectedIds.includes(Number(it.id))} onChange={()=>{ if (it.id != null) toggleSelect(Number(it.id)) }} />

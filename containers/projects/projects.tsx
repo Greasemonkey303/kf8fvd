@@ -79,8 +79,7 @@ export default function Projects() {
             <Card key={p.id} title={p.title} subtitle={p.subtitle} className={p.slug === 'hotspot' ? styles.featured : undefined}>
               <div className={styles.projectInner}>
                 <div className={styles.imgWrap}>
-                  {p.image_path ? (
-                      // eslint-disable-next-line @next/next/no-img-element
+                    {p.image_path ? (
                       (() => {
                         try {
                           const pathVal = p.image_path
@@ -93,7 +92,7 @@ export default function Projects() {
                                 const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
                                 if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
                                 imageSrc = buildPublicUrl(path)
-                              } catch (e) {
+                              } catch {
                                 imageSrc = buildPublicUrl(pathVal)
                               }
                             } else if (pathVal.startsWith('http') || pathVal.startsWith('/')) {
@@ -108,7 +107,7 @@ export default function Projects() {
                               <Image src={finalImageSrc} alt={p.title || 'Project image'} className={styles.thumb} width={320} height={200} sizes="(max-width: 899px) 100vw, (max-width: 1099px) 50vw, 33vw" unoptimized={finalImageSrc.startsWith('data:') || finalImageSrc.startsWith('blob:') || finalImageSrc.indexOf('X-Amz-Algorithm') !== -1 || finalImageSrc.indexOf('minio') !== -1 || finalImageSrc.indexOf('127.0.0.1') !== -1} />
                             )
                           }
-                        } catch (e) {
+                        } catch {
                           // fallthrough to placeholder
                         }
                         return <div className={styles.thumbFake} />
@@ -133,7 +132,7 @@ export default function Projects() {
                       try {
                         // ask server to delete the object then clear image_path
                         await fetch('/api/uploads/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: p.image_path }) })
-                      } catch (e) {
+                      } catch {
                         // ignore delete errors
                       }
                       try {

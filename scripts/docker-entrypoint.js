@@ -11,7 +11,7 @@ for (const name of secretFiles) {
   if (fs.existsSync(p)) {
     try {
       process.env[name.toUpperCase()] = fs.readFileSync(p, 'utf8').trim();
-    } catch (e) {
+    } catch {
       // continue
     }
   }
@@ -36,7 +36,7 @@ let heartbeatInterval = setInterval(() => {
   try {
     const mem = process.memoryUsage();
     console.log(`docker-entrypoint: heartbeat ${new Date().toISOString()} PID=${process.pid} rss=${Math.round(mem.rss/1024/1024)}MB`);
-  } catch (e) {
+  } catch {
     console.log(`docker-entrypoint: heartbeat ${new Date().toISOString()}`);
   }
 }, 5000);

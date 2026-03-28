@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import createDOMPurify from 'dompurify'
 import styles from './page.module.css'
 import Modal from '@/components/modal/Modal'
@@ -31,8 +31,10 @@ export default function Page() {
   const confirmCancelRef = useRef<HTMLButtonElement | null>(null)
   const closeModalBtnRef = useRef<HTMLButtonElement | null>(null)
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
+  const page = 1
   const [limit] = useState(100)
+  const loadRef = useRef(load)
+  loadRef.current = load
 
   async function load(p = 1) {
     setLoading(true)
@@ -40,16 +42,16 @@ export default function Page() {
       const res = await fetch(`/api/admin/messages?page=${p}&limit=${limit}`, { cache: 'no-store' })
       const j = await res.json()
       setItems(j.items || [])
-    } catch (e) {
-      console.error('Failed to load messages', e)
+    } catch (error) {
+      console.error('Failed to load messages', error)
       setItems([])
     }
     setLoading(false)
   }
 
   useEffect(() => {
-    void load()
-    const pollId = window.setInterval(() => { void load(page) }, 30000)
+    void loadRef.current()
+    const pollId = window.setInterval(() => { void loadRef.current(page) }, 30000)
     return () => window.clearInterval(pollId)
   }, [page])
 

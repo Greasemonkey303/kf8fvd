@@ -28,7 +28,7 @@ export default function CalllogUploader() {
 
       const res = await fetch('/admin/api/calllog', { method: 'POST', body: fd })
       let j: unknown = null
-      try { j = await res.json() } catch (_) { j = null }
+      try { j = await res.json() } catch { j = null }
 
       const getNum = (obj: unknown, key: string) => {
         if (!obj || typeof obj !== 'object') return 0

@@ -15,12 +15,6 @@ type HeroImageRecord = Record<string, unknown> & {
   url?: string
   alt?: string
   is_featured?: number | boolean
-  variants?: string | HeroVariants | null
-}
-
-type HeroVariants = {
-  avif?: string
-  webp?: string
 }
 
 async function fetchHero() {
@@ -30,9 +24,8 @@ async function fetchHero() {
     if (!hero) return { hero: null, images: [] }
     const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero.id])
     return { hero, images }
-  } catch (err: unknown) {
-    // eslint-disable-next-line no-console
-    console.error('containers/hero fetchHero error', err)
+  } catch (error: unknown) {
+    console.error('containers/hero fetchHero error', error)
     return { hero: null, images: [] }
   }
 }
@@ -64,7 +57,7 @@ export default async function Hero() {
             // not a bucket-style path we can proxy; fall back to raw URL
             imageSrc = raw
           }
-        } catch (err) {
+        } catch {
           imageSrc = raw
         }
       } else {
@@ -72,43 +65,20 @@ export default async function Hero() {
         imageSrc = buildPublicUrl(raw)
       }
     }
-  } catch (e) {
+  } catch {
     imageSrc = '/grand_rapids.jpg'
   }
 
   const rawAlt = featured?.alt ? String(featured.alt) : ''
   const altText = rawAlt ? rawAlt.replace(/\.[^.\/\\]+$/, '') : 'Hero image'
-  // Build variant URLs if available
-  let avifUrl: string | null = null
-  let webpUrl: string | null = null
-  try {
-    let variants: HeroVariants | string | null | undefined = featured?.variants
-    if (variants && typeof variants === 'string') {
-      try { variants = JSON.parse(variants) as HeroVariants } catch { /* ignore */ }
-    }
-    if (variants && typeof variants === 'object') {
-      if (variants.avif) {
-        const v = String(variants.avif)
-        avifUrl = v.startsWith('/') || /^https?:\/\//i.test(v) ? v : buildPublicUrl(v)
-      }
-      if (variants.webp) {
-        const v = String(variants.webp)
-        webpUrl = v.startsWith('/') || /^https?:\/\//i.test(v) ? v : buildPublicUrl(v)
-      }
-    }
-  } catch (e) {
-    // ignore
-  }
-
   const fallbackSrc = imageSrc
+  const heroBackgroundStyle = {
+    backgroundImage: `url("${fallbackSrc.replace(/"/g, '\\"')}")`,
+  }
 
   return (
     <section className={styles.hero} aria-labelledby="hero-title" role="region">
-      <picture className={styles.bg}>
-        {avifUrl && <source srcSet={avifUrl} type="image/avif" />}
-        {webpUrl && <source srcSet={webpUrl} type="image/webp" />}
-        <img src={fallbackSrc} alt={altText} className={styles.bgImg} loading="eager" fetchPriority="high" decoding="async" />
-      </picture>
+      <div className={styles.bg} role="img" aria-label={altText} style={heroBackgroundStyle} />
       <div className={styles.inner}>
         <h1 id="hero-title">{String(hero?.title || 'KF8FVD - Amateur Radio')}</h1>
         {hero && hero.content && String(hero.content).trim() ? (

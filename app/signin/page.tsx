@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { tlog } from '@/lib/turnstileDebug';
 import { loadTurnstileScript, waitForTurnstileReady, fetchTurnstileSiteKey } from '@/lib/turnstileLoader';
 import { useRouter } from 'next/navigation';
@@ -34,21 +34,21 @@ export default function SignInPage() {
 
   const getTurnstile = () => (typeof window !== 'undefined' ? (window as unknown as { turnstile?: { render?: (el: HTMLElement, opts?: { sitekey?: string; callback?: (token: string) => void; 'error-callback'?: () => void; 'expired-callback'?: () => void; 'timeout-callback'?: () => void }) => number | string; reset?: (id: number | string) => void } }).turnstile : undefined)
 
-  function clearTurnstileToken() {
+  const clearTurnstileToken = useCallback(() => {
     setCfToken(null)
     try {
       const inp = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
       if (inp) inp.value = ''
     } catch (e) { void e }
-  }
+  }, [])
 
-  function resetTurnstileWidget() {
+  const resetTurnstileWidget = useCallback(() => {
     clearTurnstileToken()
     try {
       const t = getTurnstile()
       if (t && cfWidgetId != null && typeof t.reset === 'function') t.reset(cfWidgetId)
     } catch (e) { void e }
-  }
+  }, [cfWidgetId, clearTurnstileToken])
 
   useEffect(()=>{
     let cancelled = false
@@ -115,7 +115,7 @@ export default function SignInPage() {
     }
 
     return () => { cancelled = true }
-  }, [])
+  }, [clearTurnstileToken, resetTurnstileWidget])
 
   // autofocus email input on mount
   useEffect(()=>{

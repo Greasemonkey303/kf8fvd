@@ -24,6 +24,7 @@ const Navbar: React.FC = () => {
   });
   const [isAuth, setIsAuth] = useState(false);
   const [user, setUser] = useState<string | null>(null);
+  const closeMenu = () => setOpen(false)
 
   useEffect(() => {
     const readAuth = async () => {
@@ -49,10 +50,6 @@ const Navbar: React.FC = () => {
       window.removeEventListener('focus', onFocus);
     };
   }, []);
-
-  useEffect(() => {
-    setOpen(false)
-  }, [pathname])
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 16)
@@ -85,7 +82,7 @@ const Navbar: React.FC = () => {
   return (
     <header className={`${styles.header} ${scrolled ? styles.scrolled : ''}`}>
       <div className={styles.container}>
-        <Link href="/" className={styles.brandLink} aria-label="KF8FVD home">
+        <Link href="/" className={styles.brandLink} aria-label="KF8FVD home" onClick={closeMenu}>
           <div className={styles.brandPlate}>
             <Image src="/logo/navbar-logo.svg" alt="KF8FVD" className={styles.logo} width={420} height={168} priority />
           </div>
@@ -103,6 +100,7 @@ const Navbar: React.FC = () => {
                 href={item.href}
                 className={`${styles.navLink} ${isActive(item.href) ? styles.active : ''}`}
                 aria-current={isActive(item.href) ? 'page' : undefined}
+                onClick={closeMenu}
               >
                 {item.label}
               </Link>
@@ -137,11 +135,11 @@ const Navbar: React.FC = () => {
                   <span className={styles.userLabel}>Signed in</span>
                   <span className={styles.userName}>{user ? user : 'Operator'}</span>
                 </div>
-                <Link href="/admin" className={styles.adminLink}>Admin</Link>
+                <Link href="/admin" className={styles.adminLink} onClick={closeMenu}>Admin</Link>
                 <button onClick={() => { signOut({ callbackUrl: '/' }) }} className={styles.linkButton}>Log Out</button>
               </>
             ) : (
-              <Link href="/signin" className={styles.signInLink}>Sign In</Link>
+              <Link href="/signin" className={styles.signInLink} onClick={closeMenu}>Sign In</Link>
             )}
           </div>
 
@@ -169,6 +167,7 @@ const Navbar: React.FC = () => {
                 href={item.href}
                 className={`${styles.mobileLink} ${isActive(item.href) ? styles.active : ''}`}
                 aria-current={isActive(item.href) ? 'page' : undefined}
+                onClick={closeMenu}
               >
                 {item.label}
               </Link>
@@ -182,12 +181,12 @@ const Navbar: React.FC = () => {
                   <strong className={styles.mobileUserName}>{user ? user : 'Operator'}</strong>
                 </div>
                 <div className={styles.mobileActions}>
-                  <Link href="/admin" className={styles.adminLink}>Admin</Link>
+                  <Link href="/admin" className={styles.adminLink} onClick={closeMenu}>Admin</Link>
                   <button onClick={() => { signOut({ callbackUrl: '/' }) }} className={styles.linkButton}>Log Out</button>
                 </div>
               </>
             ) : (
-              <Link href="/signin" className={styles.signInLink}>Sign In</Link>
+              <Link href="/signin" className={styles.signInLink} onClick={closeMenu}>Sign In</Link>
             )}
           </div>
         </nav>

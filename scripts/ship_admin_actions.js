@@ -7,7 +7,7 @@ const mysql = require('mysql2/promise')
 
 const stateFile = path.resolve(process.cwd(), '.shipper_state.json')
 function loadState(){
-  try { return JSON.parse(fs.readFileSync(stateFile,'utf8')) } catch(e){ return { lastId: 0 } }
+  try { return JSON.parse(fs.readFileSync(stateFile,'utf8')) } catch { return { lastId: 0 } }
 }
 function saveState(state){ fs.writeFileSync(stateFile, JSON.stringify(state)) }
 

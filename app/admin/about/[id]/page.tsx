@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import styles from '../../admin.module.css'
 import projectStyles from '../../../projects/hotspot/hotspot.module.css'
@@ -53,6 +53,15 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
   const toast = useToast()
   const [deleteModal, setDeleteModal] = useState<Record<string, unknown> | null>({ open: false })
   const savingRef = useRef(false)
+  const currentDraftKey = useMemo(() => `admin_about_draft:${slug || (id ? `about-${id}` : 'about')}`, [id, slug])
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    toast?.showToast?.(message, type)
+  }, [toast])
+  const clearDrafts = useCallback((...keys: string[]) => {
+    for (const key of keys) {
+      try { localStorage.removeItem(key) } catch {}
+    }
+  }, [])
   
 
   const draftKey = (idOrSlug?: string) => `admin_about_draft:${idOrSlug || slug || (id ? `about-${id}` : 'about')}`
@@ -121,12 +130,14 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
           setMetadata((prev) => ({ ...prev, ...md }))
         } catch {}
       }
-    } catch (e) {
+    } catch {
       // ignore
     } finally { setLoading(false) }
   }
 
-  useEffect(()=>{ const t = setTimeout(load, 0); return ()=>clearTimeout(t) }, [idParam])
+  const loadRef = useRef(load)
+  loadRef.current = load
+  useEffect(()=>{ const t = setTimeout(() => { void loadRef.current() }, 0); return ()=>clearTimeout(t) }, [idParam])
 
   // autosave locally (debounced)
   const autosaveTimer = useRef<number | null>(null)
@@ -135,17 +146,17 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     autosaveTimer.current = window.setTimeout(()=>{
       try {
         const payload = { slug, title, metadata: { ...metadata, cards }, id, updated: Date.now() }
-        localStorage.setItem(draftKey(), JSON.stringify(payload))
+        localStorage.setItem(currentDraftKey, JSON.stringify(payload))
         // autosave: store locally but avoid noisy toasts on every autosave
       } catch {}
     }, 800)
     return ()=>{ if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
-  }, [slug, title, metadata, id])
+  }, [cards, currentDraftKey, id, metadata, slug, title])
 
   // restore any draft available (try slug/id-specific, then generic)
   useEffect(()=>{
     try {
-      const keysToTry = [draftKey(), draftKey('about'), `admin_about_draft:about-${id}`]
+      const keysToTry = [currentDraftKey, 'admin_about_draft:about', `admin_about_draft:about-${id}`]
       for (const key of keysToTry) {
         const raw = localStorage.getItem(key)
         if (!raw) continue
@@ -156,13 +167,13 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
             if (p.id) setId(p.id)
             if (p.slug) setSlug(p.slug)
             if (p.metadata) setMetadata(p.metadata)
-            try{ toast?.showToast && toast.showToast('Restored unsaved draft', 'info') }catch{}
+            showToast('Restored unsaved draft', 'info')
             break
           }
         } catch {}
       }
     } catch {}
-  }, [])
+  }, [currentDraftKey, id, showToast, title])
 
   const loadDraft = ()=>{
     try {
@@ -174,7 +185,11 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     } catch {}
   }
 
-  const discardDraft = ()=>{ try{ localStorage.removeItem(draftKey()); localStorage.removeItem('admin_about_draft:about') }catch{}; load(); try{ toast?.showToast && toast.showToast('Draft discarded', 'info') }catch{} }
+  const discardDraft = ()=>{
+    clearDrafts(currentDraftKey, 'admin_about_draft:about')
+    void load()
+    showToast('Draft discarded', 'info')
+  }
 
   const updateMetadata = (path: string[], value: unknown) => {
     setMetadata((prev)=>{
@@ -186,19 +201,6 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     })
   }
 
-  const addCard = () => setCards(prev => ([...prev, { title: 'Untitled', subtitle: '', content: '', image: '/headshot.jpg' }]))
-  const removeCard = (idx: number) => setCards(prev => prev.filter((_,i)=>i!==idx))
-  const moveCard = (idx: number, dir: number) => {
-    setCards(prev => {
-      const copy = prev.slice()
-      const to = idx + dir
-      if (to < 0 || to >= copy.length) return prev
-      const tmp = copy[to]
-      copy[to] = copy[idx]
-      copy[idx] = tmp
-      return copy
-    })
-  }
   const updateCard = (idx: number, key: keyof CardData, value: unknown) => {
     setCards(old => {
       const copy = old.slice()
@@ -355,12 +357,12 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
           if (!newCard) return []
           return (Array.isArray(newCard.images) && newCard.images.length) ? (newCard.images as string[]).slice(0,6) : (newCard.image ? [newCard.image] : [])
         })
-        try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
+        showToast('Card deleted', 'success')
       } else if (deleteModal.mode === 'named') {
         const key = String((deleteModal as Record<string, unknown>)?.namedKey || '')
         const res = await fetch(`/admin/api/pages?id=${id}&card=${encodeURIComponent(key)}`, { method: 'DELETE' })
         if (!res.ok) { alert('Delete failed'); return }
-        try { toast?.showToast && toast.showToast('Card deleted', 'success') } catch {}
+        showToast('Card deleted', 'success')
         await load()
       } else if (deleteModal.mode === 'page') {
         const res = await fetch(`/admin/api/pages?id=${id}`, { method: 'DELETE' })
@@ -381,7 +383,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
         })
         setImages(prev => prev.filter((_,i)=>i!==idx))
       }
-    } catch (e) {
+    } catch {
       // ignore
     } finally {
       setDeleteModal({ open: false })
@@ -390,21 +392,24 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
 
   // keep images state in sync with the active card's gallery
   useEffect(()=>{
-    try{
+    setImages(prev => {
       const imgs = Array.isArray(cards[activeIdx]?.images) && cards[activeIdx]?.images.length ? (cards[activeIdx]?.images as string[]).slice(0,6) : (cards[activeIdx]?.image ? [cards[activeIdx].image] : [])
-      const prev = images || []
-      const a = JSON.stringify(prev)
+      const a = JSON.stringify(prev || [])
       const b = JSON.stringify(imgs)
-      if (a !== b) setImages(imgs)
-    }catch{}
-  }, [cards, activeIdx])
+      return a !== b ? imgs : prev
+    })
+  }, [activeIdx, cards])
+
+  const handleSaveShortcut = useEffectEvent(() => {
+    void handleSave()
+  })
 
   // Ctrl/Cmd+S save
   useEffect(()=>{
-    const handler = (ev: KeyboardEvent)=>{ if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='s') { ev.preventDefault(); handleSave() } }
+    const handler = (ev: KeyboardEvent)=>{ if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='s') { ev.preventDefault(); handleSaveShortcut() } }
     window.addEventListener('keydown', handler)
     return ()=>window.removeEventListener('keydown', handler)
-  }, [slug, title, metadata, id, isPublished])
+  }, [])
 
   const getErrMsg = (err: unknown) => { if (err instanceof Error) return err.message; try { return String(err) } catch { return 'Unknown error' } }
   async function handleSave() {
@@ -419,9 +424,9 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       if (!res.ok) { const err = await res.json().catch(()=>({})); alert('Save failed: ' + (err?.error || res.status)); return }
       const json = await res.json()
       if (!id && json?.id) setId(json.id)
-      try { localStorage.removeItem(draftKey()); localStorage.removeItem('admin_about_draft:about') } catch{}
-      try { toast?.showToast && toast.showToast('Saved', 'success') } catch{}
-    }catch(e){ alert('Save failed: ' + getErrMsg(e)) } finally { setSaving(false); savingRef.current = false }
+      clearDrafts(currentDraftKey, 'admin_about_draft:about')
+      showToast('Saved', 'success')
+    }catch(error){ alert('Save failed: ' + getErrMsg(error)) } finally { setSaving(false); savingRef.current = false }
   }
 
   // upload card image for a specific card index (tries direct server upload then presign PUT, falls back)
@@ -448,7 +453,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
           return copy
         })
         if (idx === activeIdx) setImages(prev => { const next = prev.slice(); if (!next.includes(url)) next.push(url); return next })
-        setUploadProgress(p=>({ ...p, [idx]: 0 })); try{ toast?.showToast && toast.showToast('Image uploaded','success') }catch{}; return
+        setUploadProgress(p=>({ ...p, [idx]: 0 })); showToast('Image uploaded', 'success'); return
       }
     } catch (err) { console.error('direct upload error', getErrMsg(err)) }
 
@@ -463,7 +468,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       if (!upload.ok) {
         // fallback to server direct
         const fd2 = new FormData(); fd2.append('file', file); fd2.append('slug',String(slug||'about')); fd2.append('filename', file.name)
-        try { const direct2 = await fetch('/api/uploads/direct', { method:'POST', body: fd2 }); const j = await direct2.json(); if (direct2.ok && (j.publicUrl || j.key)) { const jurl = j.key ? buildPublicUrl(j.key) : (j.publicUrl || j.key); updateCard(idx, 'image', jurl); setUploadProgress(p=>({ ...p, [idx]: 0 })); try{ toast?.showToast && toast.showToast('Image uploaded','success') }catch{}; return } } catch(e){ console.error('direct fallback error', getErrMsg(e)) }
+        try { const direct2 = await fetch('/api/uploads/direct', { method:'POST', body: fd2 }); const j = await direct2.json(); if (direct2.ok && (j.publicUrl || j.key)) { const jurl = j.key ? buildPublicUrl(j.key) : (j.publicUrl || j.key); updateCard(idx, 'image', jurl); setUploadProgress(p=>({ ...p, [idx]: 0 })); showToast('Image uploaded', 'success'); return } } catch(error){ console.error('direct fallback error', getErrMsg(error)) }
         alert('Upload failed')
         setUploadProgress(p=>({ ...p, [idx]: 0 })); return
       }
@@ -482,16 +487,8 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       })
       if (idx === activeIdx && newUrl) setImages(prev => { if (prev.includes(newUrl)) return prev; return [...prev, newUrl] })
       setUploadProgress(p=>({ ...p, [idx]: 0 }))
-      try{ toast?.showToast && toast.showToast('Image uploaded','success') }catch{}
+      showToast('Image uploaded', 'success')
     } catch (err) { console.error('upload error', getErrMsg(err)); setUploadProgress(p=>({ ...p, [idx]: 0 })); alert('Upload failed: ' + getErrMsg(err)) }
-  }
-
-  // keep a wrapper that preserves backward compatibility with old card keys
-  async function uploadCardImage(file: File, cardKey: 'aboutCard'|'topologyCard'|'hamshackCard'){
-    // find index for legacy key if possible
-    const mapping: Record<string, number> = { aboutCard: 0, topologyCard: 1, hamshackCard: 2 }
-    const idx = mapping[cardKey] ?? 0
-    return uploadCardImageIndex(file, idx)
   }
 
   if (loading) return <div style={{padding:20}}>Loading…</div>

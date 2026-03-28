@@ -3,7 +3,7 @@
 const http = require('http')
 const mysql = require('mysql2/promise')
 let Redis
-try { Redis = require('ioredis') } catch (e) { Redis = null }
+try { Redis = require('ioredis') } catch { Redis = null }
 
 const port = Number(process.env.METRICS_PORT || process.env.EXPORTER_PORT || 9403)
 
@@ -37,7 +37,7 @@ async function collect() {
         if (loginAttempts) metrics.login_attempts = Number(loginAttempts)
         if (authLocksTotal) metrics.auth_locks = Number(authLocksTotal)
         else if (authLocksActive) metrics.auth_locks = Number(authLocksActive)
-      } catch (e) {
+      } catch {
         // best-effort, continue to scan rl:* keys below
       }
 
@@ -86,7 +86,7 @@ const server = http.createServer(async (req, res) => {
     const body = toProm(m)
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
     res.end(body)
-  } catch (e) {
+  } catch {
     res.writeHead(500, { 'Content-Type': 'text/plain' })
     res.end('error')
   }

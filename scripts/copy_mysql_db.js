@@ -45,13 +45,12 @@ async function copyTable(source, target, srcDb, table) {
         if (dtype === 'json' || ctype.includes('json')) jsonCols.add(name)
       }
     }
-  } catch (e) {
+  } catch {
     // best-effort: continue without json column detection
   }
 
   const cols = Object.keys(rows[0])
-  const placeholders = cols.map(_ => '?').join(',')
-  const insertSql = `INSERT INTO \`${escIdent(table)}\` (${cols.map(c=>`\`${escIdent(c)}\``).join(',')}) VALUES (${placeholders})`
+  const placeholders = cols.map(() => '?').join(',')
   const batchSize = 500
 
   function normalizeJsonValue(val) {

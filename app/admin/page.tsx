@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import styles from './admin.module.css'
@@ -60,28 +61,31 @@ export default function AdminPage() {
     }
   }
 
-  useEffect(()=>{
-    void fetchDashboard()
-    // fetch featured hero for dashboard quick card
-    ;(async ()=>{
-      try {
-        const r = await fetch('/api/hero')
-        const j = await r.json()
-        const h = j?.hero || null
-        const imgs = Array.isArray(j?.images) ? (j.images as Array<Record<string, unknown>>) : []
-        const f = imgs.find((i) => Number((i as Record<string, unknown>).is_featured) === 1) || imgs[0] || null
-        if (f) {
-          const url = String((f as Record<string, unknown>).url || '')
-          const title = String(h?.title || '')
-          setFeaturedHero({ url, title })
-        }
-      } catch {}
-    })()
+  const fetchFeaturedHero = async () => {
+    try {
+      const r = await fetch('/api/hero')
+      const j = await r.json()
+      if (!mountedRef.current) return
+      const h = j?.hero || null
+      const imgs = Array.isArray(j?.images) ? (j.images as Array<Record<string, unknown>>) : []
+      const f = imgs.find((i) => Number((i as Record<string, unknown>).is_featured) === 1) || imgs[0] || null
+      if (!f) return
+      const url = String((f as Record<string, unknown>).url || '')
+      const title = String(h?.title || '')
+      setFeaturedHero({ url, title })
+    } catch {
+      // ignore
+    }
+  }
 
-    // fetch on-air status for admin control (initial)
+  useEffect(()=>{
+    const dashboardTimeoutId = window.setTimeout(() => { void fetchDashboard() }, 0)
+    const featuredHeroTimeoutId = window.setTimeout(() => { void fetchFeaturedHero() }, 0)
     const timeoutId = window.setTimeout(() => { void fetchOnAir() }, 0)
     const pollId = window.setInterval(() => { void fetchDashboard() }, 30000)
     return () => {
+      window.clearTimeout(dashboardTimeoutId)
+      window.clearTimeout(featuredHeroTimeoutId)
       window.clearTimeout(timeoutId)
       window.clearInterval(pollId)
     }
@@ -188,7 +192,7 @@ export default function AdminPage() {
               <div className="card-action" style={{width:'100%', maxWidth:980, display:'flex', justifyContent:'center', alignItems:'center', padding:12, boxSizing:'border-box', overflow:'hidden'}}>
                 <div style={{textAlign:'center', width:'100%'}}>
                     <div style={{display:'block', margin:'0 auto 8px', width:'100%', maxWidth:520, height:220, overflow:'hidden', borderRadius:12, boxSizing:'border-box'}}>
-                    <img src={getPreviewSrc(featuredHero.url)} alt={featuredHero.title || 'Featured hero'} style={{width:'100%', height:'100%', objectFit:'cover', display:'block', maxWidth:'100%'}} />
+                    <Image src={getPreviewSrc(featuredHero.url)} alt={featuredHero.title || 'Featured hero'} width={520} height={220} unoptimized style={{width:'100%', height:'100%', objectFit:'cover', display:'block', maxWidth:'100%'}} />
                   </div>
                   <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:12}}>
                     <div>

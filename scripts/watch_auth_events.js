@@ -15,7 +15,7 @@ function loadEnv(file = '.env.local') {
         if (!process.env[key]) process.env[key] = val;
       }
     });
-  } catch (e) {}
+  } catch {}
 }
 loadEnv('.env.local');
 
@@ -48,13 +48,20 @@ function now() { return new Date().toISOString() }
 
   // get current max ids
   let lastTwoFa = 0, lastAttempt = 0, lastLock = 0;
-  try { const [r] = await db.execute('SELECT COALESCE(MAX(id),0) as mx FROM two_factor_codes'); lastTwoFa = r[0].mx || 0 } catch (_) { console.log(now(), 'two_factor_codes table missing or inaccessible') }
-  try { const [r] = await db.execute('SELECT COALESCE(MAX(id),0) as mx FROM login_attempts'); lastAttempt = r[0].mx || 0 } catch (_) { console.log(now(), 'login_attempts table missing or inaccessible') }
-  try { const [r] = await db.execute('SELECT COALESCE(MAX(id),0) as mx FROM auth_locks'); lastLock = r[0].mx || 0 } catch (_) { console.log(now(), 'auth_locks table missing or inaccessible') }
+  try { const [r] = await db.execute('SELECT COALESCE(MAX(id),0) as mx FROM two_factor_codes'); lastTwoFa = r[0].mx || 0 } catch { console.log(now(), 'two_factor_codes table missing or inaccessible') }
+  try { const [r] = await db.execute('SELECT COALESCE(MAX(id),0) as mx FROM login_attempts'); lastAttempt = r[0].mx || 0 } catch { console.log(now(), 'login_attempts table missing or inaccessible') }
+  try { const [r] = await db.execute('SELECT COALESCE(MAX(id),0) as mx FROM auth_locks'); lastLock = r[0].mx || 0 } catch { console.log(now(), 'auth_locks table missing or inaccessible') }
 
   console.log(now(), 'initial ids', { lastTwoFa, lastAttempt, lastLock });
 
-  process.on('SIGINT', async () => { console.log(now(), 'shutting down...'); try{ redis && redis.quit(); db && db.end(); } catch(_){}; process.exit(0) })
+  process.on('SIGINT', async () => {
+    console.log(now(), 'shutting down...')
+    try {
+      if (redis) redis.quit()
+      if (db) db.end()
+    } catch {}
+    process.exit(0)
+  })
 
   while (true) {
     try {
@@ -67,7 +74,7 @@ function now() { return new Date().toISOString() }
             lastTwoFa = Math.max(lastTwoFa, r.id || 0);
           }
         }
-      } catch (e) {}
+      } catch {}
 
       // login_attempts
       try {
@@ -78,7 +85,7 @@ function now() { return new Date().toISOString() }
             lastAttempt = Math.max(lastAttempt, r.id || 0);
           }
         }
-      } catch (e) {}
+      } catch {}
 
       // auth_locks
       try {
@@ -89,7 +96,7 @@ function now() { return new Date().toISOString() }
             lastLock = Math.max(lastLock, r.id || 0);
           }
         }
-      } catch (e) {}
+      } catch {}
 
       // Redis keys
       if (redis) {
