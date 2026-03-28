@@ -22,14 +22,10 @@ export default function CreateUserPage() {
 
   if (loading) return <p>Loading…</p>
   if (!isAdmin) return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
-          <h2>Unauthorized</h2>
-          <p className={styles.smallMuted}>You must be an administrator to access this page.</p>
-        </div>
-      </div>
-    </main>
+    <div className={styles.emptyStateCard}>
+      <h2 className={styles.pageTitle}>Unauthorized</h2>
+      <p className={styles.smallMuted}>You must be an administrator to access this page.</p>
+    </div>
   )
 
   async function submit(e: React.FormEvent) {
@@ -62,11 +58,13 @@ export default function CreateUserPage() {
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
-          <h2>Create User</h2>
-          <p className={styles.smallMuted}>Create users and assign roles. Available roles: Admin, Standard user, Editor.</p>
+    <main className={styles.pageBody}>
+      <div className={styles.pageHeader}>
+        <div className={styles.pageTitleGroup}>
+          <h2 className={styles.pageTitle}>Create User</h2>
+          <div className={styles.pageSubtitle}>Create users and assign roles. Available roles: Admin, Standard user, Editor.</div>
+        </div>
+      </div>
 
           <form onSubmit={submit} className="form-grid">
             <label>
@@ -116,8 +114,6 @@ export default function CreateUserPage() {
               User created successfully — <Link href="/admin/users">View users</Link>
             </div>
           )}
-        </div>
-      </div>
     </main>
   )
 }

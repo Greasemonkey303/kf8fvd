@@ -5,6 +5,7 @@ import styles from '../../admin.module.css'
 import Card from '../../../../components/card/card'
 import { buildPublicUrl } from '@/lib/s3'
 import Modal from '@/components/modal/Modal'
+import RichTextEditor from '@/components/admin/RichTextEditor'
 
 type Hero = { id?: number; title?: string; subtitle?: string; content?: string }
 type HeroImage = { id?: number; url?: string; alt?: string; is_featured?: number }
@@ -236,9 +237,7 @@ export default function AdminHeroPage() {
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
+    <main className={styles.pageBody}>
           <div className={styles.adminTop}>
             <div>
               <h2 className="title">Home — Hero</h2>
@@ -280,10 +279,16 @@ export default function AdminHeroPage() {
                 <div className="field-label">Subtitle</div>
                 <input suppressHydrationWarning value={hero?.subtitle || ''} onChange={e=>setHero(h=>({ ...(h||{}), subtitle: e.target.value }))} className={styles.formInput} />
               </label>
-              <label>
-                <div className="field-label">Content (HTML allowed)</div>
-                <textarea suppressHydrationWarning value={hero?.content || ''} onChange={e=>setHero(h=>({ ...(h||{}), content: e.target.value }))} className={styles.formTextarea} />
-              </label>
+              <div>
+                <div className="field-label">Content</div>
+                <RichTextEditor
+                  value={hero?.content || ''}
+                  onChange={(nextValue) => setHero(currentHero => ({ ...(currentHero || {}), content: nextValue }))}
+                  placeholder="Write the hero copy, add emphasis, links, or supporting details."
+                  minHeight={220}
+                  expandedMinHeight={420}
+                />
+              </div>
             </div>
             <div style={{width:360}}>
               <Card>
@@ -405,8 +410,6 @@ export default function AdminHeroPage() {
               </Card>
             </div>
           </div>
-        </div>
-      </div>
     </main>
   )
 }

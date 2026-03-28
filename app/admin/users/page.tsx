@@ -35,64 +35,68 @@ export default function AdminUsers() {
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
-          <h2>Users</h2>
-          <div className="stack">
-            <form onSubmit={submit} className="form-grid" suppressHydrationWarning>
-              <label>
-                <div className={styles.fieldLabel}>Name</div>
-                <input value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className={styles.formInput} suppressHydrationWarning />
-              </label>
-              <label>
-                <div className={styles.fieldLabel}>Email</div>
-                <input type="email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className={styles.formInput} suppressHydrationWarning />
-              </label>
-              <label>
-                <div className={styles.fieldLabel}>Password</div>
-                <input type="password" value={form.password} onChange={e=>setForm({...form, password: e.target.value})} className={styles.formInput} suppressHydrationWarning />
-              </label>
-              <div>
-                <div className={styles.fieldLabel}>Role</div>
-                <div className="flex gap-2">
-                  {AVAILABLE_ROLES.map(r=> (
-                    <label key={r} className="flex items-center gap-2">
-                      <input type="checkbox" checked={form.roles.includes(r)} onChange={e=>{
-                        const next = form.roles.includes(r) ? form.roles.filter(x=>x!==r) : [...form.roles, r]
-                        setForm({...form, roles: next})
-                      }} />
-                      <span className="muted">{r}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end mt-4">
-                <button className={styles.btnGhost} type="submit" suppressHydrationWarning>Create</button>
-              </div>
-            </form>
-
-            <hr />
-
-            {loading ? (
-              <p>Loading…</p>
-            ) : (
-              <ul className="stack">
-                {users.map(u => (
-                  <li key={u.id} className="row between">
-                    <div>
-                      <strong>{u.name || u.email}</strong> <span className="muted">{u.email}</span>
-                      {u.roles && u.roles.length ? <div className="muted">Roles: {u.roles.join(', ')}</div> : null}
-                    </div>
-                    <div className="flex gap-2">
-                      <Link className={styles.btnGhost} href={`/admin/users/${u.id}`}>Edit</Link>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+    <main className={styles.pageBody}>
+      <div className={styles.pageHeader}>
+        <div className={styles.pageTitleGroup}>
+          <h2 className={styles.pageTitle}>Users</h2>
+          <div className={styles.pageSubtitle}>Create administrators or editors and review existing roles.</div>
         </div>
+      </div>
+      <div className={styles.simpleStack}>
+        <form onSubmit={submit} className="form-grid" suppressHydrationWarning>
+          <label>
+            <div className={styles.fieldLabel}>Name</div>
+            <input value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className={styles.formInput} suppressHydrationWarning />
+          </label>
+          <label>
+            <div className={styles.fieldLabel}>Email</div>
+            <input type="email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className={styles.formInput} suppressHydrationWarning />
+          </label>
+          <label>
+            <div className={styles.fieldLabel}>Password</div>
+            <input type="password" value={form.password} onChange={e=>setForm({...form, password: e.target.value})} className={styles.formInput} suppressHydrationWarning />
+          </label>
+          <div>
+            <div className={styles.fieldLabel}>Role</div>
+            <div className={styles.checkGroup}>
+              {AVAILABLE_ROLES.map(r=> (
+                <label key={r} className={styles.checkboxWrap}>
+                  <input type="checkbox" checked={form.roles.includes(r)} onChange={e=>{
+                    const next = form.roles.includes(r) ? form.roles.filter(x=>x!==r) : [...form.roles, r]
+                    setForm({...form, roles: next})
+                  }} className={styles.checkboxInput} />
+                  <span className={styles.checkboxBox} aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  </span>
+                  <span className="muted">{r}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <button className={styles.btnGhost} type="submit" suppressHydrationWarning>Create</button>
+          </div>
+        </form>
+
+        <hr />
+
+        {loading ? (
+          <p>Loading…</p>
+        ) : (
+          <ul className={styles.simpleList}>
+            {users.map(u => (
+              <li key={u.id} className={styles.simpleListItem}>
+                <div className={styles.itemMeta}>
+                  <strong>{u.name || u.email}</strong> <span className="muted">{u.email}</span>
+                  {u.roles && u.roles.length ? <div className="muted">Roles: {u.roles.join(', ')}</div> : null}
+                </div>
+                <div className="flex gap-2">
+                  <Link className={styles.btnGhost} href={`/admin/users/${u.id}`}>Edit</Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </main>
   )

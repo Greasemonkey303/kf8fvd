@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { tlog } from '@/lib/turnstileDebug'
 import { loadTurnstileScript, waitForTurnstileReady, fetchTurnstileSiteKey } from '@/lib/turnstileLoader'
 import Modal from '@/components/modal/Modal'
@@ -13,6 +13,13 @@ function isValidEmail(email: string){
 }
 
 export default function Contact() {
+  const quickTopics = [
+    'General ham radio questions',
+    'Hotspot or digital mode setup help',
+    'Project follow-up and parts used',
+    'Station, repeater, antenna, or software discussion',
+  ]
+
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
@@ -41,6 +48,15 @@ export default function Contact() {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [previewName, setPreviewName] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const filePreviews = useMemo(() => files.map((file) => ({ file, previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null })), [files])
+
+  useEffect(() => {
+    return () => {
+      filePreviews.forEach(({ previewUrl }) => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
+      })
+    }
+  }, [filePreviews])
 
   useEffect(()=>{
     if (success) {
@@ -371,9 +387,14 @@ export default function Contact() {
     }
   },[errors._global])
   return (
-    <main className={styles.contact}>
+    <main className={styles.contact} aria-labelledby="contact-page-title">
       <div className={styles.wrapper}>
-        <Card title="Contact" subtitle="Get in touch">
+        <div className="page-intro">
+          <p className="page-kicker">Contact</p>
+          <h1 id="contact-page-title" className="page-heading">Reach out about radio, projects, or station questions</h1>
+          <p className="page-deck">Use the form for general questions, QSO follow-up, or project inquiries. Attachments are optional, and direct email is available if you prefer a simpler route.</p>
+        </div>
+        <Card title="Send a Message" subtitle="Get in touch">
           <div className={styles.inner}>
             {mounted ? (
               <form className={styles.form} onSubmit={handleSubmit} noValidate>
@@ -408,16 +429,16 @@ export default function Contact() {
                 {errors.files && <div className={styles.formError} role="alert">{errors.files}</div>}
                 {files.length>0 && (
                   <div className={styles.fileList}>
-                    {files.map((f,i)=> (
+                    {filePreviews.map(({ file, previewUrl }, i)=> (
                       <div key={i} className={styles.fileItem}>
-                        {f.type.startsWith('image/') && (
-                          <Image onClick={()=> openPreview(f)} src={URL.createObjectURL(f)} alt={f.name} className={styles.fileThumb} width={96} height={72} unoptimized style={{cursor:'pointer'}} />
+                        {previewUrl && (
+                          <Image onClick={()=> openPreview(file)} src={previewUrl} alt={file.name} className={styles.fileThumb} width={96} height={72} sizes="96px" unoptimized style={{cursor:'pointer'}} />
                         )}
                         <div className={styles.fileMeta}>
-                          <div className={styles.fileName}>{f.name}</div>
-                          <div className={styles.fileSize}>{Math.round(f.size/1024)} KB</div>
+                          <div className={styles.fileName}>{file.name}</div>
+                          <div className={styles.fileSize}>{Math.round(file.size/1024)} KB</div>
                         </div>
-                        <button type="button" className={styles.removeFile} onClick={()=> removeFile(i)} aria-label={`Remove ${f.name}`}>Remove</button>
+                        <button type="button" className={styles.removeFile} onClick={()=> removeFile(i)} aria-label={`Remove ${file.name}`}>Remove</button>
                       </div>
                     ))}
                   </div>
@@ -463,8 +484,28 @@ export default function Contact() {
             )}
 
             <div className={styles.contactInfo}>
-              <h3 className={styles.contactHeading}>Email me directly</h3>
-              <a className={styles.mailto} href="mailto:zach@kf8fvd.com">✉️ zach@kf8fvd.com</a>
+              <div className={styles.infoPanel}>
+                <h3 className={styles.contactHeading}>Email me directly</h3>
+                <a className={styles.mailto} href="mailto:zach@kf8fvd.com">✉️ zach@kf8fvd.com</a>
+              </div>
+
+              <div className={styles.infoPanel}>
+                <h3 className={styles.contactHeading}>Good topics for this page</h3>
+                <ul className={styles.topicList}>
+                  {quickTopics.map((topic) => <li key={topic}>{topic}</li>)}
+                </ul>
+              </div>
+
+              <div className={styles.infoPanel}>
+                <h3 className={styles.contactHeading}>Before you send</h3>
+                <p className={styles.infoText}>If you are asking about a build, include the model, band, mode, or part you are working with. That makes it much easier to answer with something useful.</p>
+                <p className={styles.infoText}>If your message is about radio operation, include the repeater, hotspot, software, or equipment involved.</p>
+              </div>
+
+              <div className={styles.infoPanel}>
+                <h3 className={styles.contactHeading}>Site focus</h3>
+                <p className={styles.infoText}>This site is centered on amateur radio, digital voice, station projects, and practical operating notes, so messages in that lane are the best fit here.</p>
+              </div>
             </div>
           </div>
         </Card>

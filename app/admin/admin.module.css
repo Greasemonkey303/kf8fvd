@@ -4,9 +4,11 @@
   min-height: 100vh;
   background: linear-gradient(180deg, #0f1724 0%, #071026 100%);
   color: #e6eef8;
+  align-items: stretch;
 }
 .sidebar {
-  width: 220px;
+  width: clamp(220px, 18vw, 272px);
+  flex: 0 0 clamp(220px, 18vw, 272px);
   background: #071226;
   border-right: 1px solid rgba(255,255,255,0.04);
   padding: 24px 16px;
@@ -71,16 +73,20 @@
 .signedInValue { margin-top:6px; font-weight:600 }
 .contentWrap {
   flex: 1;
-  padding: 28px;
+  min-width: 0;
+  padding: 24px clamp(16px, 2.4vw, 32px) 40px;
   box-sizing: border-box;
 }
 .topbar {
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-bottom:18px;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto 18px;
 }
 .topTitle { font-size:20px; font-weight:700; }
+.shellPanel,
 .panel {
   background: linear-gradient(180deg,#081427, #051323);
   border-radius: 10px;
@@ -88,12 +94,114 @@
   box-shadow: 0 8px 22px rgba(3,7,18,0.6);
   border: 1px solid rgba(255,255,255,0.035);
 }
+.shellPanel {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: clamp(16px, 2vw, 24px);
+}
+.pageContent {
+  min-width: 0;
+  width: 100%;
+}
+.pageContent > main {
+  width: 100%;
+}
+.pageBody {
+  width: 100%;
+}
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.pageTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.pageTitle {
+  margin: 0;
+  font-size: clamp(1.4rem, 1.4vw + 1rem, 2rem);
+  line-height: 1.1;
+}
+.pageSubtitle {
+  color: #9fb7d6;
+  font-size: 0.95rem;
+}
+.pageActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.simpleStack {
+  display: grid;
+  gap: 18px;
+}
+.simpleList {
+  display: grid;
+  gap: 10px;
+}
+.simpleListItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.itemMeta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.checkGroup {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.emptyStateCard {
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.editorGrid > aside {
+  min-width: 0;
+}
+.editorGrid > aside > .panel {
+  position: sticky;
+  top: 24px;
+}
+.pageContent :global(.page-pad) {
+  padding: 0;
+}
+.pageContent :global(.center-max) {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.pageContent :global(.page-pad) > :global(.center-max) > .panel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
 /* full-width section wrapper for admin credentials list */
 .adminSectionCard {
   padding:12px;
   border-radius:8px;
   background: var(--card-bg);
   width:100%;
+  min-width: 0;
   box-sizing:border-box;
   border:1px solid var(--card-border);
   margin-bottom:12px;
@@ -121,9 +229,9 @@
 .topActions { display:flex; gap:8px; align-items:center }
 
 /* Consistent row for credential entries */
-.credentialRow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 10px; border-radius:8px }
-.credentialRowInner { display:flex; align-items:center; gap:10px; flex:1 }
-.credentialActions { display:flex; gap:8px }
+.credentialRow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 10px; border-radius:8px; min-width:0 }
+.credentialRowInner { display:flex; align-items:center; gap:10px; flex:1; min-width:0 }
+.credentialActions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; max-width:100% }
 
 /* compact panel style for the editor/side area */
 .panelCompact { padding:12px }
@@ -148,10 +256,153 @@
 .credentialRow.dense .credentialRowInner { gap:8px }
 .credentialRow.dense .credentialActions button { padding:6px 8px; font-size:0.92rem }
 
-.editorGrid { display:grid; grid-template-columns: 1.4fr 280px; gap:24px; align-items:start }
+.editorGrid { display:grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.95fr); gap:24px; align-items:start }
 .stickyBar { position: sticky; bottom: 12px; display:flex; gap:12px; justify-content:flex-end; padding-top:12px; background:linear-gradient(180deg,transparent, rgba(2,6,12,0.45)); }
 .formInput:focus, .formTextarea:focus { outline: 2px solid rgba(11,132,255,0.18); box-shadow: 0 6px 22px rgba(11,132,255,0.06); border-color: rgba(11,132,255,0.22) }
 .formInput, .formTextarea { transition: box-shadow .14s ease, border-color .14s ease }
+.richTextEditor { display:grid; gap:10px }
+.richTextToolbar { display:flex; flex-wrap:wrap; gap:8px }
+.richTextToolbarSection { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end }
+.richTextAdvancedRow {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  background: rgba(4,17,31,0.72);
+}
+.richTextSelectWrap,
+.richTextColorWrap {
+  display:grid;
+  gap:4px;
+}
+.richTextControlLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8da6c0;
+}
+.richTextSelect {
+  min-width: 112px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #082033;
+  color: #e6eef8;
+}
+.richTextColorInput {
+  width: 44px;
+  height: 36px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #082033;
+}
+.richTextToolbarButtonActive { background: rgba(22,163,74,0.14); border-color: rgba(22,163,74,0.18); color:#e6fff0 }
+.richTextFrame { border:1px solid rgba(255,255,255,0.06); border-radius:10px; background: var(--card-bg); overflow:hidden }
+.richTextSurface {
+  min-height: inherit;
+  padding: 14px 16px;
+  color: #e6eef8;
+  outline: none;
+  line-height: 1.6;
+}
+.richTextSurface [style*="text-align: center"] { text-align: center }
+.richTextSurface [style*="text-align: right"] { text-align: right }
+.richTextSurface mark {
+  background: rgba(125,211,252,0.35);
+  color: inherit;
+  border-radius: 0.2em;
+  padding: 0.05em 0.18em;
+}
+.richTextSurface img {
+  display:block;
+  max-width:100%;
+  height:auto;
+  margin: 1rem 0;
+  border-radius: 10px;
+}
+.richTextSurface iframe {
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-height:320px;
+  margin: 1rem 0;
+  border: 0;
+  border-radius: 10px;
+  background: #04111f;
+}
+.richTextSurface p { margin: 0 0 0.9rem }
+.richTextSurface p:last-child { margin-bottom: 0 }
+.richTextSurface h2,
+.richTextSurface h3,
+.richTextSurface h4 { margin: 1.1rem 0 0.55rem; line-height: 1.2 }
+.richTextSurface ul,
+.richTextSurface ol { margin: 0.7rem 0 0.9rem 1.2rem; padding: 0 }
+.richTextSurface blockquote {
+  margin: 1rem 0;
+  padding-left: 14px;
+  border-left: 3px solid rgba(22,163,74,0.4);
+  color: #cfe8ff;
+}
+.richTextSurface pre {
+  background: #061426;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 12px;
+  overflow: auto;
+}
+.richTextSurface code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.92em;
+}
+.richTextSurface a { color: #8ed0ff; text-decoration: underline }
+.richTextSurface :global(.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  color: #6f8aa5;
+  pointer-events: none;
+  height: 0;
+}
+.richTextLoading {
+  min-height: 120px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#9fb7d6;
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:10px;
+  background: var(--card-bg);
+}
+.richTextSource {
+  width: 100%;
+  min-height: 240px;
+  padding: 14px 16px;
+  border: 0;
+  background: #051521;
+  color: #d9e7f5;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+}
+.richTextMeta {
+  color: #8da6c0;
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .richTextToolbarSection {
+    width: 100%;
+  }
+  .richTextSelect {
+    min-width: 0;
+    width: 100%;
+  }
+}
 .fileInput { padding:10px 0 }
 .imgGallery { display:flex; gap:12px; flex-wrap:wrap }
 .mainPreview { border-radius:10px; overflow:hidden; background:#061426; display:block }
@@ -191,7 +442,7 @@
 .row { display:flex; gap:14px; align-items:center }
 
 /* Dashboard specific styles */
-.dashboardGrid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:16px }
+.dashboardGrid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px }
 .cardAction, .card-action { background: var(--card-bg); padding:14px; border-radius:10px; border:1px solid var(--card-border); box-shadow: var(--card-shadow); display:flex; flex-direction:column; gap:8px; align-items:flex-start }
 .cardAction a, .card-action a { color: var(--logo-green); text-decoration: none; font-weight:700 }
 .statNumber { font-size:20px; font-weight:700; color:var(--white-95) }
@@ -258,6 +509,72 @@
 .checkboxInput:focus + .checkboxBox { outline: 3px solid rgba(11,132,255,0.18); outline-offset: 2px }
 .checkboxInput:checked + .checkboxBox { background: linear-gradient(90deg,#164f2a,#0f6b37); border-color: rgba(22,163,74,0.12); color: #fff; box-shadow: 0 8px 20px rgba(22,163,74,0.08); transform: translateY(-1px) }
 .checkboxInput:checked + .checkboxBox svg { opacity:1 }
+
+@media (max-width: 1100px) {
+  .editorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .editorGrid > aside > .panel {
+    position: static;
+  }
+
+  .credentialRow {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 960px) {
+  .adminRoot {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-basis: auto;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .contentWrap {
+    padding: 18px 14px 28px;
+  }
+
+  .topbar {
+    margin-bottom: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .shellPanel,
+  .panel {
+    padding: 16px;
+  }
+
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pageHeader,
+  .simpleListItem {
+    flex-direction: column;
+  }
+
+  .pageActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .credentialRow {
+    flex-direction: column;
+  }
+
+  .credentialActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
 
 /* Role chips for multi-select in admin create user */
 .roleChips { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px }

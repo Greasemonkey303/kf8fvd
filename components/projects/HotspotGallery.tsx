@@ -59,9 +59,9 @@ export default function HotspotGallery({ images }: Props){
         <div className="flex-1">
           <div className={styles.gallery} aria-label="Hotspot images">
             {imgs.map((src,i)=> (
-              <div key={i} className={styles.thumb} role="button" onClick={()=> setOpen(src)} onKeyDown={(e)=> { if (e.key==='Enter') setOpen(src) }} tabIndex={0}>
-                <Image src={src} alt={`Hotspot ${i+1}`} fill unoptimized={String(src).startsWith('data:')} className={styles.img} />
-              </div>
+              <button key={i} type="button" className={styles.thumb} onClick={()=> setOpen(src)} aria-label={`Open hotspot image ${i + 1}`}>
+                <Image src={src} alt={`Hotspot ${i+1}`} fill sizes="(max-width: 640px) 120px, 160px" unoptimized={String(src).startsWith('data:')} className={styles.img} />
+              </button>
             ))}
           </div>
         </div>
@@ -72,7 +72,7 @@ export default function HotspotGallery({ images }: Props){
         <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modal} onClose={() => setOpen(null)} titleId="hotspot-image-title">
           <button aria-label="Close image" className={styles.modalClose} onClick={()=> setOpen(null)}>✕</button>
           <div className={styles.openImageWrap} style={{width:'100%',maxWidth:1200}}>
-            <Image src={open!} alt="Hotspot large" width={1200} height={800} unoptimized={String(open).startsWith('data:')} className={styles.openImage} />
+            <Image src={open!} alt="Hotspot large" width={1200} height={800} sizes="92vw" unoptimized={String(open).startsWith('data:')} className={styles.openImage} />
           </div>
         </Modal>,
         document.body

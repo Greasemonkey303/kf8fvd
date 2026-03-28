@@ -23,7 +23,7 @@ export async function proxy(req: NextRequest) {
     }
     return (Math.random().toString(36).slice(2) + Date.now().toString(36))
   }
-  const nonce = makeNonce()
+  const nonce = isLocalhost ? '' : makeNonce()
 
   const scriptSrcBase = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
   // In production prefer nonces; in local/dev keep 'unsafe-inline' for developer convenience
@@ -60,9 +60,11 @@ export async function proxy(req: NextRequest) {
   // Always expose the per-request nonce via a cookie so server components can
   // consume it and apply `nonce` attributes. In production the cookie is marked
   // `Secure` as well. Localhost/dev will receive the cookie without `Secure`.
-  const cookieOptions = ['Path=/', 'SameSite=Lax', 'HttpOnly', 'Max-Age=300']
-  if (process.env.NODE_ENV === 'production') cookieOptions.push('Secure')
-  res.headers.append('Set-Cookie', `csp-nonce=${nonce}; ${cookieOptions.join('; ')}`)
+  if (!isLocalhost) {
+    const cookieOptions = ['Path=/', 'SameSite=Lax', 'HttpOnly', 'Max-Age=300']
+    if (process.env.NODE_ENV === 'production') cookieOptions.push('Secure')
+    res.headers.append('Set-Cookie', `csp-nonce=${nonce}; ${cookieOptions.join('; ')}`)
+  }
   if (isLocalhost) {
     res.headers.set('Content-Security-Policy', CSP)
   }

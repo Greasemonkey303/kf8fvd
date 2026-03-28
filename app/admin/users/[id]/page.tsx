@@ -42,10 +42,13 @@ export default function UserEditor({ params }: { params: { id: string } }) {
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
-          <h2>Edit User — ID: {id}</h2>
+    <main className={styles.pageBody}>
+          <div className={styles.pageHeader}>
+            <div className={styles.pageTitleGroup}>
+              <h2 className={styles.pageTitle}>Edit User</h2>
+              <div className={styles.pageSubtitle}>Editing user ID: {id}</div>
+            </div>
+          </div>
           {loading ? <p>Loading…</p> : (
             <form onSubmit={save} className="form-grid">
               <label>
@@ -67,13 +70,16 @@ export default function UserEditor({ params }: { params: { id: string } }) {
 
               <div>
                 <div className={styles.fieldLabel}>Roles</div>
-                <div className="flex gap-2">
+                <div className={styles.checkGroup}>
                   {AVAILABLE_ROLES.map(r => (
-                    <label key={r} className="flex items-center gap-2">
+                    <label key={r} className={styles.checkboxWrap}>
                       <input type="checkbox" checked={form.roles.includes(r)} onChange={e=>{
                         const next = form.roles.includes(r) ? form.roles.filter(x=>x!==r) : [...form.roles, r]
                         setForm({...form, roles: next})
-                      }} />
+                      }} className={styles.checkboxInput} />
+                      <span className={styles.checkboxBox} aria-hidden>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      </span>
                       <span className="muted">{r}</span>
                     </label>
                   ))}
@@ -96,8 +102,6 @@ export default function UserEditor({ params }: { params: { id: string } }) {
               </div>
             </Modal>
           )}
-        </div>
-      </div>
     </main>
   )
 }

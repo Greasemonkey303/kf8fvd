@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '../../../lib/db'
+import { normalizeObjectReferenceToPublicUrl } from '@/lib/objectStorage'
 
 type CredentialRow = {
   id: number
@@ -9,7 +10,7 @@ type CredentialRow = {
   title?: string
   tag?: string
   authority?: string
-  image_path?: string
+  image_path?: string | null
   description?: string
   metadata?: string | Record<string, unknown>
   is_published?: number
@@ -21,9 +22,13 @@ type SectionMetaRow = { slug?: string; name?: string; subtitle?: string }
 export async function GET() {
   try {
     const rows = (await query(`SELECT id, section, slug, s3_prefix, title, tag, authority, image_path, description, metadata, is_published, sort_order FROM credentials WHERE is_published = 1 ORDER BY sort_order ASC, updated_at DESC`)) as CredentialRow[]
+    const normalizedRows = (rows || []).map((row) => ({
+      ...row,
+      image_path: normalizeObjectReferenceToPublicUrl(row.image_path),
+    }))
     // group by section (by slug)
     const grouped: Record<string, CredentialRow[]> = {}
-    ;(rows || []).forEach(r => {
+    ;normalizedRows.forEach(r => {
       const sec = r.section || 'General'
       if (!grouped[sec]) grouped[sec] = []
       grouped[sec].push(r)

@@ -14,7 +14,7 @@ export default function AdminSidebar({ admin }: { admin: { name?: string; email?
     let mounted = true
     const loadUnread = async () => {
       try {
-        const res = await fetch('/admin/messages/data?unread=true', { cache: 'no-store' })
+        const res = await fetch('/api/admin/messages?unread=true', { cache: 'no-store' })
         const j = await res.json()
         if (!mounted) return
         if (j && typeof j.unread === 'number') setUnread(Number(j.unread))

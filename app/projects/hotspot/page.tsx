@@ -6,7 +6,12 @@ import { HotspotGallery } from '@/components'
 export default function Page(){
   return (
     <main className={styles.container}>
-      <Card title="Hotspot Build" subtitle="Raspberry Pi 4 + MMDVM HAT">
+      <div className="page-intro" aria-labelledby="hotspot-page-title">
+        <p className="page-kicker">Project Detail</p>
+        <h1 id="hotspot-page-title" className="page-heading">Hotspot build log and parts reference</h1>
+        <p className="page-deck">A compact Raspberry Pi 4 and MMDVM hotspot setup, including the hardware list, assembly notes, and reference links used to get it on the air.</p>
+      </div>
+      <Card title="Build Notes" subtitle="Raspberry Pi 4 + MMDVM HAT">
         <div className={styles.content}>
           <div className={styles.media}>
             <HotspotGallery images={[ '/hotspot/hotspot-1.jpg', '/hotspot/hotspot-2.jpg', '/hotspot/hotspot-3.jpg' ]} />

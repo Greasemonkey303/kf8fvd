@@ -5,6 +5,7 @@ import styles from '../admin.module.css'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
 import CredentialCard from '../../../components/credentials/CredentialCard'
+import RichTextEditor from '../../../components/admin/RichTextEditor'
 import createDOMPurify from 'dompurify'
 import Image from 'next/image'
 
@@ -20,7 +21,6 @@ export default function AdminCredentials() {
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [uploadCompleted, setUploadCompleted] = useState<boolean>(false)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const descRef = useRef<HTMLDivElement | null>(null)
   const toast = useToast()
   const autosaveTimer = React.useRef<number | null>(null)
   const draftIdRef = React.useRef<string | null>(null)
@@ -162,16 +162,6 @@ export default function AdminCredentials() {
     setPendingDraftSlug(null)
     try { toast?.showToast && toast.showToast('Draft discarded', 'info') } catch{}
   }
-
-  useEffect(() => {
-    try {
-      if (descRef.current && document.activeElement !== descRef.current) {
-        if (descRef.current.innerHTML !== (form.description || '')) {
-          descRef.current.innerHTML = form.description || ''
-        }
-      }
-    } catch {}
-  }, [form.description])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setMounted(true), 0)
@@ -613,9 +603,7 @@ export default function AdminCredentials() {
   }, [items, sections])
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
+    <main className={styles.pageBody}>
           <div className={styles.adminTop}>
             <div>
               <h2 className="title">Credentials</h2>
@@ -722,9 +710,12 @@ export default function AdminCredentials() {
                   </label>
                   <label>
                     <div className="field-label">Description (HTML allowed)</div>
-                    <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background: 'var(--card-bg)'}}>
-                      <div id="cred-desc-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e: React.FormEvent<HTMLDivElement>)=>{ const v = (e.currentTarget as HTMLDivElement).innerHTML || ''; setForm(f=>({...f, description: v})); }} style={{minHeight: 160, maxHeight:400, overflow:'auto', resize:'vertical'}} />
-                    </div>
+                    <RichTextEditor
+                      value={String(form.description || '')}
+                      onChange={(value) => setForm(f => ({ ...f, description: value }))}
+                      placeholder="Write the credential description…"
+                      minHeight={220}
+                    />
                   </label>
                     <div>
                       <div className="field-label">Published</div>
@@ -955,8 +946,6 @@ export default function AdminCredentials() {
 
             </div>
           </div>
-        </div>
-      </div>
     </main>
   )
 }

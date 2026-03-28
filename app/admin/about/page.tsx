@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
+import RichTextEditor from '../../../components/admin/RichTextEditor'
 import Image from 'next/image'
 import createDOMPurify from 'dompurify'
 import Card from '../../../components/card/card'
@@ -21,8 +22,6 @@ export default function AdminAboutList() {
   const [slugEdited, setSlugEdited] = useState(false)
   const [form, setForm] = useState({ slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true })
   const [uploadProgress, setUploadProgress] = useState<number>(0)
-  const descRef = useRef<HTMLDivElement | null>(null)
-  const [descExpanded, setDescExpanded] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const toast = useToast()
   const [creating, setCreating] = useState(false)
@@ -173,17 +172,6 @@ export default function AdminAboutList() {
       }
     } catch {}
   }, [form.slug])
-
-  // Keep the contentEditable DOM in sync only when the editor is not focused.
-  useEffect(() => {
-    try {
-      if (descRef.current && document.activeElement !== descRef.current) {
-        if (descRef.current.innerHTML !== (form.description || '')) {
-          descRef.current.innerHTML = form.description || ''
-        }
-      }
-    } catch {}
-  }, [form.description])
 
   // auto-generate slug from title unless edited
   useEffect(() => {
@@ -338,9 +326,7 @@ export default function AdminAboutList() {
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
+    <main className={styles.pageBody}>
           <h2>About Sections</h2>
           <div className="stack">
             <div className={styles.editorGrid}>
@@ -379,17 +365,13 @@ export default function AdminAboutList() {
                   <label>
                     <div className="field-label">Description (HTML allowed)</div>
                     <div style={{ marginBottom: 8 }} className={styles.smallMuted}>Use the toolbar to format text; content is stored as HTML.</div>
-                    <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 8, background: 'var(--card-bg)' }}>
-                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                        <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('bold'); setTimeout(() => setForm(f => ({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Bold">B</button>
-                        <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('italic'); setTimeout(() => setForm(f => ({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Italic">I</button>
-                        <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(() => setForm(f => ({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Bullet list">• List</button>
-                        <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(() => setForm(f => ({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Numbered list">1. List</button>
-                        <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; const url = prompt('Insert link URL'); if (url) { descRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(() => setForm(f => ({ ...f, description: descRef.current?.innerHTML || '' })), 0); } }} title="Insert link">🔗</button>
-                        <button type="button" className={styles.btnGhost} onClick={() => setDescExpanded(v => !v)}>⤢</button>
-                      </div>
-                      <div id="admin-desc-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e: React.FormEvent<HTMLDivElement>) => { const v = (e.currentTarget as HTMLDivElement).innerHTML || ''; setForm(f => ({ ...f, description: v })); }} style={{ minHeight: descExpanded ? 400 : 220, maxHeight: 800, overflow: 'auto', resize: 'vertical' }} />
-                    </div>
+                    <RichTextEditor
+                      value={String(form.description || '')}
+                      onChange={(value) => setForm(f => ({ ...f, description: value }))}
+                      placeholder="Write the section description…"
+                      minHeight={240}
+                      expandedMinHeight={420}
+                    />
                   </label>
 
                   <div style={{ display: 'flex', gap: 2 }}>
@@ -486,8 +468,6 @@ export default function AdminAboutList() {
             )}
 
           </div>
-        </div>
-      </div>
     </main>
   )
 }

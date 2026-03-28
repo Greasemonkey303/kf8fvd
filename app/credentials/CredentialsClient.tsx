@@ -35,6 +35,11 @@ export default function CredentialsClient() {
   return (
     <main>
       <section className="page-pad">
+        <div className="page-intro" aria-labelledby="credentials-page-title">
+          <p className="page-kicker">Credentials</p>
+          <h1 id="credentials-page-title" className="page-heading">Licenses, training, and operating background</h1>
+          <p className="page-deck">A public record of certifications, operating credentials, and supporting training relevant to radio, emergency communications, and technical work.</p>
+        </div>
         {loading ? <div className="center-max">Loading credentials…</div> : null}
         {orderedSlugs.map((sec) => (
           <div key={sec} style={{ marginBottom: 18 }}>

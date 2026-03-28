@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
+import RichTextEditor from '../../../components/admin/RichTextEditor'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
 import createDOMPurify from 'dompurify'
@@ -21,10 +22,6 @@ export default function AdminProjects() {
   const [form, setForm] = useState({ slug: '', title: '', subtitle: '', image_path: '', description: '', external_link: '', is_published: true, sort_order: 0, createDetails: false, details: '' })
   const [detailImages, setDetailImages] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState<number>(0)
-  const descRef = useRef<HTMLDivElement | null>(null)
-  const detailsRef = useRef<HTMLDivElement | null>(null)
-  const [descExpanded, setDescExpanded] = useState(false)
-  const [detailsExpanded, setDetailsExpanded] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
 
   const load = React.useCallback(async () => {
@@ -142,28 +139,6 @@ export default function AdminProjects() {
     } catch {}
     return () => { if (t) window.clearTimeout(t) }
   }, [form.slug, toast])
-
-  // Keep the contentEditable DOM in sync only when the editor is not focused.
-  // This avoids React re-setting innerHTML on every render which moves the caret to start.
-  useEffect(() => {
-    try {
-      if (descRef.current && document.activeElement !== descRef.current) {
-        if (descRef.current.innerHTML !== (form.description || '')) {
-          descRef.current.innerHTML = form.description || ''
-        }
-      }
-    } catch {}
-  }, [form.description])
-
-  useEffect(() => {
-    try {
-      if (detailsRef.current && document.activeElement !== detailsRef.current) {
-        if (detailsRef.current.innerHTML !== (form.details || '')) {
-          detailsRef.current.innerHTML = form.details || ''
-        }
-      }
-    } catch {}
-  }, [form.details])
 
   // Derived filtered items for client-side search (debounced)
   const filtered = items.filter(i => {
@@ -375,9 +350,7 @@ export default function AdminProjects() {
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
+    <main className={styles.pageBody}>
           <h2>Projects</h2>
           <div className="stack">
             <div className={styles.editorGrid}>
@@ -418,18 +391,14 @@ export default function AdminProjects() {
               <label>
                 <div className="field-label">Description (HTML allowed)</div>
                 <div style={{marginBottom:8}} className={styles.smallMuted}>Use the toolbar to format text; content is stored as HTML.</div>
-                <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background: 'var(--card-bg)'}}>
-                  <div style={{display:'flex', gap:8, marginBottom:8}}>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('bold'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Bold">B</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('italic'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Italic">I</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Bullet list">• List</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Numbered list">1. List</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; const url = prompt('Insert link URL'); if (url) { descRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); } }} title="Insert link">🔗</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('undo'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Undo">↶</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('redo'); setTimeout(()=>setForm(f=>({...f, description: descRef.current?.innerHTML || ''})), 0); }} title="Redo">↷</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => setDescExpanded(v=>!v)}>⤢</button>
-                  </div>
-                  <div id="admin-desc-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e: React.FormEvent<HTMLDivElement>)=>{ const v = (e.currentTarget as HTMLDivElement).innerHTML || ''; setForm(f=>({...f, description: v})); }} style={{minHeight: descExpanded ? 400 : 220, maxHeight:800, overflow:'auto', resize:'vertical'}} />
+                <div>
+                  <RichTextEditor
+                    value={String(form.description || '')}
+                    onChange={(value) => setForm(f => ({ ...f, description: value }))}
+                    placeholder="Write the project description…"
+                    minHeight={240}
+                    expandedMinHeight={420}
+                  />
                   <div style={{display:'flex', justifyContent:'space-between', marginTop:8}}>
                     <div className={styles.smallMuted}>{(form.description || '').replace(/<[^>]+>/g,'').length} chars</div>
                     <div className={styles.smallMuted}>{((form.description || '').replace(/<[^>]+>/g,'').trim().split(/\s+/).filter(Boolean)).length} words</div>
@@ -453,18 +422,14 @@ export default function AdminProjects() {
                 <label>
                   <div className="field-label">Details HTML</div>
                   <div style={{marginBottom:8}} className={styles.smallMuted}>Use the toolbar to format the details; content is stored as HTML.</div>
-                  <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background: 'var(--card-bg)'}}>
-                    <div style={{display:'flex', gap:8, marginBottom:8}}>
-                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('bold'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Bold">B</button>
-                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('italic'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Italic">I</button>
-                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Bullet list">• List</button>
-                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Numbered list">1. List</button>
-                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; const url = prompt('Insert link URL'); if (url) { detailsRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); } }} title="Insert link">🔗</button>
-                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('undo'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Undo">↶</button>
-                      <button type="button" className={styles.btnGhost} onClick={() => { if (!detailsRef.current) return; detailsRef.current.focus(); document.execCommand('redo'); setTimeout(()=>setForm(f=>({...f, details: detailsRef.current?.innerHTML || ''})), 0); }} title="Redo">↷</button>
-                      <button type="button" className={styles.btnGhost} onClick={() => setDetailsExpanded(v=>!v)}>⤢</button>
-                    </div>
-                    <div id="admin-details-editor" ref={detailsRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e: React.FormEvent<HTMLDivElement>)=>{ const v = (e.currentTarget as HTMLDivElement).innerHTML || ''; setForm(f=>({...f, details: v})); }} style={{minHeight: detailsExpanded ? 600 : 400, maxHeight:1200, overflow:'auto', resize:'vertical'}} />
+                  <div>
+                    <RichTextEditor
+                      value={String(form.details || '')}
+                      onChange={(value) => setForm(f => ({ ...f, details: value }))}
+                      placeholder="Write the project details page content…"
+                      minHeight={420}
+                      expandedMinHeight={640}
+                    />
                     <div style={{display:'flex', justifyContent:'space-between', marginTop:8}}>
                       <div className={styles.smallMuted}>{(form.details || '').replace(/<[^>]+>/g,'').length} chars</div>
                       <div className={styles.smallMuted}>{((form.details || '').replace(/<[^>]+>/g,'').trim().split(/\s+/).filter(Boolean)).length} words</div>
@@ -602,8 +567,6 @@ export default function AdminProjects() {
               )}
             </div>
           </div>
-          </div>
-        </div>
       </main>
   )
 }

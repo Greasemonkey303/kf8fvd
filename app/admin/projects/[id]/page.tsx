@@ -6,6 +6,7 @@ import { buildPublicUrl } from '@/lib/s3'
 import styles from '../../admin.module.css'
 import projectStyles from '../../../projects/hotspot/hotspot.module.css'
 import Card from '../../../../components/card/card'
+import RichTextEditor from '../../../../components/admin/RichTextEditor'
 import { useToast } from '../../../../components/toast/ToastProvider'
 import ProjectEditorSidebar from '../../../../components/admin/projects/ProjectEditorSidebar'
 import createDOMPurify from 'dompurify'
@@ -32,10 +33,6 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const editorRef = useRef<HTMLDivElement | null>(null)
-  const [editorExpanded, setEditorExpanded] = useState(false)
-  const descRef = useRef<HTMLDivElement | null>(null)
-  const [descExpanded, setDescExpanded] = useState(false)
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
   if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
@@ -68,43 +65,6 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
   const [showDebug, setShowDebug] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'project' | 'image' | 'main'; idx?: number } | null>(null)
   const didFetchPublicRef = useRef(false)
-
-  // keep details editor content in sync only when editor is not focused
-  useEffect(()=>{
-    try {
-      if (editorRef.current && document.activeElement !== editorRef.current) {
-        if ((editorRef.current.innerHTML || '') !== (form.details || '')) {
-          editorRef.current.innerHTML = form.details || ''
-        }
-      }
-    } catch {}
-  }, [form.details])
-
-  // keep description editor content in sync only when not focused
-  useEffect(()=>{
-    try {
-      if (descRef.current && document.activeElement !== descRef.current) { 
-        if ((descRef.current.innerHTML || '') !== (form.description || '')) {
-          descRef.current.innerHTML = form.description || ''
-        }
-      }
-    } catch {}
-  }, [form.description])
-
-  // Ensure editors are populated after loading completes (refs available)
-  useEffect(() => {
-    if (loading) return
-    try {
-      if (editorRef.current && document.activeElement !== editorRef.current) {
-        if ((editorRef.current.innerHTML || '') !== (form.details || '')) editorRef.current.innerHTML = form.details || ''
-      }
-    } catch {}
-    try {
-      if (descRef.current && document.activeElement !== descRef.current) {
-        if ((descRef.current.innerHTML || '') !== (form.description || '')) descRef.current.innerHTML = form.description || ''
-      }
-    } catch {}
-  }, [loading])
 
   useEffect(()=>{
     (async ()=>{
@@ -160,9 +120,6 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
       })
         // store raw fetched project for debug panel
         fetchedProjectRef.current = projectFound
-        // populate editor refs once mounted — use RAF to avoid timing races
-        try { requestAnimationFrame(()=>{ try { if (editorRef.current) { editorRef.current.innerHTML = fallbackDetails; console.log('[admin] populated editorRef, len=', (editorRef.current.innerHTML||'').length) } } catch{} }) } catch {}
-        try { requestAnimationFrame(()=>{ try { if (descRef.current) { descRef.current.innerHTML = initDesc; console.log('[admin] populated descRef, len=', (descRef.current.innerHTML||'').length) } } catch{} }) } catch {}
         // start with metadata images (no hard slice here; display can show all)
         setImages((md && typeof md === 'object' && Array.isArray((md as Record<string, unknown>).images)) ? (((md as Record<string, unknown>).images as unknown) as string[]).slice(0,6) : [])
         // fetch any stored objects for this slug and merge them so admin sees all linked images
@@ -255,7 +212,6 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
         if (detailsHtml && detailsHtml.trim()) {
           // populate editor and form (local only)
           setForm(f=>({ ...f, details: detailsHtml }))
-          try { requestAnimationFrame(()=>{ if (editorRef.current && document.activeElement !== editorRef.current) editorRef.current.innerHTML = detailsHtml }) } catch{}
           // save draft immediately
           try {
             const key = draftKey()
@@ -561,28 +517,13 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
               <label>
                 <div className={styles.fieldLabel}>Details (HTML allowed)</div>
                 <div style={{marginBottom:8}} className={styles.smallMuted}>Use the toolbar to format text; content is stored as HTML.</div>
-                <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background: 'var(--card-bg)'}}>
-                  <div style={{display:'flex', gap:8, marginBottom:8}}>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!editorRef.current) return; editorRef.current.focus(); document.execCommand('bold'); setTimeout(()=>setForm(f=>({ ...f, details: editorRef.current?.innerHTML || '' })), 0); }} title="Bold">B</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!editorRef.current) return; editorRef.current.focus(); document.execCommand('italic'); setTimeout(()=>setForm(f=>({ ...f, details: editorRef.current?.innerHTML || '' })), 0); }} title="Italic">I</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!editorRef.current) return; editorRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>setForm(f=>({ ...f, details: editorRef.current?.innerHTML || '' })), 0); }} title="Bullet list">• List</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!editorRef.current) return; editorRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(()=>setForm(f=>({ ...f, details: editorRef.current?.innerHTML || '' })), 0); }} title="Numbered list">1. List</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!editorRef.current) return; const url = prompt('Insert link URL'); if (url) { editorRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>setForm(f=>({ ...f, details: editorRef.current?.innerHTML || '' })), 0); } }} title="Insert link">🔗</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!editorRef.current) return; editorRef.current.focus(); document.execCommand('undo'); setTimeout(()=>setForm(f=>({ ...f, details: editorRef.current?.innerHTML || '' })), 0); }} title="Undo">↶</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!editorRef.current) return; editorRef.current.focus(); document.execCommand('redo'); setTimeout(()=>setForm(f=>({ ...f, details: editorRef.current?.innerHTML || '' })), 0); }} title="Redo">↷</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => setEditorExpanded(v => !v)} title="Expand editor">⤢</button>
-                  </div>
-                  <div
-                    id="project-details-editor"
-                    ref={editorRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onInput={(e: React.FormEvent<HTMLDivElement>)=>{ try { const v = (e.currentTarget as HTMLDivElement)?.innerHTML || ''; setForm(f=>({ ...f, details: v })); } catch (err) { /* ignore transient events */ } }}
-                    onFocus={() => { try { if (editorRef.current && !(editorRef.current.innerHTML || '').trim() && (form.details || '').trim()) { editorRef.current.innerHTML = form.details || '' } } catch {} }}
-                    className={styles.formTextarea}
-                    style={{minHeight: editorExpanded ? 600 : 400, maxHeight:1200, overflow:'auto', resize:'vertical'}}
-                  />
-                </div>
+                <RichTextEditor
+                  value={String(form.details || '')}
+                  onChange={(value) => setForm(f => ({ ...f, details: value }))}
+                  placeholder="Write the project details content…"
+                  minHeight={420}
+                  expandedMinHeight={640}
+                />
               </label>
             </div>
 
@@ -625,28 +566,13 @@ export default function ProjectEditor({ params }: { params: { id?: string } }) {
               <label>
                 <div className="field-label">Description (HTML allowed)</div>
                 <div style={{marginBottom:8}} className={styles.smallMuted}>This is the main project description shown on the projects list and project page.</div>
-                <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background: 'var(--card-bg)'}}>
-                  <div style={{display:'flex', gap:8, marginBottom:8}}>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('bold'); setTimeout(()=>setForm(f=>({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Bold">B</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('italic'); setTimeout(()=>setForm(f=>({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Italic">I</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>setForm(f=>({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Bullet list">• List</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(()=>setForm(f=>({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Numbered list">1. List</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; const url = prompt('Insert link URL'); if (url) { descRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>setForm(f=>({ ...f, description: descRef.current?.innerHTML || '' })), 0); } }} title="Insert link">🔗</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('undo'); setTimeout(()=>setForm(f=>({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Undo">↶</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('redo'); setTimeout(()=>setForm(f=>({ ...f, description: descRef.current?.innerHTML || '' })), 0); }} title="Redo">↷</button>
-                    <button type="button" className={styles.btnGhost} onClick={() => setDescExpanded(v => !v)} title="Expand editor">⤢</button>
-                  </div>
-                  <div
-                    id="project-desc-editor"
-                    ref={descRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onInput={(e: React.FormEvent<HTMLDivElement>)=>{ try { const v = (e.currentTarget as HTMLDivElement)?.innerHTML || ''; setForm(f=>({ ...f, description: v })); } catch (err) { /* ignore transient events */ } }}
-                    onFocus={() => { try { if (descRef.current && !(descRef.current.innerHTML || '').trim() && (form.description || '').trim()) { descRef.current.innerHTML = form.description || '' } } catch {} }}
-                    className={styles.formTextarea}
-                    style={{minHeight: descExpanded ? 400 : 220, maxHeight:800, overflow:'auto', resize:'vertical'}}
-                  />
-                </div>
+                <RichTextEditor
+                  value={String(form.description || '')}
+                  onChange={(value) => setForm(f => ({ ...f, description: value }))}
+                  placeholder="Write the project summary…"
+                  minHeight={240}
+                  expandedMinHeight={420}
+                />
               </label>
               <label>
                 <div className="field-label">External link</div>

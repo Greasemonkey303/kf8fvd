@@ -22,6 +22,7 @@ export type Item = {
 export default function CredentialCard({ item }: { item: Item }) {
   const [imgOpen, setImgOpen] = useState(false)
   const src = item.image_path || null
+  const shouldBypassOptimizer = !!src && (/^https?:\/\//i.test(String(src)) || String(src).startsWith('data:') || String(src).startsWith('blob:'))
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
   if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
@@ -36,13 +37,13 @@ export default function CredentialCard({ item }: { item: Item }) {
         </div>
 
         <div className={styles.mediaRow}>
-          <div className={styles.thumbWrap} role="button" tabIndex={0} aria-label={src ? `Open ${item.title}` : 'No image'} onClick={()=>{ if (src) setImgOpen(true) }} onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>)=>{ if (e.key === 'Enter' || e.key === ' ') { if (src) setImgOpen(true) } }}>
+          <button type="button" className={styles.thumbWrap} aria-label={src ? `Open ${item.title}` : 'No image available'} onClick={()=>{ if (src) setImgOpen(true) }} disabled={!src}>
             {src ? (
-              <Image className={styles.licenseThumb} src={src} alt={item.title || ''} width={280} height={160} unoptimized={String(src).startsWith('data:') || String(src).startsWith('blob:')} />
+              <Image className={styles.licenseThumb} src={src} alt={item.title || ''} width={280} height={160} sizes="(max-width: 900px) 100vw, 220px" unoptimized={shouldBypassOptimizer} />
             ) : (
               <div className={styles.licenseThumb} style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>Coming soon</div>
             )}
-          </div>
+          </button>
           <div className={styles.meta}>
             {item.authority ? (
               <div className={styles.metaAuthority}>
@@ -56,7 +57,7 @@ export default function CredentialCard({ item }: { item: Item }) {
             ) : null}
 
             <div className={styles.actions}>
-              <button className={styles.viewBtn} onClick={() => setImgOpen(true)}>View</button>
+              <button className={styles.viewBtn} onClick={() => setImgOpen(true)} disabled={!src} aria-disabled={!src}>View</button>
             </div>
           </div>
         </div>

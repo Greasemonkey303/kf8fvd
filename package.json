@@ -21,12 +21,23 @@
     "make:docker-secrets": "node scripts/create_build_secrets_from_envdocker.js",
     "migrate:messages_sanitize": "node scripts/backfill_messages_sanitized.js",
     "audit": "npm audit --audit-level=moderate",
-    "audit:fix": "npm audit fix"
-    ,"test:unit": "vitest --run"
+    "audit:fix": "npm audit fix",
+    "test:unit": "vitest --run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1003.0",
     "@sendgrid/mail": "^8.1.6",
+    "@tiptap/extension-color": "^3.21.0",
+    "@tiptap/extension-font-family": "^3.21.0",
+    "@tiptap/extension-highlight": "^3.21.0",
+    "@tiptap/extension-image": "^3.21.0",
+    "@tiptap/extension-link": "^3.21.0",
+    "@tiptap/extension-placeholder": "^3.21.0",
+    "@tiptap/extension-text-align": "^3.21.0",
+    "@tiptap/extension-text-style": "^3.21.0",
+    "@tiptap/extension-underline": "^3.21.0",
+    "@tiptap/react": "^3.21.0",
+    "@tiptap/starter-kit": "^3.21.0",
     "bcryptjs": "^3.0.3",
     "dompurify": "^3.0.4",
     "ioredis": "^5.3.2",

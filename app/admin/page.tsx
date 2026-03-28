@@ -128,28 +128,22 @@ export default function AdminPage() {
     return () => { mountedRef.current = false; clearInterval(id) }
   }, [])
 
-  if (status === 'loading') return <main className="page-pad"><p>Loading…</p></main>
+  if (status === 'loading') return <p>Loading…</p>
   if (!session) {
     return (
-      <main className="page-pad">
-        <div className="center-max">
-          <div className={styles.panel}>
-            <h2>Admin</h2>
-            <p>You must be signed in to access the admin console.</p>
-            <div className="flex gap-2">
-              <button className={styles.btnGhost} onClick={() => signIn()}>Sign In</button>
-              <button className={styles.btnGhost} onClick={() => router.push('/')}>Go Home</button>
-            </div>
-          </div>
+      <div className={styles.emptyStateCard}>
+        <h2 className={styles.pageTitle}>Admin</h2>
+        <p>You must be signed in to access the admin console.</p>
+        <div className="flex gap-2">
+          <button className={styles.btnGhost} onClick={() => signIn()}>Sign In</button>
+          <button className={styles.btnGhost} onClick={() => router.push('/')}>Go Home</button>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
+    <main className={styles.pageBody}>
           <h2>Admin Console</h2>
           <div style={{display:'flex', alignItems:'center', gap:12, marginTop:8, marginBottom:12}}>
             <div style={{flex:1}}>
@@ -207,7 +201,7 @@ export default function AdminPage() {
               </div>
             </div>
           )}
-          <div className={styles.dashboardGrid} style={{marginTop:12, gridTemplateColumns: 'repeat(3, 1fr)'}}>
+          <div className={styles.dashboardGrid} style={{marginTop:12}}>
             <div className="card-action">
               <div style={{display:'flex', alignItems:'center', gap:10}}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="4" rx="1" fill="#60a5fa"/><rect x="3" y="10" width="12" height="4" rx="1" fill="#a78bfa"/><rect x="3" y="16" width="6" height="4" rx="1" fill="var(--logo-green)"/></svg>
@@ -289,8 +283,6 @@ export default function AdminPage() {
               </div>
             )}
           </div>
-        </div>
-      </div>
     </main>
   )
 }

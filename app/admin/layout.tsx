@@ -30,8 +30,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <div className={styles.topTitle}>Admin</div>
         </div>
         <ToastProvider>
-          <div className={styles.panel}>
-            {children}
+          <div className={styles.shellPanel}>
+            <div className={styles.pageContent}>
+              {children}
+            </div>
           </div>
         </ToastProvider>
       </div>

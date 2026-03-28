@@ -1,16 +1,16 @@
-.container { padding: 2rem 1rem; max-width:1100px; margin:0 auto }
+.container { padding: clamp(1rem, 1.2vw + 0.8rem, 2rem) 1rem 3rem; max-width: var(--section-max); margin:0 auto }
 .content { display:flex; flex-direction:column; gap:1rem }
-.media { display:flex; flex-direction:column; gap:8px; align-items:center }
-.photo { width:100%; max-width:600px; border-radius:12px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
-.callout { font-size:0.95rem; color:var(--white-90); background: linear-gradient(90deg, var(--white-02), var(--white-01)); padding:8px 12px; border-radius:8px }
-.story { display:flex; flex-direction:column; gap:10px }
+.media { display:flex; flex-direction:column; gap:10px; align-items:center }
+.photo { width:100%; max-width:600px; border-radius:18px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
+.callout { font-size:0.95rem; color:var(--white-90); background: var(--surface-2); padding:10px 14px; border-radius:14px; line-height: 1.6 }
+.story { display:flex; flex-direction:column; gap:12px; max-width: var(--content-measure) }
 .story h4 { margin:0; color: var(--color-link); font-weight:800 }
-.story p, .story li { color: var(--white-90); line-height:1.5 }
+.story p, .story li { color: var(--white-90); line-height:1.7 }
 
 @media (min-width:900px) { 
-	.content { flex-direction:row; align-items:flex-start }
+	.content { display:grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); align-items:flex-start; gap: 1.35rem }
 	/* place media on the left of the text so images remain at the top-left of the card */
-	.media { order: 1; flex: 0 0 360px; align-items:flex-start }
+	.media { order: 1; align-items:flex-start }
 	.story { order: 2; flex:1 }
 }
 
@@ -19,22 +19,23 @@
 	 - larger screens: two columns
 	 - supports up to 6 images; grid will reflow if fewer
 */
-.mediaRow { display:flex; gap:12px; align-items:flex-start }
+.mediaRow { display:grid; gap:12px; align-items:flex-start }
 .thumbs {
 	display:grid;
 	grid-template-columns: 1fr;
 	gap:12px;
-	flex: 0 0 100%;
 	width:100%;
 }
-.thumbImg { width:100%; aspect-ratio: 16/9; object-fit:cover; border-radius:8px; border:1px solid var(--border-06); display:block }
+.thumbImg { width:100%; aspect-ratio: 16/9; object-fit:cover; border-radius:14px; border:1px solid var(--border-06); display:block }
 .mainPhotoWrap { display:flex; align-items:flex-start; flex: 1 }
-.mainPhoto { width:100%; max-width:360px; border-radius:12px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
+.mainPhoto { width:100%; max-width:100%; border-radius:18px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
 
 @media (min-width:900px) {
-	.thumbs { grid-template-columns: 1fr 1fr; max-width:360px; flex:0 0 360px }
+	.mediaRow { grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); }
+	.thumbs { grid-template-columns: 1fr 1fr; max-width:100%; }
 }
 
 @media (max-width:640px) {
 	.thumbs { gap:10px }
+	.container { padding-bottom: 2.25rem; }
 }

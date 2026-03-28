@@ -46,7 +46,12 @@ export default function Projects() {
   }, [])
 
   return (
-    <main className={styles.projects}>
+    <main className={styles.projects} aria-labelledby="projects-page-title">
+      <div className="page-intro">
+        <p className="page-kicker">Projects</p>
+        <h1 id="projects-page-title" className="page-heading">Build logs, experiments, and station work</h1>
+        <p className="page-deck">A running collection of hardware builds, radio experiments, and practical station-side projects, with the hotspot build featured as the main reference.</p>
+      </div>
       <div className={styles.grid}>
         {items.length === 0 ? (
           <>
@@ -100,7 +105,7 @@ export default function Projects() {
                           if (imageSrc) {
                             const finalImageSrc = imageSrc
                             return (
-                              <Image src={finalImageSrc} alt={p.title || 'Project image'} className={styles.thumb} width={320} height={200} unoptimized={finalImageSrc.startsWith('data:') || finalImageSrc.startsWith('blob:') || finalImageSrc.indexOf('X-Amz-Algorithm') !== -1 || finalImageSrc.indexOf('minio') !== -1 || finalImageSrc.indexOf('127.0.0.1') !== -1} />
+                              <Image src={finalImageSrc} alt={p.title || 'Project image'} className={styles.thumb} width={320} height={200} sizes="(max-width: 899px) 100vw, (max-width: 1099px) 50vw, 33vw" unoptimized={finalImageSrc.startsWith('data:') || finalImageSrc.startsWith('blob:') || finalImageSrc.indexOf('X-Amz-Algorithm') !== -1 || finalImageSrc.indexOf('minio') !== -1 || finalImageSrc.indexOf('127.0.0.1') !== -1} />
                             )
                           }
                         } catch (e) {

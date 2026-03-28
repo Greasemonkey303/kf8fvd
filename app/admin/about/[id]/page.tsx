@@ -6,6 +6,7 @@ import styles from '../../admin.module.css'
 import projectStyles from '../../../projects/hotspot/hotspot.module.css'
 import Card from '../../../../components/card/card'
 import ProjectEditorSidebar from '../../../../components/admin/projects/ProjectEditorSidebar'
+import RichTextEditor from '../../../../components/admin/RichTextEditor'
 import Modal from '@/components/modal/Modal'
 import { useToast } from '../../../../components/toast/ToastProvider'
 import Image from 'next/image'
@@ -36,16 +37,12 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
   const [metadata, setMetadata] = useState<AboutMetadata>({})
 
   const [cards, setCards] = useState<CardData[]>([])
-  const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
 
   const searchParams = useSearchParams()
   const [activeIdx, setActiveIdx] = useState<number>(0)
 
   // single-card editor convenience state (gallery + form-like API used by ProjectEditorSidebar)
   const [images, setImages] = useState<string[]>([])
-  const [editorExpanded, setEditorExpanded] = useState(false)
-  const descRef = useRef<HTMLDivElement | null>(null)
-  const [descExpanded, setDescExpanded] = useState(false)
   const previewCloseRef = useRef<HTMLButtonElement | null>(null)
   const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
@@ -391,30 +388,6 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     }
   }
 
-  // keep contentEditable DOM in sync for dynamic cards when not focused
-  useEffect(()=>{
-    try{
-      for (let i = 0; i < cards.length; i++) {
-        const el = cardRefs.current[i]
-        if (el && document.activeElement !== el) {
-          const desired = cards[i]?.content || ''
-          if (el.innerHTML !== desired) el.innerHTML = desired
-        }
-      }
-    }catch{}
-  }, [cards])
-
-  // keep main editorRef (alias to the active card's editor) in sync when cards or active index change
-  useEffect(()=>{
-    try{
-      const el = cardRefs.current[activeIdx]
-      if (el && document.activeElement !== el) {
-        const desired = cards[activeIdx]?.content || ''
-        if ((el.innerHTML || '') !== desired) el.innerHTML = desired
-      }
-    }catch{}
-  }, [cards, activeIdx])
-
   // keep images state in sync with the active card's gallery
   useEffect(()=>{
     try{
@@ -425,16 +398,6 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       if (a !== b) setImages(imgs)
     }catch{}
   }, [cards, activeIdx])
-
-  // keep summary editor in sync when metadata.summary.text changes
-  useEffect(()=>{
-    try{
-      if (descRef.current && document.activeElement !== descRef.current) {
-        const desired = metadata.summary?.text || ''
-        if ((descRef.current.innerHTML || '') !== desired) descRef.current.innerHTML = desired
-      }
-    }catch{}
-  }, [metadata.summary?.text])
 
   // Ctrl/Cmd+S save
   useEffect(()=>{
@@ -576,17 +539,13 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                     <label>
                       <div className="field-label">Text</div>
                       <div style={{marginBottom:8}} className={styles.smallMuted}>This is the summary text shown on the About page.</div>
-                      <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background:'var(--card-bg)'}}>
-                        <div style={{display:'flex', gap:8, marginBottom:8}}>
-                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('bold'); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); }} title="Bold">B</button>
-                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('italic'); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); }} title="Italic">I</button>
-                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); }} title="Bullet list">• List</button>
-                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; descRef.current.focus(); document.execCommand('insertOrderedList'); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); }} title="Numbered list">1. List</button>
-                          <button type="button" className={styles.btnGhost} onClick={() => { if (!descRef.current) return; const url = prompt('Insert link URL'); if (url) { descRef.current.focus(); document.execCommand('createLink', false, url); setTimeout(()=>updateMetadata(['summary','text'], descRef.current?.innerHTML || ''), 0); } }} title="Insert link">🔗</button>
-                          <button type="button" className={styles.btnGhost} onClick={() => setDescExpanded(v => !v)} title="Expand editor">⤢</button>
-                        </div>
-                        <div id="about-summary-editor" ref={descRef} contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateMetadata(['summary','text'], (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight: descExpanded ? 520 : 360, maxHeight:900, overflow:'auto', resize:'vertical'}} />
-                      </div>
+                      <RichTextEditor
+                        value={String(metadata.summary?.text || '')}
+                        onChange={(value) => updateMetadata(['summary','text'], value)}
+                        placeholder="Write the About summary…"
+                        minHeight={360}
+                        expandedMinHeight={560}
+                      />
                     </label>
                     <label>
                       <div className="field-label">CTA Label</div>
@@ -617,18 +576,13 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                             </label>
                             <label>
                               <div className="field-label">Content (HTML allowed)</div>
-                              <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background:'var(--card-bg)'}}>
-                                <div style={{display:'flex', gap:8, marginBottom:8}}>
-                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('bold'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>B</button>
-                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('italic'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>I</button>
-                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('insertUnorderedList'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>• List</button>
-                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; const url = prompt('Insert link URL'); if (url){ el.focus(); document.execCommand('createLink', false, url); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) } }}>🔗</button>
-                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('undo'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>↶</button>
-                                  <button type="button" className={styles.btnGhost} onClick={()=>{ const el = cardRefs.current[activeIdx]; if (!el) return; el.focus(); document.execCommand('redo'); setTimeout(()=>updateCard(activeIdx,'content', el.innerHTML||''), 0) }}>↷</button>
-                                  <button type="button" className={styles.btnGhost} onClick={()=>setEditorExpanded(v=>!v)}>⤢</button>
-                                </div>
-                                <div ref={(el)=>{ cardRefs.current[activeIdx] = el }} id="about-card-editor" contentEditable suppressContentEditableWarning className={styles.formTextarea} onInput={(e)=>{ updateCard(activeIdx,'content', (e.currentTarget as HTMLDivElement).innerHTML || '') }} style={{minHeight: editorExpanded ? 600 : 320, maxHeight:1200, overflow:'auto', resize:'vertical'}} />
-                              </div>
+                              <RichTextEditor
+                                value={String(cards[activeIdx]?.content || '')}
+                                onChange={(value) => updateCard(activeIdx,'content', value)}
+                                placeholder="Write this card's content…"
+                                minHeight={320}
+                                expandedMinHeight={620}
+                              />
                             </label>
                           </div>
                         ) : null}

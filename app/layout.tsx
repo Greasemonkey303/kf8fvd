@@ -29,7 +29,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const _cookies = await cookies();
-  const nonce = _cookies.get('csp-nonce')?.value;
+  const nonce = _cookies.get('csp-nonce')?.value || undefined;
 
   return (
     <html lang="en">
@@ -38,9 +38,9 @@ export default async function RootLayout({
         <meta property="og:site_name" content="KF8FVD" />
         <meta name="twitter:card" content="summary_large_image" />
         {/* Early theme initializer (external to avoid CSP inline blocks) */}
-        <script src="/theme-init.js" defer nonce={nonce} />
-        <script id="cf-turnstile-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer nonce={nonce} />
-        <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        <script src="/theme-init.js" defer />
+        <script id="cf-turnstile-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer />
+        <script suppressHydrationWarning type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@graph": [
             {

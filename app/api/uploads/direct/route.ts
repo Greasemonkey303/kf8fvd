@@ -56,13 +56,7 @@ export async function POST(req: Request) {
       })
     })
 
-    let publicUrl: string
-    try {
-      const getExpires = 24 * 60 * 60
-      publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
-    } catch {
-      publicUrl = buildPublicUrl(key)
-    }
+    const publicUrl = buildPublicUrl(key)
 
     return NextResponse.json({ key, publicUrl })
   } catch (err: unknown) {

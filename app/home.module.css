@@ -6,7 +6,7 @@
 
 .main {
   flex: 1;
-  padding: 0 1rem; /* remove top padding so hero sits directly under navbar */
+  padding: 0 clamp(0.85rem, 1vw + 0.4rem, 1.2rem) 2rem; /* remove top padding so hero sits directly under navbar */
 }
 
 .mainLogo { display: none }
@@ -20,6 +20,10 @@
 }
 
 @media (max-width: 640px) {
+  .main {
+    padding-inline: 0.75rem;
+  }
+
   .mainLogo {
     margin: 10px 0;
     padding: 8px 10px;

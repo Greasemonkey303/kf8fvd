@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import RichTextEditor from '@/components/admin/RichTextEditor'
 
 type DOMPurifyWithConfig = typeof DOMPurify & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -16,6 +17,24 @@ try {
 import { useRouter } from 'next/navigation'
 import styles from '../../admin.module.css'
 
+function isProbablyHtml(value: string) {
+  return /<\/?[a-z][\s\S]*>/i.test(value)
+}
+
+function renderPagePreviewHtml(value: string) {
+  const rawValue = String(value || '')
+  if (!rawValue.trim()) return ''
+  try {
+    if (isProbablyHtml(rawValue)) {
+      return DOMPurify.sanitize(rawValue)
+    }
+    const rendered = marked.parse(rawValue)
+    return DOMPurify.sanitize(typeof rendered === 'string' ? rendered : '')
+  } catch {
+    return ''
+  }
+}
+
 export default function PageEditor({ params }: { params: { id: string } }) {
   const id = params.id
   const router = useRouter()
@@ -23,12 +42,7 @@ export default function PageEditor({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true)
 
   const sanitizedHtml = useMemo(() => {
-    try {
-      const raw = marked.parse(form.content || '')
-      return DOMPurify.sanitize(raw)
-    } catch (err) {
-      return ''
-    }
+    return renderPagePreviewHtml(form.content)
   }, [form.content])
 
   const [showPreview, setShowPreview] = useState(true)
@@ -53,10 +67,13 @@ export default function PageEditor({ params }: { params: { id: string } }) {
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
-          <h2>Edit Page — ID: {id}</h2>
+    <main className={styles.pageBody}>
+          <div className={styles.pageHeader}>
+            <div className={styles.pageTitleGroup}>
+              <h2 className={styles.pageTitle}>Edit Page</h2>
+              <div className={styles.pageSubtitle}>Editing page ID: {id}</div>
+            </div>
+          </div>
           {loading ? <p>Loading…</p> : (
             <form onSubmit={save} className="form-grid">
               <label>
@@ -67,10 +84,19 @@ export default function PageEditor({ params }: { params: { id: string } }) {
                 <div className={styles.fieldLabel}>Title</div>
                 <input value={form.title} onChange={e=>setForm({...form, title: e.target.value})} className={styles.formInput} />
               </label>
-              <label>
-                <div className={styles.fieldLabel}>Content (Markdown)</div>
-                <textarea rows={12} value={form.content} onChange={e=>setForm({...form, content: e.target.value})} className={styles.formTextarea} />
-              </label>
+              <div>
+                <div className={styles.fieldLabel}>Content</div>
+                <RichTextEditor
+                  value={form.content}
+                  onChange={(nextValue) => setForm({ ...form, content: nextValue })}
+                  placeholder="Write the page content visually. Legacy Markdown is still supported when loading older content."
+                  minHeight={280}
+                  expandedMinHeight={520}
+                />
+                <div className={styles.smallMuted} style={{ marginTop: 8 }}>
+                  Existing Markdown content still previews correctly, and new edits can use the full rich editor.
+                </div>
+              </div>
 
               <div>
                 <div className="flex between items-center">
@@ -89,8 +115,6 @@ export default function PageEditor({ params }: { params: { id: string } }) {
               </div>
             </form>
           )}
-        </div>
-      </div>
     </main>
   )
 }

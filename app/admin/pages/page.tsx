@@ -43,11 +43,14 @@ export default function AdminPages() {
   }
 
   return (
-    <main className="page-pad">
-      <div className="center-max">
-        <div className={styles.panel}>
-          <h2>Pages</h2>
-          <div className="stack">
+    <main className={styles.pageBody}>
+      <div className={styles.pageHeader}>
+        <div className={styles.pageTitleGroup}>
+          <h2 className={styles.pageTitle}>Pages</h2>
+          <div className={styles.pageSubtitle}>Manage custom content pages and their publish state.</div>
+        </div>
+      </div>
+      <div className={styles.simpleStack}>
             <form onSubmit={submit} className="form-grid" suppressHydrationWarning>
               <label>
                 <div className={styles.fieldLabel}>Slug</div>
@@ -72,29 +75,27 @@ export default function AdminPages() {
 
             <hr />
 
-            {loading ? <p>Loading…</p> : (
+        {loading ? <p>Loading…</p> : (
               <>
-                <ul className="stack">
+            <ul className={styles.simpleList}>
                   {pages.map(p => (
-                    <li key={p.id} className="row between">
-                      <div>
+                <li key={p.id} className={styles.simpleListItem}>
+                      <div className={styles.itemMeta}>
                         <strong>{p.title}</strong> <span className="muted">({p.slug})</span>
                       </div>
                       <div className="flex gap-2">
                         <Link className={styles.btnGhost} href={`/admin/pages/${p.id}`}>Edit</Link>
                         <button className={styles.btnGhost} onClick={()=>remove(p.id)}>Delete</button>
                       </div>
-                    </li>
+                </li>
                   ))}
-                </ul>
+            </ul>
                 <div className="flex gap-2">
                   <button className={styles.btnGhost} onClick={()=>load(1)}>First</button>
                   <button className={styles.btnGhost} onClick={()=>load()}>Refresh</button>
                 </div>
               </>
             )}
-          </div>
-        </div>
       </div>
     </main>
   )

@@ -107,7 +107,7 @@ export default async function Hero() {
       <picture className={styles.bg}>
         {avifUrl && <source srcSet={avifUrl} type="image/avif" />}
         {webpUrl && <source srcSet={webpUrl} type="image/webp" />}
-        <img src={fallbackSrc} alt={altText} className={styles.bgImg} />
+        <img src={fallbackSrc} alt={altText} className={styles.bgImg} loading="eager" fetchPriority="high" decoding="async" />
       </picture>
       <div className={styles.inner}>
         <h1 id="hero-title">{String(hero?.title || 'KF8FVD - Amateur Radio')}</h1>

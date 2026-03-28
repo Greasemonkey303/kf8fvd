@@ -27,6 +27,15 @@ const removeDebugBlockFromHtml = (s: unknown) => {
   }
 }
 
+const isProbablyHtml = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value)
+
+async function sanitizePageContent(content: unknown, purifier: DomPurifyWithConfig) {
+  const raw = String(content ?? '').trim()
+  if (!raw) return null
+  const rendered = isProbablyHtml(raw) ? raw : await Promise.resolve(marked.parse(raw))
+  return purifier.sanitize(typeof rendered === 'string' ? rendered : '')
+}
+
 export async function GET(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -54,7 +63,7 @@ export async function POST(req: Request) {
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   const configuredPurifier = DOMPurify as DomPurifyWithConfig
   if (typeof configuredPurifier.setConfig === 'function') configuredPurifier.setConfig({ FORBID_TAGS: ['script', 'style'] })
-  let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
+  let sanitized = await sanitizePageContent(content, configuredPurifier)
   if (sanitized) sanitized = String(removeDebugBlockFromHtml(sanitized))
   // sanitize known metadata HTML fields to avoid storing unsafe markup
   let safeMetadata: Record<string, unknown> = metadata ? { ...metadata } : {}
@@ -143,7 +152,9 @@ export async function PUT(req: Request) {
   // Sanitize content server-side before saving
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
-  let sanitized = content ? DOMPurify.sanitize(marked.parse(content)) : null
+  const configuredPurifier = DOMPurify as DomPurifyWithConfig
+  if (typeof configuredPurifier.setConfig === 'function') configuredPurifier.setConfig({ FORBID_TAGS: ['script', 'style'] })
+  let sanitized = await sanitizePageContent(content, configuredPurifier)
   if (sanitized) sanitized = String(removeDebugBlockFromHtml(sanitized))
   // sanitize known metadata HTML fields
   let safeMetadata = metadata ? { ...metadata } : {}

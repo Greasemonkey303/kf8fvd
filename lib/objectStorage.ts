@@ -1,4 +1,5 @@
 import * as Minio from 'minio'
+import { buildPublicUrl } from '@/lib/s3'
 
 const NOT_FOUND_CODES = new Set(['NotFound', 'NoSuchKey', 'NoSuchObject'])
 
@@ -69,6 +70,50 @@ export function resolveObjectKeyFromReference(value: unknown): string | null {
     return raw
   } catch {
     return null
+  }
+}
+
+export function normalizeObjectReferenceToPublicUrl(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+
+  try {
+    const raw = String(value).trim()
+    if (!raw) return null
+    if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw
+
+    const bucket = getObjectStorageBucket()
+
+    if (raw.startsWith('/api/uploads/get?') || raw.startsWith('/api/uploads/get/') || raw.startsWith('/uploads/get/')) {
+      const key = resolveObjectKeyFromReference(raw)
+      return key ? buildPublicUrl(key) : raw
+    }
+
+    if (/^https?:\/\//i.test(raw)) {
+      const url = new URL(raw)
+      const host = url.hostname.toLowerCase()
+      const isSignedObjectUrl = url.searchParams.has('X-Amz-Algorithm') || url.searchParams.has('X-Amz-Credential')
+      const isBucketPath = bucket ? url.pathname.replace(/^\/+/, '').startsWith(bucket + '/') : false
+      const configuredHosts = [
+        process.env.MINIO_HOST,
+        process.env.MINIO_ENDPOINT,
+        process.env.AWS_S3_ENDPOINT,
+      ].filter((entry): entry is string => Boolean(entry)).map((entry) => entry.toLowerCase())
+      const isKnownObjectHost = configuredHosts.includes(host)
+      const isLocalObjectHost = host === '127.0.0.1' || host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)
+
+      if (url.pathname.startsWith('/api/uploads/get/') || url.pathname === '/api/uploads/get' || isSignedObjectUrl || isBucketPath || isKnownObjectHost || isLocalObjectHost) {
+        const key = resolveObjectKeyFromReference(raw)
+        return key ? buildPublicUrl(key) : raw
+      }
+
+      return raw
+    }
+
+    if (raw.startsWith('/')) return raw
+
+    return buildPublicUrl(raw)
+  } catch {
+    return typeof value === 'string' ? value : null
   }
 }
 
