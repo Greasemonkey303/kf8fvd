@@ -28,7 +28,7 @@
     "@aws-sdk/client-s3": "^3.1003.0",
     "@sendgrid/mail": "^8.1.6",
     "bcryptjs": "^3.0.3",
-    "dompurify": "^3.0.4",
+    "dompurify": "^3.3.3",
     "ioredis": "^5.3.2",
     "isomorphic-dompurify": "^3.0.0",
     "jsdom": "^21.1.1",
