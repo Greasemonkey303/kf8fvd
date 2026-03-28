@@ -1,13 +1,33 @@
 .container { padding: clamp(1rem, 1.2vw + 0.8rem, 2rem) 1rem 3rem; max-width: var(--section-max); margin:0 auto }
+.editorialShell { display:grid; gap:1.15rem }
+.summaryPanel { display:grid; gap:1rem }
+.summaryHero { display:grid; gap:0.85rem; padding: 1rem; border-radius: 18px; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.06); }
+.sectionEyebrow { font-size: 0.74rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--white-72); }
+.sectionHeading { margin: 0; font-family: var(--font-heading); font-size: clamp(1.45rem, 1.1rem + 0.9vw, 2.2rem); line-height: 0.98; letter-spacing: 0.03em; text-transform: uppercase; }
+.sectionText { margin: 0; color: var(--white-90); line-height: 1.72; max-width: var(--content-measure); }
+.quickList { margin: 0; padding-left: 1.1rem; color: var(--white-90); line-height: 1.72; }
+.focusGrid { display:grid; gap: 0.9rem; }
+.focusCard { padding: 1rem; border-radius: 16px; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.05); }
+.focusTitle { margin: 0 0 0.35rem; color: var(--white-100); }
+.focusText { margin: 0; color: var(--white-88); line-height: 1.68; }
 .content { display:flex; flex-direction:column; gap:1rem }
 .media { display:flex; flex-direction:column; gap:10px; align-items:center }
 .photo { width:100%; max-width:600px; border-radius:18px; border:1px solid var(--border-06); box-shadow: 0 18px 42px var(--shadow-35); }
 .callout { font-size:0.95rem; color:var(--white-90); background: var(--surface-2); padding:10px 14px; border-radius:14px; line-height: 1.6 }
+.calloutBox { width: 100%; padding: 0.95rem 1rem; border-radius: 16px; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.05); color: var(--white-90); line-height: 1.65; }
+.calloutLabel { display:block; margin-bottom: 0.35rem; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--white-65); }
+.linkList { margin: 0; padding-left: 1.1rem; }
 .story { display:flex; flex-direction:column; gap:12px; max-width: var(--content-measure) }
+.storySection { display:grid; gap: 0.7rem; padding: 1rem; border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)); border: 1px solid rgba(255,255,255,0.04); }
+.storyTitle { margin:0; color: var(--color-link); font-weight:800 }
+.backLinkRow { display:flex; align-items:center; justify-content:flex-start; padding-top: 0.25rem; }
 .story h4 { margin:0; color: var(--color-link); font-weight:800 }
 .story p, .story li { color: var(--white-90); line-height:1.7 }
 
 @media (min-width:900px) { 
+	.editorialShell { gap: 1.35rem; }
+	.summaryPanel { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; }
+	.focusGrid { grid-template-columns: 1fr; }
 	.content { display:grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); align-items:flex-start; gap: 1.35rem }
 	/* place media on the left of the text so images remain at the top-left of the card */
 	.media { order: 1; align-items:flex-start }

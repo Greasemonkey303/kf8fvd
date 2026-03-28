@@ -7,6 +7,72 @@
   padding: 0 clamp(0.8rem, 1vw + 0.35rem, 1.25rem);
 }
 .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.stationHero {
+  overflow: hidden;
+}
+.stationHeroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.95fr);
+  gap: 1rem;
+  align-items: start;
+}
+.stationLead {
+  display: grid;
+  gap: 0.85rem;
+}
+.stationLeadLabel {
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--white-72);
+  font-weight: 800;
+}
+.stationHeadline {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.55rem, 1.1rem + 1vw, 2.45rem);
+  line-height: 0.96;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.stationDeck {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--white-92);
+  line-height: 1.75;
+}
+.stationBulletins {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--white-88);
+  line-height: 1.72;
+}
+.stationMetrics {
+  display: grid;
+  gap: 0.8rem;
+}
+.metricCard,
+.stationInfoCard {
+  padding: 1rem;
+  border-radius: 18px;
+  background: var(--surface-2);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.metricLabel {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--white-65);
+}
+.metricValue {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: clamp(1.05rem, 0.9rem + 0.4vw, 1.4rem);
+  color: var(--white-100);
+}
 .smallCard { padding: .5rem; }
 .highlightCard { box-shadow: 0 8px 30px var(--shadow-45); border-radius: 12px; transform: translateY(-2px); }
 .liveInner { display:flex; gap: 0.75rem; align-items:center; justify-content:space-between; }
@@ -116,10 +182,25 @@
 .eventList { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
 .equipGrid { display:flex; gap:8px; flex-direction:column }
 .equipCard { background: var(--surface-2); padding:10px 12px; border-radius:12px; font-weight:700 }
+.stationCardGrid {
+  display: grid;
+  gap: 0.9rem;
+}
+.stationInfoTitle {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: var(--white-100);
+}
+.stationInfoText {
+  margin: 0;
+  color: var(--white-88);
+  line-height: 1.7;
+}
 
 @media (max-width: 920px) {
   .row { grid-template-columns: 1fr; }
   .heatHeader div, .bandLabel, .heatCell { width:48px }
+  .stationHeroGrid { grid-template-columns: 1fr; }
 }
 
 /* polish card titles and dashboard-specific header styles */
@@ -163,4 +244,8 @@
 .legendItem { display:flex; gap:8px; align-items:center; }
 .legendSwatch { width:28px; height:14px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); border: 1px solid var(--border-06); opacity: var(--legend-opacity, 1) }
 .legendLabel { font-size:0.85rem; color: var(--white-78) }
+
+@media (min-width: 960px) {
+  .stationCardGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 

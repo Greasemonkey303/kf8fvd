@@ -32,6 +32,17 @@ export default function CredentialsClient() {
     return [...metaSlugs, ...otherSlugs]
   }, [sectionMeta, sections])
 
+  const stats = React.useMemo(() => {
+    const sectionCount = orderedSlugs.length
+    const items = orderedSlugs.flatMap((slug) => sections[slug] || [])
+    const authorities = Array.from(new Set(items.map((item) => String(item.authority || '')).filter(Boolean)))
+    return {
+      sectionCount,
+      itemCount: items.length,
+      authorityCount: authorities.length,
+    }
+  }, [orderedSlugs, sections])
+
   return (
     <main>
       <section className="page-pad">
@@ -39,6 +50,23 @@ export default function CredentialsClient() {
           <p className="page-kicker">Credentials</p>
           <h1 id="credentials-page-title" className="page-heading">Licenses, training, and operating background</h1>
           <p className="page-deck">A public record of certifications, operating credentials, and supporting training relevant to radio, emergency communications, and technical work.</p>
+        </div>
+        <div className={styles.statsGrid}>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Credential groups</span>
+            <strong className={styles.statValue}>{stats.sectionCount}</strong>
+            <p className="surface-note">Organized so operating background, licenses, and supporting training read like a real station profile.</p>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Published items</span>
+            <strong className={styles.statValue}>{stats.itemCount}</strong>
+            <p className="surface-note">Each card can carry images and context so the page feels like a ham radio record, not a bare checklist.</p>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Authorities</span>
+            <strong className={styles.statValue}>{stats.authorityCount}</strong>
+            <p className="surface-note">FCC and related issuing bodies are surfaced to make the credentials page feel more specific and credible.</p>
+          </div>
         </div>
         {loading ? <div className="center-max">Loading credentials…</div> : null}
         {orderedSlugs.map((sec) => (

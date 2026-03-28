@@ -167,6 +167,36 @@ export default function Dashboard() {
   const [bandGrid, setBandGrid] = useState<Record<string, number[]> | null>(null);
   const [bandLastUpdated, setBandLastUpdated] = useState<number | null>(null);
   const [propLastUpdated, setPropLastUpdated] = useState<number | null>(null);
+  const qsoCount = qsos?.length || 0
+  const operatingHeadline = space
+    ? Number(space.kIndex || 0) >= 6
+      ? 'Standby for stable local work'
+      : Number(space.f107 || 0) > 140
+        ? 'HF window looks strong right now'
+        : 'A good day for local repeater and hotspot traffic'
+    : 'Checking current operating conditions'
+  const operatingDeck = space
+    ? `Solar conditions, recent contacts, and the current station kit point toward ${Number(space.kIndex || 0) >= 6 ? 'steady VHF/UHF operation' : Number(space.f107 || 0) > 140 ? 'better-than-average 20m and 40m work' : 'mixed local and digital activity'}.`
+    : 'Live data is loading from the station dashboard.'
+  const stationBulletins = [
+    `Recent contact sample: ${qsoCount > 0 ? `${qsoCount} logged entries in the current view` : 'waiting on logbook data'}`,
+    `Propagation read: ${space ? `K ${space.kIndex} / F10.7 ${space.f107}` : 'loading current solar data'}`,
+    'Primary focus: FM, digital voice, repeaters, hotspot work, and practical station projects.',
+  ]
+  const stationCards = [
+    {
+      title: 'Operating Focus',
+      text: Number(space?.kIndex || 0) >= 6 ? 'When geomagnetic conditions are rough, the station leans into local repeaters, hotspot work, and reliable VHF/UHF operating instead of chasing marginal HF openings.' : 'Current conditions are good enough to split time between local activity, digital voice, and checking for useful HF windows.',
+    },
+    {
+      title: 'Station Rhythm',
+      text: qsoCount > 0 ? 'Recent logbook activity is surfaced here so the home page feels like a live station dashboard instead of a static landing page.' : 'The home page is wired to show recent activity as soon as fresh logbook data is available.',
+    },
+    {
+      title: 'Bench Work',
+      text: 'The site stays tied to actual radio work by keeping projects, contact flow, credentials, and propagation surfaces connected to the station itself.',
+    },
+  ]
 
   // deterministic pseudo-random opacity so server/client render match
   function getOpacity(band: string, col: number) {
@@ -305,6 +335,39 @@ export default function Dashboard() {
 
   return (
     <section className={styles.dashboard} aria-label="Dashboard">
+      <Card className={styles.stationHero} title="Live Station" subtitle="Current operating snapshot">
+        <div className={styles.stationHeroGrid}>
+          <div className={styles.stationLead}>
+            <div className="eyebrow-row">
+              <span className="signal-dot" aria-hidden></span>
+              <span className={styles.stationLeadLabel}>Station status</span>
+            </div>
+            <h3 className={styles.stationHeadline}>{operatingHeadline}</h3>
+            <p className={styles.stationDeck}>{operatingDeck}</p>
+            <ul className={styles.stationBulletins}>
+              {stationBulletins.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </div>
+          <div className={styles.stationMetrics}>
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>On-air state</span>
+              <strong className={styles.metricValue}>Live</strong>
+              <p className="surface-note">Realtime cues are pulled into the dashboard so visitors can tell whether the page reflects an active station.</p>
+            </div>
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Recent contacts</span>
+              <strong className={styles.metricValue}>{qsoCount || '—'}</strong>
+              <p className="surface-note">Latest QSOs, logbook data, and station context keep the home page tied to actual operating activity.</p>
+            </div>
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Primary modes</span>
+              <strong className={styles.metricValue}>FM / DMR / D-STAR</strong>
+              <p className="surface-note">The site stays focused on practical local radio, digital voice, and project-driven station improvements.</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       <div className={styles.topLive}>
         <Card className={`${styles.largeCard}`} title="Live" subtitle="Clock & Status">
           <div className={styles.liveInner}>
@@ -363,6 +426,17 @@ export default function Dashboard() {
       </div>
 
       <div className={styles.row}>
+        <Card title="Station Notes" subtitle="What this site is centered on">
+          <div className={styles.stationCardGrid}>
+            {stationCards.map((card) => (
+              <div key={card.title} className={styles.stationInfoCard}>
+                <h4 className={styles.stationInfoTitle}>{card.title}</h4>
+                <p className={styles.stationInfoText}>{card.text}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
         <Card title="Band Activity" subtitle="Heatmap overview">
           <div className={styles.heatmap}>
             {/* simple mocked heatmap: rows bands, columns times */}

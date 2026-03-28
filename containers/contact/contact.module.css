@@ -1,6 +1,26 @@
 .contact { padding: clamp(1rem, 1.2vw + 0.8rem, 2rem) 1rem 3rem; }
 .wrapper { max-width: var(--section-max); margin: 0 auto; }
 .inner { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+.form { display: grid; gap: 0.9rem; }
+.formIntro,
+.formSummary {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background: var(--surface-1);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.formSummary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.summaryBlock { display: grid; gap: 0.25rem; }
+.summaryLabel {
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--white-65);
+  font-weight: 800;
+}
+.summaryValue { color: var(--white-100); }
 .form label { display: block; margin-bottom: .85rem; color: var(--white-92); }
 .form input, .form textarea { width: 100%; padding: 0.8rem 0.9rem; border-radius: 14px; border: 1px solid var(--border-06); background: var(--surface-2); color: var(--color-text); font-size: .98rem }
 .form textarea { min-height: 160px; resize: vertical }
@@ -97,6 +117,27 @@
 .confirmModal h4 { margin: 0 0 8px 0; font-size:1.05rem }
 .confirmModal .preview { max-height: 240px; overflow:auto; }
 .preview { white-space: pre-wrap; background: var(--muted-bg); padding:8px; border-radius:6px; margin-top:6px }
+.confirmSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.confirmChip {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.confirmChip span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--white-65);
+}
 
 .toast { position: fixed; right: 16px; bottom: 16px; background: var(--color-success); color: var(--white-100); padding: 0.6rem 0.9rem; border-radius: 8px; box-shadow: 0 16px 40px var(--shadow-45); z-index:2400 }
 
@@ -117,4 +158,6 @@
 	.actions a { width: 100%; text-align: center }
   .fileItem { flex-wrap: wrap; }
   .removeFile { margin-left: 0; }
+  .formSummary,
+  .confirmSummaryGrid { grid-template-columns: 1fr; }
 }

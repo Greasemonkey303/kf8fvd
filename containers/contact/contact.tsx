@@ -19,6 +19,11 @@ export default function Contact() {
     'Project follow-up and parts used',
     'Station, repeater, antenna, or software discussion',
   ]
+  const responseSteps = [
+    'Use the form for project questions, station notes, or operating follow-up.',
+    'Add attachments only when they help explain the issue or build.',
+    'After sending, the page confirms what was submitted and resets the form cleanly.',
+  ]
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -399,6 +404,12 @@ export default function Contact() {
             {mounted ? (
               <form className={styles.form} onSubmit={handleSubmit} noValidate>
                 <h3 className={styles.formHeading}>Message me now</h3>
+              <div className={styles.formIntro}>
+                <p className={styles.infoText}>This form is set up for radio-related questions first, so the fastest replies usually come when the message includes the gear, mode, or repeater involved.</p>
+                <ul className={styles.topicList}>
+                  {responseSteps.map((step) => <li key={step}>{step}</li>)}
+                </ul>
+              </div>
               {errors._global && <div ref={globalErrorRef} tabIndex={-1} className={styles.formError} role="alert" aria-live="assertive">{errors._global}</div>}
 
               <div>
@@ -454,6 +465,21 @@ export default function Contact() {
                 ) : null}
               </div>
 
+              <div className={styles.formSummary}>
+                <div className={styles.summaryBlock}>
+                  <span className={styles.summaryLabel}>Message state</span>
+                  <strong className={styles.summaryValue}>{message.trim().length >= 10 ? 'Ready to send' : 'Needs more detail'}</strong>
+                </div>
+                <div className={styles.summaryBlock}>
+                  <span className={styles.summaryLabel}>Attachments</span>
+                  <strong className={styles.summaryValue}>{files.length} file{files.length === 1 ? '' : 's'}</strong>
+                </div>
+                <div className={styles.summaryBlock}>
+                  <span className={styles.summaryLabel}>Best fit</span>
+                  <strong className={styles.summaryValue}>Ham radio / station help</strong>
+                </div>
+              </div>
+
               {/* Honeypot field (hidden) */}
               <div className="sr-offscreen" aria-hidden>
                 <label>Leave this field empty<input name="hp" tabIndex={-1} /></label>
@@ -485,6 +511,11 @@ export default function Contact() {
 
             <div className={styles.contactInfo}>
               <div className={styles.infoPanel}>
+                <h3 className={styles.contactHeading}>What happens next</h3>
+                <p className={styles.infoText}>Messages are meant for actual station, build, and operating follow-up, not a generic inbox. That keeps the page aligned with the rest of the site and makes the contact flow feel more intentional.</p>
+              </div>
+
+              <div className={styles.infoPanel}>
                 <h3 className={styles.contactHeading}>Email me directly</h3>
                 <a className={styles.mailto} href="mailto:zach@kf8fvd.com">✉️ zach@kf8fvd.com</a>
               </div>
@@ -514,8 +545,11 @@ export default function Contact() {
       {confirmOpen && (
         <Modal overlayClassName={styles.confirmOverlay} contentClassName={styles.confirmModal} onClose={() => setConfirmOpen(false)} initialFocusRef={confirmCancelRef as unknown as React.RefObject<HTMLElement>} titleId="confirm-title" descriptionId="confirm-desc">
           <h4 id="confirm-title">Confirm message</h4>
-          <p><strong>Name:</strong> {name || '—'}</p>
-          <p><strong>Email:</strong> {email || '—'}</p>
+          <div className={styles.confirmSummaryGrid}>
+            <div className={styles.confirmChip}><span>Name</span><strong>{name || '—'}</strong></div>
+            <div className={styles.confirmChip}><span>Email</span><strong>{email || '—'}</strong></div>
+            <div className={styles.confirmChip}><span>Attachments</span><strong>{files.length}</strong></div>
+          </div>
           <p><strong>Message:</strong></p>
           <div id="confirm-desc" className={styles.preview}>{message || '—'}</div>
           {files.length>0 && <p><strong>Attachments:</strong> {files.map(f=> f.name).join(', ')}</p>}

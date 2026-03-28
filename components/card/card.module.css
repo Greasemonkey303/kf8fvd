@@ -13,6 +13,7 @@
   position: relative;
   overflow: hidden;
   min-height: 140px;
+  animation: cardReveal .46s cubic-bezier(.2,.9,.2,1) both;
 }
 .card::before {
   content: '';
@@ -35,6 +36,17 @@
 
 .card :global(a) {
   font-weight: 700;
+}
+
+@keyframes cardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 920px) {
