@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
 import crypto from 'crypto'
+import { preferWebpVariantKey } from '@/lib/webpVariants'
 
 export async function GET(req: Request, ctx: { params?: unknown }) {
   try {
@@ -72,7 +73,8 @@ export async function GET(req: Request, ctx: { params?: unknown }) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
-    const rawStream = await minioClient.getObject(bucket, key)
+    const resolvedKey = await preferWebpVariantKey(key, req.headers.get('accept')) || key
+    const rawStream = await minioClient.getObject(bucket, resolvedKey)
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = []
       const s = rawStream as unknown as { on: (ev: string, cb: (...args: unknown[]) => void) => void }
@@ -81,7 +83,7 @@ export async function GET(req: Request, ctx: { params?: unknown }) {
       s.on('error', (e: unknown) => reject(e))
     })
 
-    const ext = key.split('.').pop()?.toLowerCase()
+    const ext = resolvedKey.split('.').pop()?.toLowerCase()
     let contentType = 'application/octet-stream'
     if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg'
     else if (ext === 'png') contentType = 'image/png'
@@ -101,6 +103,7 @@ export async function GET(req: Request, ctx: { params?: unknown }) {
       'Content-Type': contentType,
       'Cache-Control': 'public, max-age=31536000, immutable',
       'ETag': etag,
+      'Vary': 'Accept',
     }
 
     return new NextResponse(new Uint8Array(buffer), { status: 200, headers })

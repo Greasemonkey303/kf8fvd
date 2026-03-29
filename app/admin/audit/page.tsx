@@ -1,5 +1,8 @@
 "use client"
 import { useEffect, useState } from 'react'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
+import AdminNotice from '@/components/admin/AdminNotice'
+import styles from '../admin.module.css'
 
 type AdminAction = {
   id?: string | number
@@ -72,49 +75,53 @@ export default function AuditPage() {
     setLoading(false)
   }
 
-  useEffect(() => { /* no auto-load to require admin creds */ }, [])
+  useEffect(() => { /* manual load keeps the utility view quiet until requested */ }, [])
 
   function prev() { if (offset - limit >= 0) load(offset - limit) }
   function next() { if (offset + limit < (total || 0)) load(offset + limit) }
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Admin: Audit Log</h2>
-      <div style={{ marginBottom: 8 }}>
-        <input placeholder="Admin key (or leave blank to use Basic auth)" value={adminKey} onChange={e => setAdminKey(e.target.value)} style={{ padding: 8, width: 360 }} />
-        <button onClick={() => load(0)} style={{ marginLeft: 8, padding: '8px 12px' }}>{loading ? 'Loading...' : 'Load Audit'}</button>
-        <button onClick={exportCsv} style={{ marginLeft: 8, padding: '8px 12px' }}>{loading ? 'Working...' : 'Export CSV'}</button>
-      </div>
-      <div style={{ marginBottom: 8 }}>
-        <input placeholder="Admin user" value={adminUser} onChange={e => setAdminUser(e.target.value)} style={{ padding: 8, width: 170, marginRight: 8 }} />
-        <input placeholder="Admin pass" type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} style={{ padding: 8, width: 170 }} />
-      </div>
-      {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
-
-      <div style={{ marginBottom: 8 }}>
-        <strong>Total:</strong> {total}
-        <div style={{ float: 'right' }}>
-          <button onClick={prev} disabled={offset === 0} style={{ marginRight: 8 }}>Prev</button>
-          <button onClick={next} disabled={offset + limit >= (total || 0)}>Next</button>
-        </div>
-      </div>
-
+    <main className={styles.utilityPage}>
       <div>
-        {actions.length === 0 && <div>No entries found.</div>}
-        <ul>
-          {actions.map((a, idx) => (
-            <li key={a.id ?? idx} style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <div style={{ minWidth: 220 }}>{a.action} <span style={{ color: '#666' }}>by</span> {a.actor}</div>
-                <div style={{ minWidth: 300 }}>{a.target_key || ''}</div>
-                <div style={{ color: '#666' }}>{a.reason || ''}</div>
-                <div style={{ marginLeft: 'auto', color: '#666' }}>{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</div>
-              </div>
-              {a.meta ? <pre style={{ marginTop: 6, background: '#f7f7f7', padding: 8, borderRadius: 4 }}>{JSON.stringify(a.meta, null, 2)}</pre> : null}
-            </li>
-          ))}
-        </ul>
+        <h2 className={styles.pageTitle}>Admin: Audit Log</h2>
+        <div className={styles.pageSubtitle}>Review recorded admin actions and export the current window. Signed-in admins can use this directly; key/basic auth is optional for scripted access.</div>
       </div>
-    </div>
+      {error ? <AdminNotice message={error} variant="error" actionLabel="Retry" onAction={() => { void load(offset) }} /> : null}
+      <div className={styles.utilityControls}>
+        <label className={styles.utilityField}>
+          <div className={styles.fieldLabel}>Admin key</div>
+          <input className={styles.formInput} placeholder="Optional admin key" value={adminKey} onChange={e => setAdminKey(e.target.value)} />
+        </label>
+        <label className={styles.utilityField}>
+          <div className={styles.fieldLabel}>Admin user</div>
+          <input className={styles.formInput} placeholder="Optional basic-auth user" value={adminUser} onChange={e => setAdminUser(e.target.value)} />
+        </label>
+        <label className={styles.utilityField}>
+          <div className={styles.fieldLabel}>Admin password</div>
+          <input className={styles.formInput} placeholder="Optional basic-auth password" type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} />
+        </label>
+      </div>
+      <div className={styles.utilityActions}>
+        <button type="button" className={styles.btnGhost} onClick={() => load(0)} disabled={loading}>{loading ? 'Loading audit...' : 'Load audit'}</button>
+        <button type="button" className={styles.btnGhost} onClick={exportCsv} disabled={loading}>{loading ? 'Exporting...' : 'Export CSV'}</button>
+        <button type="button" className={styles.btnGhost} onClick={prev} disabled={loading || offset === 0}>Prev</button>
+        <button type="button" className={styles.btnGhost} onClick={next} disabled={loading || offset + limit >= (total || 0)}>Next</button>
+      </div>
+      <div className={styles.smallMuted}>Total: {total}</div>
+      {loading ? <AdminLoadingState label="Loading audit log" /> : null}
+      {!loading && actions.length === 0 ? <div className={styles.emptyStateCard}>No entries found.</div> : null}
+      <div className={styles.utilityList}>
+        {actions.map((a, idx) => (
+          <div key={a.id ?? idx} className={styles.utilityRow}>
+            <div className={styles.utilityRowMeta}>
+              <div><strong>{a.action || 'Action'}</strong> <span className={styles.utilityMetaText}>by {a.actor || 'unknown actor'}</span></div>
+              <div className={styles.utilityMetaText}>{a.target_key || 'No target key'}{a.reason ? ` • ${a.reason}` : ''}</div>
+              <div className={styles.utilityMetaText}>{a.createdAt ? new Date(a.createdAt).toLocaleString() : 'No timestamp'}</div>
+              {a.meta ? <pre className={styles.utilityMetaPre}>{JSON.stringify(a.meta, null, 2)}</pre> : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </main>
   )
 }

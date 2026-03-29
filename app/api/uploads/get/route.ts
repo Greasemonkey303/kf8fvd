@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
+import { preferWebpVariantKey } from '@/lib/webpVariants'
 
 export async function GET(req: Request) {
   try {
@@ -18,8 +19,8 @@ export async function GET(req: Request) {
       secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
     })
 
-    // getObject returns a stream; use unknown and a small safe wrapper
-    const rawStream = await minioClient.getObject(bucket, key)
+    const resolvedKey = await preferWebpVariantKey(key, req.headers.get('accept')) || key
+    const rawStream = await minioClient.getObject(bucket, resolvedKey)
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = []
       // `rawStream` has an event-emitter interface; narrow to any-compatible handlers safely
@@ -32,14 +33,14 @@ export async function GET(req: Request) {
     })
 
     // rudimentary content-type by extension
-    const ext = key.split('.').pop()?.toLowerCase()
+    const ext = resolvedKey.split('.').pop()?.toLowerCase()
     let contentType = 'application/octet-stream'
     if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg'
     if (ext === 'png') contentType = 'image/png'
     if (ext === 'gif') contentType = 'image/gif'
     if (ext === 'webp') contentType = 'image/webp'
 
-    return new NextResponse(new Uint8Array(buffer), { status: 200, headers: { 'Content-Type': contentType } })
+    return new NextResponse(new Uint8Array(buffer), { status: 200, headers: { 'Content-Type': contentType, 'Vary': 'Accept' } })
   } catch (err: unknown) {
     console.error('uploads.get error', err)
     let msg = 'Unknown error'

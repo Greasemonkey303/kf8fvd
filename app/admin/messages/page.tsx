@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import createDOMPurify from 'dompurify'
 import styles from './page.module.css'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
 import Modal from '@/components/modal/Modal'
 
 function escapeHtml(str: string) {
@@ -39,7 +40,7 @@ export default function Page() {
   async function load(p = 1) {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/messages?page=${p}&limit=${limit}`, { cache: 'no-store' })
+      const res = await fetch(`/admin/api/messages?page=${p}&limit=${limit}`, { cache: 'no-store' })
       const j = await res.json()
       setItems(j.items || [])
     } catch (error) {
@@ -59,14 +60,14 @@ export default function Page() {
   if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
 
   async function mark(id: number, read: boolean) {
-    await fetch('/api/admin/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
+    await fetch('/admin/api/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
     await load(page)
   }
 
   // PATCH without reloading the whole list (optimistic update)
   async function markNoReload(id: number, read: boolean) {
     try {
-      await fetch('/api/admin/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
+      await fetch('/admin/api/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, read }) })
       setItems(prev => prev.map(i => i.id === id ? { ...i, is_read: read } : i))
       if (selected && selected.id === id) setSelected({ ...selected, is_read: read })
     } catch (e) {
@@ -75,7 +76,7 @@ export default function Page() {
   }
 
   async function markAllRead() {
-    await fetch('/api/admin/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark_all_read' }) })
+    await fetch('/admin/api/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark_all_read' }) })
     await load(page)
   }
 
@@ -89,7 +90,7 @@ export default function Page() {
     const { id, fromModal } = confirmDelete
     setDeleting(true)
     try {
-      await fetch(`/api/admin/messages?id=${id}`, { method: 'DELETE' })
+      await fetch(`/admin/api/messages?id=${id}`, { method: 'DELETE' })
       setConfirmDelete(null)
       if (fromModal) setSelected(null)
       await load(page)
@@ -117,7 +118,7 @@ export default function Page() {
         <button className={styles.btnGhost} onClick={() => load(1)} disabled={loading}>Refresh</button>
         <button className={styles.btnGhost} onClick={() => markAllRead()} disabled={loading}>Mark all read</button>
       </div>
-      {loading && <p>Loading…</p>}
+      {loading && <AdminLoadingState label="Loading messages" />}
       {!loading && items.length === 0 && <p>No messages.</p>}
       {!loading && items.length > 0 && (
         <table className={styles.table}>

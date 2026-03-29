@@ -90,11 +90,6 @@ export const authOptions: NextAuthOptions = {
         // 2FA request flow to send/verify the code.
         const otp = creds.otp
         if (otp) {
-          // Ensure table exists (best-effort)
-          try {
-            await query('CREATE TABLE IF NOT EXISTS two_factor_codes (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, email VARCHAR(255), code_hash VARCHAR(255), expires_at DATETIME, used_at DATETIME DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX (user_id), INDEX (email))')
-          } catch (e) { void e /* ignore create table errors */ }
-
           const codes = await query<Record<string, unknown>[]>('SELECT id, code_hash FROM two_factor_codes WHERE user_id = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1', [user.id])
           const codeRow = Array.isArray(codes) && codes.length ? codes[0] : null
           if (!codeRow) return null

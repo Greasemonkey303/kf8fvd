@@ -3,7 +3,7 @@
 
 INSERT INTO projects (slug, title, subtitle, image_path, description, external_link, is_published, sort_order, created_at)
 VALUES
-('hotspot', 'Hotspot Project', 'Raspberry Pi 4 + MMDVM Hotspot', '/hotspot/hotspot-2.jpg', 'This project documents building a compact local amateur radio hotspot using a Raspberry Pi 4 and an MMDVM HAT. Click the image to view it full-size.', '/projects/hotspot', 1, 1, NOW())
+('hotspot', 'Hotspot Project', 'Raspberry Pi 4 + MMDVM Hotspot', 'projects/hotspot/static/hotspot-2.jpg', 'This project documents building a compact local amateur radio hotspot using a Raspberry Pi 4 and an MMDVM HAT. Click the image to view it full-size.', '/projects/hotspot', 1, 1, NOW())
 ON DUPLICATE KEY UPDATE
   title = VALUES(title),
   subtitle = VALUES(subtitle),

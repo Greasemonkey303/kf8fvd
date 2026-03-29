@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useEffectEvent, useId, useMemo, useState
 import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
 import RichTextEditor from '../../../components/admin/RichTextEditor'
+import AdminNotice from '@/components/admin/AdminNotice'
+import AdminObjectImage from '@/components/admin/AdminObjectImage'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
 import createDOMPurify from 'dompurify'
@@ -25,12 +27,18 @@ export default function AdminProjects() {
   const [detailImages, setDetailImages] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const load = React.useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/admin/api/projects')
-    const data = await res.json()
-    setItems(data.items || [])
+    setError(null)
+    try {
+      const res = await fetch('/admin/api/projects')
+      const data = await res.json()
+      setItems(data.items || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load projects')
+    }
     setLoading(false)
   }, [])
 
@@ -59,12 +67,20 @@ export default function AdminProjects() {
 
   const submit = React.useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!form.slug || !form.title) return
+    setError(null)
+    if (!form.slug || !form.title) {
+      setError('Slug and title are required before creating a project.')
+      return
+    }
     const metadata = form.createDetails ? { details: form.details, images: detailImages } : undefined
     try {
-      await fetch('/admin/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+      const response = await fetch('/admin/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body?.error || 'Project create failed')
     } catch (err: unknown) {
       console.error('project create error', getErrMsg(err))
+      setError(getErrMsg(err))
+      showToast(getErrMsg(err), 'error')
       return
     }
     // clear any saved draft for this slug
@@ -105,7 +121,6 @@ export default function AdminProjects() {
       try {
         const payload = { form, detailImages, updated: Date.now() }
         try { localStorage.setItem(currentDraftKey, JSON.stringify(payload)) } catch {}
-        showToast('Draft saved locally', 'info')
       } catch {}
     }, 800)
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
@@ -161,11 +176,18 @@ export default function AdminProjects() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!form.slug) { alert('Please enter a slug before uploading'); return }
+    setError(null)
+    if (!form.slug) {
+      setError('Enter a slug before uploading an image.')
+      return
+    }
 
     // enforce 50MB limit for main image
     const MAX_BYTES = 50 * 1024 * 1024
-    if (file.size > MAX_BYTES) { alert('Main image too large (max 50MB)'); return }
+    if (file.size > MAX_BYTES) {
+      setError('Main image is too large. The maximum supported size is 50MB.')
+      return
+    }
 
     // Prefer server-side direct upload to avoid CORS issues with browser->MinIO in some environments.
     try {
@@ -196,7 +218,12 @@ export default function AdminProjects() {
       body: JSON.stringify({ slug: form.slug, filename: file.name, contentType: file.type })
     })
     const data = await res.json()
-    if (!data.url) { alert('Upload presign failed: ' + (data.error || 'unknown')); return }
+    if (!data.url) {
+      const message = 'Upload presign failed: ' + (data.error || 'unknown')
+      setError(message)
+      showToast(message, 'error')
+      return
+    }
 
     // Upload file to S3 (PUT)
     try {
@@ -217,11 +244,11 @@ export default function AdminProjects() {
             return
           }
           const dtext = JSON.stringify(d)
-          alert('Upload failed (presign + direct): ' + upload.status + ' - ' + dtext)
+          setError('Upload failed (presign + direct): ' + upload.status + ' - ' + dtext)
           return
         } catch (derr: unknown) {
           console.error('direct upload error', getErrMsg(derr))
-          alert('Upload failed (presign + direct): ' + getErrMsg(derr))
+          setError('Upload failed (presign + direct): ' + getErrMsg(derr))
           return
         }
       }
@@ -245,27 +272,32 @@ export default function AdminProjects() {
               setForm({...form, image_path: d.publicUrl || d.key})
               return
             }
-            alert('Upload failed (retry + direct): ' + upload2.status + ' - ' + JSON.stringify(d))
+            setError('Upload failed (retry + direct): ' + upload2.status + ' - ' + JSON.stringify(d))
             return
             } catch (derr: unknown) {
             console.error('direct upload error', getErrMsg(derr))
-            alert('Upload failed (retry + direct): ' + getErrMsg(derr))
+            setError('Upload failed (retry + direct): ' + getErrMsg(derr))
           }
         }
       } catch (err2: unknown) {
         console.error('upload retry error', getErrMsg(err2))
-        alert('Upload failed: ' + getErrMsg(err2))
+        setError('Upload failed: ' + getErrMsg(err2))
         return
       }
     }
 
     // Set image_path to returned public URL
-    setForm({...form, image_path: data.publicUrl || data.key})
+    try {
+      if (data.key) await fetch('/api/uploads/finalize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: data.key }) })
+    } catch (error) { console.error('upload finalize error', getErrMsg(error)) }
+
+    setForm({...form, image_path: data.publicUrl || data.key })
     setUploadProgress(0)
   }
 
   const performBulkAction = async (action: 'publish' | 'unpublish' | 'delete') => {
     if (!selectedIds || selectedIds.length === 0) return
+    setError(null)
     try {
       if (action === 'delete') {
       const deleted: Record<string, unknown>[] = []
@@ -299,7 +331,9 @@ export default function AdminProjects() {
       setSelectedIds([])
       showToast('Bulk action complete', 'success')
     } catch (e) {
-      alert('Bulk action failed: ' + String(e))
+      const message = 'Bulk action failed: ' + String(e)
+      setError(message)
+      showToast(message, 'error')
     }
   }
 
@@ -355,13 +389,14 @@ export default function AdminProjects() {
 
     ;(async ()=>{
       for (const f of toAdd) {
-        try { await uploadOne(f) } catch (e: unknown) { alert('Upload error: ' + getErrMsg(e)); break }
+        try { await uploadOne(f) } catch (e: unknown) { setError('Upload error: ' + getErrMsg(e)); break }
       }
     })()
   }
 
   return (
     <main className={styles.pageBody}>
+          {error ? <AdminNotice message={error} variant="error" actionLabel={loading ? undefined : 'Retry'} onAction={loading ? undefined : load} /> : null}
           <h2>Projects</h2>
           <div className="stack">
             <div className={styles.editorGrid}>
@@ -391,9 +426,9 @@ export default function AdminProjects() {
               <label>
                 <div className="field-label">Image path</div>
                 <input suppressHydrationWarning value={form.image_path} onChange={e=>setForm({...form, image_path: e.target.value})} className={styles.formInput} />
-                <div style={{marginTop:8}}>
-                  <label className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{display:'inline-flex', alignItems:'center', gap:8}}>
-                    <input suppressHydrationWarning type="file" accept="image/*" onChange={handleFileChange} style={{display:'none'}} />
+                <div className={styles.mt6}>
+                  <label className={`${styles.btnGhost} ${styles.btnGhostSmall} ${styles.inlineBtnLabel}`}>
+                    <input suppressHydrationWarning type="file" accept="image/*" onChange={handleFileChange} className={styles.srOnlyInput} />
                       
                     Upload image
                   </label>
@@ -401,7 +436,7 @@ export default function AdminProjects() {
               </label>
               <label>
                 <div className="field-label">Description (HTML allowed)</div>
-                <div style={{marginBottom:8}} className={styles.smallMuted}>Use the toolbar to format text; content is stored as HTML.</div>
+                <div className={`${styles.smallMuted} ${styles.mt6}`}>Use the toolbar to format text; content is stored as HTML.</div>
                 <div>
                   <RichTextEditor
                     value={String(form.description || '')}
@@ -410,7 +445,7 @@ export default function AdminProjects() {
                     minHeight={240}
                     expandedMinHeight={420}
                   />
-                  <div style={{display:'flex', justifyContent:'space-between', marginTop:8}}>
+                  <div className={`${styles.rowBetween12} ${styles.mt6}`}>
                     <div className={styles.smallMuted}>{(form.description || '').replace(/<[^>]+>/g,'').length} chars</div>
                     <div className={styles.smallMuted}>{((form.description || '').replace(/<[^>]+>/g,'').trim().split(/\s+/).filter(Boolean)).length} words</div>
                   </div>
@@ -432,7 +467,7 @@ export default function AdminProjects() {
               {form.createDetails && (
                 <label>
                   <div className="field-label">Details HTML</div>
-                  <div style={{marginBottom:8}} className={styles.smallMuted}>Use the toolbar to format the details; content is stored as HTML.</div>
+                  <div className={`${styles.smallMuted} ${styles.mt6}`}>Use the toolbar to format the details; content is stored as HTML.</div>
                   <div>
                     <RichTextEditor
                       value={String(form.details || '')}
@@ -441,28 +476,26 @@ export default function AdminProjects() {
                       minHeight={420}
                       expandedMinHeight={640}
                     />
-                    <div style={{display:'flex', justifyContent:'space-between', marginTop:8}}>
+                    <div className={`${styles.rowBetween12} ${styles.mt6}`}>
                       <div className={styles.smallMuted}>{(form.details || '').replace(/<[^>]+>/g,'').length} chars</div>
                       <div className={styles.smallMuted}>{((form.details || '').replace(/<[^>]+>/g,'').trim().split(/\s+/).filter(Boolean)).length} words</div>
                     </div>
                   </div>
-                  <div style={{marginTop:8}}>
+                  <div className={styles.mt6}>
                     <div className="field-label">Details images (max 6, 50MB each)</div>
-                    <label className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{display:'inline-flex', alignItems:'center', gap:8}}>
-                      <input type="file" accept="image/*" multiple onChange={e=>uploadDetailFiles(e.target.files)} style={{display:'none'}} />
+                    <label className={`${styles.btnGhost} ${styles.btnGhostSmall} ${styles.inlineBtnLabel}`}>
+                      <input type="file" accept="image/*" multiple onChange={e=>uploadDetailFiles(e.target.files)} className={styles.srOnlyInput} />
                       
                       Upload details images
                     </label>
                     {uploadProgress > 0 && (
-                      <div className="progress-bar" style={{marginTop:8}}>
-                        <div className="progress-bar-inner" style={{width: `${uploadProgress}%`}} />
-                      </div>
+                      <progress className={`${styles.progressNative} ${styles.mt6}`} max={100} value={uploadProgress} aria-label="Project details upload progress" />
                     )}
-                    <div style={{display:'flex', gap:8, marginTop:8, flexWrap:'wrap'}}>
+                    <div className={`${styles.rowCenter8} ${styles.mt6}`}>
                         {detailImages.map((src, idx) => (
-                          <div key={idx} style={{ position: 'relative' }}>
-                            <Image src={String(src)} alt="" width={96} height={72} style={{ objectFit: 'cover', borderRadius: 6 }} unoptimized />
-                            <button type="button" className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{ position: 'absolute', right: 4, top: 4 }} onClick={() => { setDetailImages(prev => prev.filter((_, i) => i !== idx)) }}>×</button>
+                          <div key={idx} className={styles.previewThumb}>
+                            <Image src={String(src)} alt="" width={96} height={72} className={styles.previewThumbImage} unoptimized />
+                            <button type="button" className={`${styles.btnGhost} ${styles.btnGhostSmall} ${styles.previewThumbAction}`} onClick={() => { setDetailImages(prev => prev.filter((_, i) => i !== idx)) }}>×</button>
                           </div>
                         ))}
                     </div>
@@ -482,8 +515,8 @@ export default function AdminProjects() {
               </div>
 
               <aside>
-                <div className={styles.panel} style={{padding:12}}>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                <div className={`${styles.panel} ${styles.panelCompact}`}>
+                  <div className={styles.rowBetween12}>
                     <div>
                       <div className={styles.fieldLabel}>Projects</div>
                       <div className="muted">Total: {items.length}</div>
@@ -492,27 +525,23 @@ export default function AdminProjects() {
                       <button className={styles.btnGhost} type="button" onClick={load}>Refresh</button>
                     </div>
                   </div>
-                  <div style={{marginTop:12}}>
+                  <div className={styles.sectionSpacing}>
                     <input placeholder="Search by title or slug" className={styles.formInput} value={query} onChange={e=>{ setQuery(e.target.value) }} />
-                      <div className={styles.smallMuted} style={{marginTop:8}}>Tip: click Edit to open project editor</div>
+                      <div className={`${styles.smallMuted} ${styles.mt6}`}>Tip: click Edit to open project editor</div>
                       {uploadProgress < 0 ? (
-                        <span style={{display:'block', marginTop:8, color:'#9fb7d6'}}>Uploading…</span>
+                        <span className={styles.uploadStatus}>Uploading…</span>
                       ) : uploadProgress > 0 ? (
-                        <div style={{display:'block', marginTop:8}}>
-                          <div className="progress-bar" style={{width:120}}>
-                            <div className="progress-bar-inner" style={{width: `${uploadProgress}%`}} />
-                          </div>
-                        </div>
+                        <progress className={`${styles.progressNative} ${styles.progressCompact} ${styles.mt6}`} max={100} value={uploadProgress} aria-label="Project upload progress" />
                       ) : null}
                     </div>
                 </div>
               </aside>
 
-              <div style={{gridColumn:'1/-1'}}>
+              <div className={styles.fullSpan}>
                 <hr />
                 {selectedIds && selectedIds.length > 0 ? (
-                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-                    <div style={{fontWeight:700}}>{selectedIds.length} selected</div>
+                  <div className={`${styles.rowCenter8} ${styles.mt6}`}>
+                    <div className={styles.titleStrong}>{selectedIds.length} selected</div>
                     <button className={styles.btnGhost} onClick={()=>performBulkAction('publish')}>Publish</button>
                     <button className={styles.btnGhost} onClick={()=>performBulkAction('unpublish')}>Unpublish</button>
                     <button className={styles.btnDanger} onClick={()=>performBulkAction('delete')}>Delete</button>
@@ -520,7 +549,7 @@ export default function AdminProjects() {
                 ) : null}
 
                 {deletedUndoBuffer && deletedUndoBuffer.items ? (
-                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                  <div className={`${styles.rowCenter8} ${styles.mt6}`}>
                     <div className={styles.smallMuted}>Deleted {deletedUndoBuffer.items.length} item(s)</div>
                     <button className={styles.btnGhost} onClick={undoDelete}>Undo</button>
                     <button className={styles.btnGhost} onClick={()=>setDeletedUndoBuffer(null)}>Dismiss</button>
@@ -538,34 +567,28 @@ export default function AdminProjects() {
               {previewOpen && (
                 <div className={styles.modalOverlay} onClick={()=>setPreviewOpen(false)}>
                   <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-                      <div style={{fontWeight:700}}>Preview</div>
+                    <div className={`${styles.rowBetween12} ${styles.mt6}`}>
+                      <div className={styles.titleStrong}>Preview</div>
                       <button className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
                     </div>
-                    <div style={{maxWidth:520}}>
+                    <div className={styles.previewDialogBody}>
                       <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
-                        <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
-                              <div style={{ width: 140, height: 100, background: '#061426', borderRadius: 8, overflow: 'hidden', flex: '0 0 140px' }}>
-                                {form.image_path ? (
-                                  <Image src={String(form.image_path)} alt={form.title || ''} width={140} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} unoptimized />
-                                ) : detailImages[0] ? (
-                                  <Image src={String(detailImages[0])} alt={form.title || ''} width={140} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} unoptimized />
-                                ) : (
-                                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9fb7d6' }}>No image</div>
-                                )}
+                        <div className={styles.previewContentRow}>
+                              <div className={styles.previewMedia}>
+                                <AdminObjectImage src={form.image_path || detailImages[0]} alt={form.title || 'Project preview image'} width={140} height={100} fallbackLabel="No image" />
                               </div>
-                              <div style={{ flex: 1 }}>
+                              <div className={styles.previewCopy}>
                                 {(() => {
                                   const meta = form as unknown as Record<string, unknown>
                                   const sanitized = meta.description_sanitized
                                   const descHtml = sanitized ? (purify ? purify.sanitize(String(sanitized)) : String(sanitized)) : (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))
-                                  return <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: descHtml }} />
+                                  return <div className={styles.previewHtml} dangerouslySetInnerHTML={{ __html: descHtml }} />
                                 })()}
                             {(() => {
                               const generated = form.createDetails && form.slug ? `/projects/${form.slug}` : null
                               const linkUrl = form.external_link || generated
                               return linkUrl ? (
-                                <div style={{marginTop:8}} className={styles.smallMuted}>Link: <a href={linkUrl} target="_blank" rel="noopener noreferrer">Click here to read more</a></div>
+                                <div className={`${styles.smallMuted} ${styles.previewLinkText}`}>Link: <a href={linkUrl} target="_blank" rel="noopener noreferrer">Click here to read more</a></div>
                               ) : null
                             })()}
                           </div>

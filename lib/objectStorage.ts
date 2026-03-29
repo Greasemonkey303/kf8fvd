@@ -1,5 +1,6 @@
 import * as Minio from 'minio'
 import { buildPublicUrl } from '@/lib/s3'
+import { deriveWebpVariantKey } from '@/lib/webpVariants'
 
 const NOT_FOUND_CODES = new Set(['NotFound', 'NoSuchKey', 'NoSuchObject'])
 
@@ -156,11 +157,19 @@ export async function deleteObjectStrict(reference: unknown) {
   const client = createObjectStorageClient()
   await client.removeObject(bucket, key)
 
+  const derivedWebpKey = key.endsWith('.webp') ? null : deriveWebpVariantKey(key)
+  if (derivedWebpKey && derivedWebpKey !== key && await objectExists(derivedWebpKey)) {
+    await client.removeObject(bucket, derivedWebpKey)
+    if (await objectExists(derivedWebpKey)) {
+      throw new Error(`WebP variant still exists after delete: ${derivedWebpKey}`)
+    }
+  }
+
   if (await objectExists(key)) {
     throw new Error(`Object still exists after delete: ${key}`)
   }
 
-  return { key, deleted: true, missing: false }
+  return { key, deleted: true, missing: false, webpDeleted: Boolean(derivedWebpKey) }
 }
 
 export async function deleteObjectsStrict(references: Array<unknown>) {

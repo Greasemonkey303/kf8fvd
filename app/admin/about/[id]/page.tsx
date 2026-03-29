@@ -7,11 +7,14 @@ import projectStyles from '../../../projects/hotspot/hotspot.module.css'
 import Card from '../../../../components/card/card'
 import ProjectEditorSidebar from '../../../../components/admin/projects/ProjectEditorSidebar'
 import RichTextEditor from '../../../../components/admin/RichTextEditor'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
+import AdminNotice from '@/components/admin/AdminNotice'
+import AdminObjectImage from '@/components/admin/AdminObjectImage'
 import Modal from '@/components/modal/Modal'
 import { useToast } from '../../../../components/toast/ToastProvider'
-import Image from 'next/image'
 import createDOMPurify from 'dompurify'
 import { buildPublicUrl } from '../../../../lib/s3'
+import { resolveManagedImageUrl } from '@/lib/siteMedia'
 
 type CardData = { title?: string; subtitle?: string; content?: string; image?: string; images?: string[]; templateLarge?: string; templateSmall?: string }
 type AboutMetadata = {
@@ -51,6 +54,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
   const [uploadProgress, setUploadProgress] = useState<Record<string | number, number>>({})
   const [previewOpen, setPreviewOpen] = useState(false)
   const toast = useToast()
+  const [error, setError] = useState<string | null>(null)
   const [deleteModal, setDeleteModal] = useState<Record<string, unknown> | null>({ open: false })
   const savingRef = useRef(false)
   const currentDraftKey = useMemo(() => `admin_about_draft:${slug || (id ? `about-${id}` : 'about')}`, [id, slug])
@@ -68,6 +72,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
 
   async function load() {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch('/admin/api/pages?page=1&limit=1000')
       const json = await res.json()
@@ -89,7 +94,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                 title: String(card['title'] ?? ''),
                 subtitle: String(card['subtitle'] ?? ''),
                 content: String(card['content'] ?? ''),
-                image: String(card['image'] ?? '/headshot.jpg'),
+                image: resolveManagedImageUrl(card['image'], 'aboutHeadshot'),
                 images: Array.isArray(card['images']) ? (card['images'] as string[]) : (card['image'] ? [String(card['image'])] : []),
                 templateLarge: String(card['templateLarge'] ?? ''),
                 templateSmall: String(card['templateSmall'] ?? ''),
@@ -100,9 +105,9 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
             const topo = md.topologyCard || {}
             const shack = md.hamshackCard || {}
             loadedCards = [
-              { title: about.title || found.title || 'About Me', subtitle: about.subtitle || '', content: about.content || found.content || '', image: about.image || '/headshot.jpg', images: about.image ? [about.image] : [], templateLarge: about.templateLarge || '', templateSmall: about.templateSmall || '' },
-              { title: topo.title || 'Home Topology', subtitle: topo.subtitle || 'Hidden Lakes Apartments, Kentwood', content: topo.content || '', image: topo.image || '/apts.jpg', images: topo.image ? [topo.image] : [], templateLarge: topo.templateLarge || '', templateSmall: topo.templateSmall || '' },
-              { title: shack.title || 'Ham Shack', subtitle: shack.subtitle || 'Home Radio & Workshop', content: shack.content || '', image: shack.image || '/hamshack.jpg', images: shack.image ? [shack.image] : [], templateLarge: shack.templateLarge || '', templateSmall: shack.templateSmall || '' }
+              { title: about.title || found.title || 'About Me', subtitle: about.subtitle || '', content: about.content || found.content || '', image: resolveManagedImageUrl(about.image, 'aboutHeadshot'), images: about.image ? [resolveManagedImageUrl(about.image)] : [], templateLarge: about.templateLarge || '', templateSmall: about.templateSmall || '' },
+              { title: topo.title || 'Home Topology', subtitle: topo.subtitle || 'Hidden Lakes Apartments, Kentwood', content: topo.content || '', image: resolveManagedImageUrl(topo.image, 'aboutTopology'), images: topo.image ? [resolveManagedImageUrl(topo.image)] : [], templateLarge: topo.templateLarge || '', templateSmall: topo.templateSmall || '' },
+              { title: shack.title || 'Ham Shack', subtitle: shack.subtitle || 'Home Radio & Workshop', content: shack.content || '', image: resolveManagedImageUrl(shack.image, 'aboutHamshack'), images: shack.image ? [resolveManagedImageUrl(shack.image)] : [], templateLarge: shack.templateLarge || '', templateSmall: shack.templateSmall || '' }
             ]
           }
           // determine which card index to open (from search param `card`)
@@ -130,8 +135,8 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
           setMetadata((prev) => ({ ...prev, ...md }))
         } catch {}
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load about editor')
     } finally { setLoading(false) }
   }
 
@@ -416,24 +421,39 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     if (savingRef.current) return
     savingRef.current = true
     setSaving(true)
+    setError(null)
     try{
       const safeMetadata = { ...metadata, cards }
       const payload: Record<string, unknown> = { id, slug: slug || undefined, title, content: '', metadata: safeMetadata, is_published: isPublished ? 1 : 0 }
       const method = id ? 'PUT' : 'POST'
       const res = await fetch('/admin/api/pages', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      if (!res.ok) { const err = await res.json().catch(()=>({})); alert('Save failed: ' + (err?.error || res.status)); return }
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({}))
+        const message = `Save failed: ${err?.error || res.status}`
+        setError(message)
+        showToast(message, 'error')
+        return
+      }
       const json = await res.json()
       if (!id && json?.id) setId(json.id)
       clearDrafts(currentDraftKey, 'admin_about_draft:about')
       showToast('Saved', 'success')
-    }catch(error){ alert('Save failed: ' + getErrMsg(error)) } finally { setSaving(false); savingRef.current = false }
+    }catch(error){
+      const message = 'Save failed: ' + getErrMsg(error)
+      setError(message)
+      showToast(message, 'error')
+    } finally { setSaving(false); savingRef.current = false }
   }
 
   // upload card image for a specific card index (tries direct server upload then presign PUT, falls back)
   async function uploadCardImageIndex(file: File, idx: number){
     if (!file) return
     const MAX_BYTES = 50 * 1024 * 1024
-    if (file.size > MAX_BYTES) { alert('File too large (max 50MB)'); return }
+    setError(null)
+    if (file.size > MAX_BYTES) {
+      setError('File too large. The maximum supported size is 50MB.')
+      return
+    }
     setUploadProgress(p=>({ ...p, [idx]: -1 }))
     try {
       const fd = new FormData(); fd.append('file', file); fd.append('slug',String(slug||'about')); fd.append('filename', file.name)
@@ -461,7 +481,11 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     try{
       const res = await fetch('/api/uploads', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ slug:String(slug||'about'), filename: file.name, contentType: file.type }) })
       const data = await res.json()
-      if (!data.url) { alert('Upload presign failed: ' + (data.error || 'unknown')); setUploadProgress(p=>({ ...p, [idx]: 0 })); return }
+      if (!data.url) {
+        setError('Upload presign failed: ' + (data.error || 'unknown'))
+        setUploadProgress(p=>({ ...p, [idx]: 0 }))
+        return
+      }
 
       // PUT to presigned URL
       const upload = await fetch(data.url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
@@ -469,9 +493,13 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
         // fallback to server direct
         const fd2 = new FormData(); fd2.append('file', file); fd2.append('slug',String(slug||'about')); fd2.append('filename', file.name)
         try { const direct2 = await fetch('/api/uploads/direct', { method:'POST', body: fd2 }); const j = await direct2.json(); if (direct2.ok && (j.publicUrl || j.key)) { const jurl = j.key ? buildPublicUrl(j.key) : (j.publicUrl || j.key); updateCard(idx, 'image', jurl); setUploadProgress(p=>({ ...p, [idx]: 0 })); showToast('Image uploaded', 'success'); return } } catch(error){ console.error('direct fallback error', getErrMsg(error)) }
-        alert('Upload failed')
+        setError('Upload failed after both direct and presigned attempts.')
         setUploadProgress(p=>({ ...p, [idx]: 0 })); return
       }
+
+      try {
+        if (data.key) await fetch('/api/uploads/finalize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: data.key }) })
+      } catch (error) { console.error('upload finalize error', getErrMsg(error)) }
 
       const newUrl = data.key ? buildPublicUrl(data.key) : (data.publicUrl || data.key)
       updateCard(idx, 'image', newUrl)
@@ -488,10 +516,14 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       if (idx === activeIdx && newUrl) setImages(prev => { if (prev.includes(newUrl)) return prev; return [...prev, newUrl] })
       setUploadProgress(p=>({ ...p, [idx]: 0 }))
       showToast('Image uploaded', 'success')
-    } catch (err) { console.error('upload error', getErrMsg(err)); setUploadProgress(p=>({ ...p, [idx]: 0 })); alert('Upload failed: ' + getErrMsg(err)) }
+    } catch (err) {
+      console.error('upload error', getErrMsg(err))
+      setUploadProgress(p=>({ ...p, [idx]: 0 }))
+      setError('Upload failed: ' + getErrMsg(err))
+    }
   }
 
-  if (loading) return <div style={{padding:20}}>Loading…</div>
+  if (loading) return <AdminLoadingState label="Loading about editor" />
 
   // Precompute sanitized HTML snippets to avoid complex inline expressions in JSX
   const sanitizedSummaryHtml = ( (metadata.summary as Record<string, unknown>)?.['text_sanitized'] ?? (purify ? purify.sanitize(String(metadata.summary?.text || '')) : (metadata.summary?.text || '')) ) as string
@@ -502,14 +534,14 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
 
   return (
     <div>
-      <div style={{marginBottom:12}} className={styles.topTitle}>Edit About — ID: {id ?? String(idParam)} <span style={{marginLeft:8}} className={styles.kbd}>Ctrl/Cmd+S</span></div>
-      <div style={{marginBottom:12}}>
+      {error ? <AdminNotice message={error} variant="error" actionLabel={loading ? undefined : 'Retry'} onAction={loading ? undefined : load} /> : null}
+      <div className={`${styles.topTitle} ${styles.mb12}`}>Edit About — ID: {id ?? String(idParam)} <span className={`${styles.kbd} ${styles.inlineGapLeft8}`}>Ctrl/Cmd+S</span></div>
+      <div className={styles.mb12}>
         <button className={styles.btnGhost} onClick={load}>Refresh</button>
       </div>
 
       
-      {loading ? <p>Loading…</p> : (
-        <form className={styles.editorGrid} onSubmit={(e)=>{ e.preventDefault(); handleSave() }}>
+      <form className={styles.editorGrid} onSubmit={(e)=>{ e.preventDefault(); handleSave() }}>
                   <label>
                     <div className="field-label">Slug</div>
                     <input value={slug} onChange={e=>setSlug(e.target.value)} className={styles.formInput} />
@@ -527,7 +559,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                     </label>
                   </div>
 
-                  <section style={{marginTop:8}}>
+                  <section className={styles.mt6}>
                     <h3>Summary</h3>
                     <label>
                       <div className="field-label">Heading</div>
@@ -535,7 +567,7 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                     </label>
                     <label>
                       <div className="field-label">Text</div>
-                      <div style={{marginBottom:8}} className={styles.smallMuted}>This is the summary text shown on the About page.</div>
+                      <div className={`${styles.smallMuted} ${styles.richTextHint}`}>This is the summary text shown on the About page.</div>
                       <RichTextEditor
                         value={String(metadata.summary?.text || '')}
                         onChange={(value) => updateMetadata(['summary','text'], value)}
@@ -554,14 +586,14 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                     </label>
                   </section>
 
-                  <section style={{marginTop:12}}>
+                  <section className={styles.sectionPanel}>
                     <h3>About Card</h3>
-                    <div style={{display:'flex', gap:12}}>
-                      <div style={{flex:1}}>
+                    <div className={styles.previewContentRow}>
+                      <div className={styles.previewCopy}>
                         {cards[activeIdx] ? (
-                          <div style={{border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:8, background:'var(--card-bg)'}}>
-                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                              <div style={{fontWeight:700}}>{cards[activeIdx].title || 'About Card'}</div>
+                          <div className={styles.descEditorBox}>
+                            <div className={styles.rowBetween12}>
+                              <div className={styles.titleStrong}>{cards[activeIdx].title || 'About Card'}</div>
                             </div>
                             <label>
                               <div className="field-label">Card Title</div>
@@ -616,9 +648,9 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                       />
                     </div>
                   </section>
-                  <div style={{gridColumn: '1/-1'}}>
+                  <div className={styles.fullSpan}>
                     <div className={styles.stickyBar}>
-                      <div style={{marginRight:'auto'}} className={styles.smallMuted}>
+                      <div className={`${styles.smallMuted} ${styles.topBarInfo}`}>
                         {saving ? (
                           'Saving…'
                         ) : (
@@ -636,33 +668,32 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                     </div>
                   </div>
                 </form>
-      )}
       {previewOpen && (
         <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={()=>setPreviewOpen(false)} initialFocusRef={previewCloseRef as React.RefObject<HTMLElement>} titleId="preview-title">
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-            <div style={{fontWeight:700}}>Preview</div>
+          <div className={`${styles.rowBetween12} ${styles.mb12}`}>
+            <div className={styles.titleStrong}>Preview</div>
             <button ref={previewCloseRef} className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
           </div>
-          <div style={{maxWidth:920}}>
-            <div style={{display:'flex',flexDirection:'column',gap:12}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div style={{fontWeight:600}}>{slug ? `/aboutme` : 'About preview'}</div>
+          <div className={styles.previewDialogWide}>
+            <div className={styles.stack12}>
+              <div className={styles.rowBetween12}>
+                <div className={styles.titleStrong}>{slug ? `/aboutme` : 'About preview'}</div>
                 <div>
                   {slug ? <a className={styles.btnGhost} href={`/aboutme`} target="_blank" rel="noopener noreferrer">Open in new tab</a> : null}
                 </div>
               </div>
               <Card title={cards[activeIdx]?.title || 'About'} subtitle={cards[activeIdx]?.subtitle || ''}>
-                <div className={projectStyles.content} style={{gap:8}}>
+                <div className={`${projectStyles.content} ${styles.projectStoryGap}`}>
                     <div className={projectStyles.media}>
                       {cards[activeIdx]?.image ? (
-                        <div className={projectStyles.mainPhotoWrap} style={{ maxWidth: 320 }}>
-                          <Image src={String(cards[activeIdx]?.image)} alt={cards[activeIdx]?.title || ''} width={320} height={200} className={projectStyles.mainPhoto} style={{ objectFit: 'cover' }} unoptimized />
+                        <div className={`${projectStyles.mainPhotoWrap} ${styles.maxWidth320}`}>
+                          <AdminObjectImage src={String(cards[activeIdx]?.image || '')} alt={cards[activeIdx]?.title || 'About image'} width={320} height={200} imageClassName={projectStyles.mainPhoto} fallbackLabel="No image" />
                         </div>
                       ) : null}
                     </div>
                       <div className={projectStyles.story}>
-                      <div style={{ color: 'var(--white-95)' }} dangerouslySetInnerHTML={{ __html: sanitizedSummaryHtml }} />
-                      {cards[activeIdx]?.content ? <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: previewCardHtml }} /> : null}
+                      <div className={styles.whiteText} dangerouslySetInnerHTML={{ __html: sanitizedSummaryHtml }} />
+                      {cards[activeIdx]?.content ? <div className={styles.storyTopGap} dangerouslySetInnerHTML={{ __html: previewCardHtml }} /> : null}
                     </div>
                 </div>
               </Card>
@@ -672,12 +703,12 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       )}
       {deleteModal && deleteModal.open ? (
         <Modal overlayClassName={styles.modalOverlay} contentClassName={styles.modalContent} onClose={() => setDeleteModal({ open: false })} initialFocusRef={deleteCancelRef as React.RefObject<HTMLElement>} titleId="confirm-delete-title" descriptionId="confirm-delete-desc">
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-            <div style={{fontWeight:700}}>Confirm Delete</div>
+          <div className={`${styles.rowBetween12} ${styles.mb12}`}>
+            <div className={styles.titleStrong}>Confirm Delete</div>
             <button className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Close</button>
           </div>
-          <div style={{marginBottom:12}}>{String((deleteModal as Record<string, unknown>)?.message || 'Are you sure?')}</div>
-          <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+          <div className={styles.mb12}>{String((deleteModal as Record<string, unknown>)?.message || 'Are you sure?')}</div>
+          <div className={styles.rowEnd8}>
             <button ref={deleteCancelRef} className={styles.btnGhost} onClick={()=>setDeleteModal({ open: false })}>Cancel</button>
             <button className={styles.btnDanger} onClick={confirmDelete}>Delete</button>
           </div>

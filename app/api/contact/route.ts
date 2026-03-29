@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { isLocked, incrementFailure } from '@/lib/rateLimiter'
+import { incrementAbuseMetric } from '@/lib/abuseMetrics'
 import { verifyTurnstileToken } from '@/lib/turnstile'
 import { query } from '@/lib/db'
+import { createObjectStorageClient, getObjectStorageBucket } from '@/lib/objectStorage'
+import { logRouteError, logRouteEvent } from '@/lib/observability'
 
 type SGAttachment = {
   content: string
@@ -63,17 +66,19 @@ export async function POST(req: Request) {
     // rate limiter: check centralized limiter (IP and optional email)
     try {
       if (await isLocked(ipKey) || (emailKey && await isLocked(emailKey))) {
-        console.warn('[api/contact] rate limit locked', ip)
+        try { await incrementAbuseMetric('contact_abuse_total') } catch (e) { void e }
+        logRouteEvent('warn', { route: 'api/contact', action: 'rate_limit_rejected', ip, reason: 'lock_active' })
         return jsonErr('RATE_LIMIT', 'Rate limit exceeded', undefined, 429)
       }
     } catch (e) {
-      console.warn('[api/contact] rate limiter check failed', e)
+      logRouteError('api/contact', e, { action: 'rate_limit_check', ip, reason: 'limiter_check_failed' })
     }
 
     // honeypot check
     const honeypot = form.get('hp')?.toString() || ''
     if (honeypot.trim()) {
-      console.warn('[api/contact] honeypot triggered', ip)
+      try { await incrementAbuseMetric('contact_abuse_total') } catch (e) { void e }
+      logRouteEvent('warn', { route: 'api/contact', action: 'spam_rejected', ip, reason: 'honeypot' })
       try { await incrementFailure(ipKey, { reason: 'honeypot' }) } catch (e) { void e }
       if (emailKey) try { await incrementFailure(emailKey, { reason: 'honeypot' }) } catch (e) { void e }
       return jsonErr('SPAM', 'Spam detected', undefined, 400)
@@ -84,12 +89,14 @@ export async function POST(req: Request) {
     const CF_SECRET = process.env.CF_TURNSTILE_SECRET
     if (CF_SECRET) {
       if (!cfToken) {
+        try { await incrementAbuseMetric('contact_abuse_total') } catch (e) { void e }
         try { await incrementFailure(ipKey, { reason: 'turnstile_missing' }) } catch (e) { void e }
         return jsonErr('MISSING_CAPTCHA', 'Missing CAPTCHA token', undefined, 400)
       }
       const ok = await verifyTurnstileToken(cfToken)
       if (!ok) {
-        console.warn('[api/contact] turnstile failed or rate-limited')
+        try { await incrementAbuseMetric('contact_abuse_total') } catch (e) { void e }
+        logRouteEvent('warn', { route: 'api/contact', action: 'captcha_rejected', ip, reason: 'turnstile_failed' })
         try { await incrementFailure(ipKey, { reason: 'turnstile_failed' }) } catch (e) { void e }
         return jsonErr('CAPTCHA_FAILED', 'CAPTCHA verification failed', undefined, 400)
       }
@@ -111,16 +118,19 @@ export async function POST(req: Request) {
         const bytes = uint8.byteLength
         // per-file size check
         if (bytes > MAX_PER_FILE) {
+          try { await incrementAbuseMetric('contact_abuse_total') } catch (e) { void e }
           try { await incrementFailure(ipKey, { reason: 'file_too_large' }) } catch (e) { void e }
           return jsonErr('FILE_TOO_LARGE', 'An attachment exceeds the per-file size limit', { filename: file.name }, 413)
         }
         totalBytes += bytes
         if (totalBytes > MAX_TOTAL) {
+          try { await incrementAbuseMetric('contact_abuse_total') } catch (e) { void e }
           try { await incrementFailure(ipKey, { reason: 'total_size_exceeded' }) } catch (e) { void e }
           return jsonErr('TOTAL_TOO_LARGE', 'Total attachments exceed 50MB limit', undefined, 413)
         }
         const mime = file.type || ''
         if (!isAllowedMime(mime, file.name)) {
+          try { await incrementAbuseMetric('contact_abuse_total') } catch (e) { void e }
           try { await incrementFailure(ipKey, { reason: 'unsupported_file_type' }) } catch (e) { void e }
           return jsonErr('UNSUPPORTED_FILE_TYPE', 'Attachment type is not allowed', { filename: file.name, type: mime }, 415)
         }
@@ -137,28 +147,29 @@ export async function POST(req: Request) {
       }
     }
 
-    let savedAttachmentsMeta: Array<{ filename: string; type: string; dir?: string }> = []
+    let savedAttachmentsMeta: Array<{ filename: string; type: string; dir?: string; key?: string; storage?: string }> = []
     if (attachments.length) {
-      try { console.log('[api/contact] attachments:', attachments.map(a => a.filename)) } catch { /* ignore */ }
-      // attempt to persist attachments to disk (for admin downloads)
+      logRouteEvent('debug', { route: 'api/contact', action: 'attachments_received', ip, resourceId: attachments.length, filenames: attachments.map((attachment) => attachment.filename) })
+      // store contact attachments in MinIO so backup and restore discipline matches other site media.
       try {
         const uploadDir = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`
-        const base = path.join(process.cwd(), 'data', 'uploads', uploadDir)
-        await fs.mkdir(base, { recursive: true })
+        const bucket = getObjectStorageBucket()
+        if (!bucket) throw new Error('Bucket not configured for contact attachments')
+        const minioClient = createObjectStorageClient()
         for (const a of attachments) {
           try {
             const safeName = path.basename(a.filename || 'file')
-            const filePath = path.join(base, safeName)
-            await fs.writeFile(filePath, Buffer.from(a.content || '', 'base64'))
-            savedAttachmentsMeta.push({ filename: safeName, type: a.type || 'application/octet-stream', dir: uploadDir })
+            const key = `messages/${uploadDir}/${safeName}`
+            const buffer = Buffer.from(a.content || '', 'base64')
+            await minioClient.putObject(bucket, key, buffer, buffer.length, { 'Content-Type': a.type || 'application/octet-stream' })
+            savedAttachmentsMeta.push({ filename: safeName, type: a.type || 'application/octet-stream', key, storage: 'minio' })
           } catch (e) {
-              console.error('[api/contact] failed to save attachment', e)
-              // fallback to metadata without dir
-              savedAttachmentsMeta.push({ filename: a.filename || 'file', type: a.type || 'application/octet-stream' })
-            }
+            logRouteError('api/contact', e, { action: 'persist_attachment', ip, resourceId: a.filename || null, reason: 'object_storage_write_failed' })
+            savedAttachmentsMeta.push({ filename: a.filename || 'file', type: a.type || 'application/octet-stream' })
+          }
         }
       } catch (e) {
-        console.error('[api/contact] failed to persist attachments to disk', e)
+        logRouteError('api/contact', e, { action: 'persist_attachments', ip, reason: 'attachment_directory_failed' })
         savedAttachmentsMeta = attachments.map(a => ({ filename: a.filename, type: a.type }))
       }
     }
@@ -226,7 +237,7 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const text = await res.text()
-      console.error('[api/contact] SendGrid error', res.status, text)
+      logRouteEvent('error', { route: 'api/contact', action: 'send_contact_email', ip, status: res.status, reason: 'sendgrid_error', responseBody: process.env.NODE_ENV === 'production' ? undefined : text })
       try { await incrementFailure(ipKey, { reason: 'sendgrid_error' }) } catch (e) { void e }
       if (emailKey) try { await incrementFailure(emailKey, { reason: 'sendgrid_error' }) } catch (e) { void e }
       return jsonErr('SENDGRID_ERROR', 'SendGrid error', text, 502)
@@ -239,7 +250,7 @@ export async function POST(req: Request) {
       const logLine = JSON.stringify({ name: safeName, email: safeEmail, message: sanitizedForDb, message_sanitized: safeMessage, attachments: attachments.map(a=>a.filename), ip, userAgent, sentAt: new Date().toISOString() }) + '\n'
       await fs.appendFile(`${outDir}/messages.log`, logLine, 'utf8')
     } catch (e) {
-      console.error('[api/contact] failed to write message log', e)
+      logRouteError('api/contact', e, { action: 'write_message_log', ip, reason: 'message_log_write_failed' })
     }
 
     // persist message to database (non-blocking: log errors but don't fail the request)
@@ -248,7 +259,7 @@ export async function POST(req: Request) {
       // store both plain-text `message` and server-safe HTML `message_sanitized` for rendering
       await query('INSERT INTO messages (name, email, message, message_sanitized, attachments, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)', [name || null, email || null, sanitizedForDb || null, safeMessage || null, JSON.stringify(attachmentsMeta), ip || null, userAgent || null])
     } catch (dbErr) {
-      console.error('[api/contact] failed to persist message to DB', dbErr)
+      logRouteError('api/contact', dbErr, { action: 'persist_message', ip, reason: 'db_insert_failed' })
     }
 
     // send a confirmation email to the visitor (if valid)
@@ -267,13 +278,16 @@ export async function POST(req: Request) {
           body: JSON.stringify(confirmBody),
         })
       } catch (e) {
-        console.warn('[api/contact] failed to send confirmation email', e)
+        logRouteError('api/contact', e, { action: 'send_confirmation_email', ip, reason: 'sendgrid_confirmation_failed' })
       }
     }
 
+    logRouteEvent('info', { route: 'api/contact', action: 'message_accepted', ip, resourceId: email || null, attachmentCount: attachments.length })
+    try { await incrementAbuseMetric('contact_messages_total') } catch (e) { void e }
+
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
-    console.error('[api/contact] unhandled error', err)
+    logRouteError('api/contact', err, { action: 'unhandled_error', reason: 'request_failed' })
     return jsonErr('SERVER_ERROR', getErrMsg(err), undefined, 500)
   }
 }

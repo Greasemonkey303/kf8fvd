@@ -5,6 +5,7 @@ Quick, actionable checklist for deploying the kf8fvd app to production.
 ## 1) Pre-deploy (local verification)
 - **Build:** Run `npm run build` and fix any errors.
 - **Tests:** Run unit tests and linters: `npx vitest` and `npm run lint`.
+- **Backend readiness:** Run `npm run readiness:backend` before deploy. Use `npm run readiness:backend -- --storage-write-test` when you want to verify MinIO write/delete behavior safely.
 - **Smoke:** Start local production-like server and exercise admin flows:
 
 ```bash
@@ -69,6 +70,7 @@ redis-cli -h <host> -p <port> DEL "rl:count:ip%3A1.2.3.4" "rl:lock:ip%3A1.2.3.4"
 ## 11) Post-deploy smoke checks
 - Visit `/` and `/signin` to confirm pages render.
 - Verify `/admin` redirects if unauthenticated and allows admins.
+- Run `npm run readiness:backend` from the deployed environment or container shell when verifying infra drift.
 - Call `POST /api/mw/rate` to confirm rate limiter behavior is expected.
 
 ## 12) Rollback plan

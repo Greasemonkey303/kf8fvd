@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from '../../admin.module.css'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
 import Modal from '@/components/modal/Modal'
 
 export default function UserEditor({ params }: { params: { id: string } }) {
@@ -49,7 +50,7 @@ export default function UserEditor({ params }: { params: { id: string } }) {
               <div className={styles.pageSubtitle}>Editing user ID: {id}</div>
             </div>
           </div>
-          {loading ? <p>Loading…</p> : (
+          {loading ? <AdminLoadingState label="Loading user" /> : (
             <form onSubmit={save} className="form-grid">
               <label>
                 <div className={styles.fieldLabel}>Name</div>

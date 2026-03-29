@@ -6,7 +6,7 @@ import UnlockButton from './UnlockButton'
 
 export default async function LocksPage({ searchParams }: { searchParams?: { page?: string; pageSize?: string; q?: string } }) {
   const admin = await requireAdmin()
-  if (!admin) return <main style={{padding:20}}>Unauthorized</main>
+  if (!admin) return <main className={styles.pagePad20}>Unauthorized</main>
 
   const page = Math.max(1, parseInt(searchParams?.page || '1'))
   const pageSize = Math.min(200, Math.max(10, parseInt(searchParams?.pageSize || '50')))
@@ -59,14 +59,14 @@ export default async function LocksPage({ searchParams }: { searchParams?: { pag
           </tbody>
         </table>
       </div>
-      <div style={{marginTop:12}}>
+      <div className={styles.sectionSpacing}>
         <div>Page {page} / {totalPages} — {total} rows</div>
-        <div style={{marginTop:6}}>
+        <div className={styles.mt6}>
           {page > 1 && <Link href={baseQuery(page-1)} className={styles.btn}>Prev</Link>}
-          {page < totalPages && <Link href={baseQuery(page+1)} className={styles.btn} style={{marginLeft:8}}>Next</Link>}
+          {page < totalPages && <Link href={baseQuery(page+1)} className={`${styles.btn} ${styles.inlineGapLeft8}`}>Next</Link>}
         </div>
       </div>
-      <div style={{marginTop:18}}>
+      <div className={styles.sectionSpacing}>
         <Link href="/admin/utilities" className={styles.btn}>Back</Link>
       </div>
     </main>

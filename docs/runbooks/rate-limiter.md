@@ -3,8 +3,8 @@
 This runbook covers common alerts and remediation steps for the authentication rate-limiter, Redis failover, and the metrics exporter.
 
 Quick references
-- Admin locks API: `GET /api/admin/auth-locks` (list) and `POST /api/admin/auth-locks` (body: `{ "key": "email:foo@bar.com" }`). Supply `x-admin-key: <ADMIN_API_KEY>` header.
-- Admin UI: `/admin/locks` (enter `ADMIN_API_KEY` in the UI input)
+- Admin locks API: `GET /api/admin/auth-locks` (list) and `POST /api/admin/auth-locks` (body: `{ "key": "email:foo@bar.com" }`). Use a signed-in admin session, or supply `x-admin-key: <ADMIN_API_KEY>` / Basic auth for scripted access.
+- Admin UI: `/admin/locks` (works with the signed-in admin session; utility credentials are optional overrides)
 - DB emergency unlock: `DELETE FROM auth_locks WHERE key_name = ?` or `TRUNCATE TABLE auth_locks` (careful: global)
 - Redis manual unlock (preferred when Redis is healthy):
   - Use `SCAN` to avoid blocking: `redis-cli -u redis://127.0.0.1:6379 --scan --pattern 'rl:lock:*' | xargs -r -n 50 redis-cli -u redis://127.0.0.1:6379 DEL`
@@ -19,6 +19,7 @@ Alerts & runbook steps
   - Inspect `login_attempts` DB table for recent failures and originating IPs: `SELECT ip, COUNT(*) FROM login_attempts WHERE created_at > NOW() - INTERVAL 10 MINUTE GROUP BY ip ORDER BY 2 DESC LIMIT 50`.
 - Mitigation steps:
   - If isolated legitimate users affected, unlock specific keys via admin API: `curl -X POST -H 'x-admin-key: <ADMIN_API_KEY>' -H 'Content-Type: application/json' --data '{"key":"email:joe@example.com"}' http://localhost:3000/api/admin/auth-locks`
+  - If you are already signed in through the admin UI, use `/admin/locks` directly without supplying utility credentials.
   - If widespread abusive traffic: temporarily increase `RATE_LOCK_MS` or `RATE_MAX` (short-term) and block offending IPs at edge/firewall.
   - Consider enabling additional anti-automation protections (Cloudflare Turnstile) globally for login routes.
 
@@ -62,4 +63,4 @@ Recommended thresholds (starting points)
 
 Notes
 - Always prefer targeted unlocks over clearing all locks.
-- Record actions taken (who unlocked, why) in audit logs; consider adding an `admin_actions` table for future traceability.
+- Record actions taken (who unlocked, why) in audit logs and review `admin_actions` when unlock volume increases.

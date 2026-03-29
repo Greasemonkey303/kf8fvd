@@ -3,7 +3,10 @@ import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
+import { archiveDeletedContent } from '@/lib/deletionArchive'
 import { deleteObjectStrict, deletePrefixStrict, normalizeObjectReferenceToPublicUrl, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { listObjectKeysByPrefix } from '@/lib/objectStorage'
+import { parseJsonObject, readBoolean, readNumber, readString, validationErrorResponse } from '@/lib/validation'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -45,15 +48,32 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { section, slug, title, tag, authority, image_path, description, is_published, sort_order } = body
-  if (!section || !slug || !title) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-  if (typeof section !== 'string' || section.length === 0 || section.length > 255) return NextResponse.json({ error: 'Invalid section' }, { status: 400 })
-  if (typeof slug !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(slug) || slug.length > 255) return NextResponse.json({ error: 'Invalid slug' }, { status: 400 })
-  if (typeof title !== 'string' || title.length === 0 || title.length > 255) return NextResponse.json({ error: 'Invalid title' }, { status: 400 })
-  if (tag && (typeof tag !== 'string' || tag.length > 255)) return NextResponse.json({ error: 'Invalid tag' }, { status: 400 })
-  if (authority && (typeof authority !== 'string' || authority.length > 255)) return NextResponse.json({ error: 'Invalid authority' }, { status: 400 })
-  if (image_path && image_path.length > 1024) return NextResponse.json({ error: 'Invalid image_path' }, { status: 400 })
+  let body: Record<string, unknown>
+  let section: string | null
+  let slug: string | null
+  let title: string | null
+  let tag: string | null
+  let authority: string | null
+  let image_path: string | null
+  let description: string | null
+  let is_published: boolean | null
+  let sort_order: number | null
+  try {
+    body = await parseJsonObject(req)
+    section = readString(body, 'section', { required: true, maxLength: 255 })
+    slug = readString(body, 'slug', { required: true, maxLength: 255, pattern: /^[a-zA-Z0-9-_]+$/ })
+    title = readString(body, 'title', { required: true, maxLength: 255 })
+    tag = readString(body, 'tag', { maxLength: 255, allowEmpty: true })
+    authority = readString(body, 'authority', { maxLength: 255, allowEmpty: true })
+    image_path = readString(body, 'image_path', { maxLength: 1024, allowEmpty: true })
+    description = readString(body, 'description', { allowEmpty: true })
+    is_published = readBoolean(body, 'is_published')
+    sort_order = readNumber(body, 'sort_order', { integer: true })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
 
   // ensure unique section+slug
   try {
@@ -96,16 +116,38 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { id, section, slug, s3_prefix, title, tag, authority, image_path, description, is_published, sort_order, metadata } = body
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-  if (slug && (typeof slug !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(slug))) return NextResponse.json({ error: 'Invalid slug' }, { status: 400 })
-  if (title && (typeof title !== 'string' || title.length > 255)) return NextResponse.json({ error: 'Invalid title' }, { status: 400 })
-  if (image_path && image_path.length > 1024) return NextResponse.json({ error: 'Invalid image_path' }, { status: 400 })
-
-  if (section && (typeof section !== 'string' || section.length > 255)) return NextResponse.json({ error: 'Invalid section' }, { status: 400 })
-  if (tag && (typeof tag !== 'string' || tag.length > 255)) return NextResponse.json({ error: 'Invalid tag' }, { status: 400 })
-  if (authority && (typeof authority !== 'string' || authority.length > 255)) return NextResponse.json({ error: 'Invalid authority' }, { status: 400 })
+  let body: Record<string, unknown>
+  let id: number | null
+  let section: string | null
+  let slug: string | null
+  let s3_prefix: string | null
+  let title: string | null
+  let tag: string | null
+  let authority: string | null
+  let image_path: string | null
+  let description: string | null
+  let is_published: boolean | null
+  let sort_order: number | null
+  let metadata: unknown
+  try {
+    body = await parseJsonObject(req)
+    id = readNumber(body, 'id', { required: true, integer: true, min: 1 })
+    section = readString(body, 'section', { maxLength: 255, allowEmpty: true })
+    slug = readString(body, 'slug', { maxLength: 255, pattern: /^[a-zA-Z0-9-_]+$/, allowEmpty: true })
+    s3_prefix = readString(body, 's3_prefix', { maxLength: 512, allowEmpty: true })
+    title = readString(body, 'title', { maxLength: 255, allowEmpty: true })
+    tag = readString(body, 'tag', { maxLength: 255, allowEmpty: true })
+    authority = readString(body, 'authority', { maxLength: 255, allowEmpty: true })
+    image_path = readString(body, 'image_path', { maxLength: 1024, allowEmpty: true })
+    description = readString(body, 'description', { allowEmpty: true })
+    is_published = readBoolean(body, 'is_published')
+    sort_order = readNumber(body, 'sort_order', { integer: true })
+    metadata = body.metadata
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
 
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
@@ -144,12 +186,15 @@ export async function DELETE(req: Request) {
   const id = url.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   // find the credential to get its s3_prefix so we can delete related objects
-  const rows = await query<{ s3_prefix: string; image_path?: string | null }[]>('SELECT s3_prefix, image_path FROM credentials WHERE id = ?', [id])
+  const rows = await query<Array<Record<string, unknown>>>('SELECT * FROM credentials WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const prefix = rows[0].s3_prefix || ''
+  const row = rows[0]
+  const prefix = String(row.s3_prefix || '')
   try {
+    const prefixKeys = prefix ? await listObjectKeysByPrefix(`${prefix}/`) : []
+    const imageKey = resolveObjectKeyFromReference(row.image_path)
+    await archiveDeletedContent({ contentType: 'credential', originalId: Number(id), slug: String(row.slug || prefix || id), snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
     if (prefix) await deletePrefixStrict(`${prefix}/`)
-    const imageKey = resolveObjectKeyFromReference(rows[0].image_path)
     if (imageKey) await deleteObjectStrict(imageKey)
   } catch (e: unknown) {
     return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })

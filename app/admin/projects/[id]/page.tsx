@@ -6,6 +6,9 @@ import { useRouter, useParams } from 'next/navigation'
 import { buildPublicUrl } from '@/lib/s3'
 import styles from '../../admin.module.css'
 import projectStyles from '../../../projects/hotspot/hotspot.module.css'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
+import AdminNotice from '@/components/admin/AdminNotice'
+import AdminObjectImage from '@/components/admin/AdminObjectImage'
 import Card from '../../../../components/card/card'
 import RichTextEditor from '../../../../components/admin/RichTextEditor'
 import { useToast } from '../../../../components/toast/ToastProvider'
@@ -34,6 +37,7 @@ export default function ProjectEditor() {
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const toast = useToast()
   const purify = typeof window !== 'undefined' ? createDOMPurify(window as unknown as Window & typeof globalThis) : null
   if (purify && typeof purify.setConfig === 'function') purify.setConfig({ FORBID_TAGS: ['script', 'style'] })
@@ -69,6 +73,7 @@ export default function ProjectEditor() {
 
   useEffect(()=>{
     (async ()=>{
+      setError(null)
       try { console.log('[admin] loading project editor id=', id) } catch{}
       const res = await fetch('/admin/api/projects?page=1&limit=1000')
       const data = await res.json()
@@ -149,7 +154,10 @@ export default function ProjectEditor() {
       setLoading(false)
       // mark initial load complete so autosave doesn't immediately send
       initialLoadRef.current = false
-    })()
+    })().catch((err) => {
+      setError(err instanceof Error ? err.message : 'Failed to load project editor')
+      setLoading(false)
+    })
   }, [id])
 
   // restore draft if present after initial load
@@ -232,11 +240,18 @@ export default function ProjectEditor() {
   async function save(e?: React.FormEvent) {
     if (e) e.preventDefault()
     setSaving(true)
+    setError(null)
     const metadata = { ...(form.details ? { details: form.details } : {}), images }
     try {
-      await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+      const response = await fetch('/admin/api/projects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, metadata }) })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body?.error || 'Project save failed')
       toast.showToast?.('Project saved', 'success')
       router.push('/admin/projects')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Project save failed'
+      setError(message)
+      toast.showToast?.(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -265,6 +280,7 @@ export default function ProjectEditor() {
 
   async function uploadMainImage(file: File | null) {
     if (!file) return
+    setError(null)
     const fd = new FormData()
     fd.append('file', file)
     fd.append('slug', form.slug || `project-${form.id}`)
@@ -282,8 +298,8 @@ export default function ProjectEditor() {
       let msg = 'Unknown error'
       if (e instanceof Error) msg = e.message
       else msg = String(e)
-      alert('Upload failed: ' + msg)
-      toast.showToast?.('Upload failed', 'error')
+      setError('Upload failed: ' + msg)
+      toast.showToast?.('Upload failed: ' + msg, 'error')
     }
   }
 
@@ -369,7 +385,7 @@ export default function ProjectEditor() {
 
     ;(async ()=>{
       for (const f of toAdd) {
-        try { await uploadOne(f) } catch (e: unknown) { let msg = 'Unknown error'; if (e instanceof Error) msg = e.message; else msg = String(e); alert('Upload error: ' + String(msg)); break }
+        try { await uploadOne(f) } catch (e: unknown) { let msg = 'Unknown error'; if (e instanceof Error) msg = e.message; else msg = String(e); setError('Upload error: ' + String(msg)); break }
       }
     })()
   }
@@ -431,35 +447,36 @@ export default function ProjectEditor() {
 
   return (
     <div>
+      {error ? <AdminNotice message={error} variant="error" actionLabel={loading ? undefined : 'Retry'} onAction={loading ? undefined : loadRef.current} /> : null}
       {confirmDelete ? (
         <div className={styles.modalOverlay} onClick={()=>setConfirmDelete(null)}>
           <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
-            <div style={{fontWeight:700, marginBottom:8}}>Confirm delete</div>
+            <div className={`${styles.titleStrong} ${styles.mb8}`}>Confirm delete</div>
             <div>
               {confirmDelete.type === 'project' ? 'Delete this project and its associated data?' : (confirmDelete.type === 'image' ? 'Delete this image from the project and storage?' : 'Delete the main image from storage and clear Image path?')}
             </div>
-            <div style={{display:'flex', gap:8, marginTop:12}}>
+            <div className={`${styles.actionsRow} ${styles.sectionPanel}`}>
               <button className={styles.btnGhost} onClick={()=>setConfirmDelete(null)}>Cancel</button>
               <button className={styles.btnDanger} onClick={async ()=>{ await doConfirmDelete(confirmDelete); setConfirmDelete(null); }}>Delete</button>
             </div>
           </div>
         </div>
       ) : null}
-      <div style={{marginBottom:12}} className={styles.topTitle}>Edit Project — ID: {id} <span style={{marginLeft:8}} className={styles.kbd}>Ctrl/Cmd+S</span></div>
+      <div className={`${styles.topTitle} ${styles.mb12}`}>Edit Project — ID: {id} <span className={`${styles.kbd} ${styles.inlineGapLeft8}`}>Ctrl/Cmd+S</span></div>
       {showDebug ? (
-        <div style={{background:'#071826', padding:12, borderRadius:8, marginBottom:12}}>
-          <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
+        <div className={styles.debugPanel}>
+          <div className={styles.debugPanelHeader}>
             <strong>Debug: fetched project</strong>
             <button className={styles.btnGhost} onClick={()=>setShowDebug(false)}>Hide</button>
           </div>
-          <pre style={{whiteSpace:'pre-wrap', maxHeight:240, overflow:'auto', fontSize:12}}>{fetchedProjectRef.current ? JSON.stringify(fetchedProjectRef.current, null, 2) : 'no project loaded'}</pre>
+          <pre className={styles.debugPre}>{fetchedProjectRef.current ? JSON.stringify(fetchedProjectRef.current, null, 2) : 'no project loaded'}</pre>
         </div>
       ) : (
-        <div style={{marginBottom:12}}>
+        <div className={styles.mb12}>
           <button className={styles.btnGhost} onClick={()=>setShowDebug(true)}>Show debug</button>
         </div>
       )}
-      {loading ? <p>Loading…</p> : (
+      {loading ? <AdminLoadingState label="Loading project editor" /> : (
         <form onSubmit={save} className={styles.editorGrid}>
           <div>
               <label>
@@ -474,8 +491,8 @@ export default function ProjectEditor() {
 
               <label>
                 <div className={styles.fieldLabel}>Details images (showing up to 4; 50MB each)</div>
-                <label className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{display:'inline-flex', alignItems:'center', gap:8}}>
-                  <input className={styles.fileInput} type="file" accept="image/*" multiple onChange={e=>uploadFiles(e.target.files)} style={{display:'none'}} />
+                <label className={`${styles.btnGhost} ${styles.btnGhostSmall} ${styles.inlineBtnLabel}`}>
+                  <input className={styles.srOnlyInput} type="file" accept="image/*" multiple onChange={e=>uploadFiles(e.target.files)} />
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   Upload images
                 </label>
@@ -487,25 +504,23 @@ export default function ProjectEditor() {
               </label>
                 <div>
                 <div className="field-label">Details images (showing up to 4; 50MB each)</div>
-                <label className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{display:'inline-flex', alignItems:'center', gap:8}}>
-                  <input type="file" accept="image/*" multiple onChange={e=>uploadFiles(e.target.files)} style={{display:'none'}} />
+                <label className={`${styles.btnGhost} ${styles.btnGhostSmall} ${styles.inlineBtnLabel}`}>
+                  <input type="file" accept="image/*" multiple onChange={e=>uploadFiles(e.target.files)} className={styles.srOnlyInput} />
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   Upload images
                 </label>
                 {uploadProgress > 0 && (
-                  <div className="progress-bar" style={{marginTop:8}}>
-                    <div className="progress-bar-inner" style={{width:`${uploadProgress}%`}} />
-                  </div>
+                  <progress className={`${styles.progressNative} ${styles.panelHint}`} max={100} value={uploadProgress} aria-label="Project details upload progress" />
                 )}
-                <div className={styles.imgGallery} style={{marginTop:8}}>
+                <div className={`${styles.imgGallery} ${styles.panelHint}`}>
                   {images.slice(0,4).map((src, idx)=> (
-                    <div key={idx} style={{position:'relative', width:96}}>
-                      <Image src={toPublicUrl(src) || ''} alt={`Project gallery image ${idx + 1}`} width={96} height={96} unoptimized onClick={()=>setForm({...form, image_path: src})} className={styles.thumb} style={{boxShadow: src===form.image_path ? '0 0 0 3px #0b84ff66' : undefined, cursor:'pointer'}} />
+                    <div key={idx} className={styles.galleryThumbWrap96}>
+                      <Image src={toPublicUrl(src) || ''} alt={`Project gallery image ${idx + 1}`} width={96} height={96} unoptimized onClick={()=>setForm({...form, image_path: src})} className={`${styles.thumb} ${styles.thumbSelectable} ${src===form.image_path ? styles.thumbSelected : ''}`} />
                       <div className={styles.controls}>
                         <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, -1)} disabled={idx===0} title="Move left">◀</button>
                         <button type="button" className={styles.btnGhost} onClick={()=>moveImage(idx, 1)} disabled={idx===Math.min(images.length,4)-1} title="Move right">▶</button>
                         <button type="button" className={styles.btnGhost} onClick={()=>editImage(idx)} title="Edit URL">✎</button>
-                        <button type="button" className={styles.btnGhost} style={{marginLeft:'auto'}} onClick={()=>deleteImage(idx)}>×</button>
+                        <button type="button" className={`${styles.btnGhost} ${styles.inlineGapLeft8}`} onClick={()=>deleteImage(idx)}>×</button>
                       </div>
                     </div>
                   ))}
@@ -513,7 +528,7 @@ export default function ProjectEditor() {
               </div>
               <label>
                 <div className={styles.fieldLabel}>Details (HTML allowed)</div>
-                <div style={{marginBottom:8}} className={styles.smallMuted}>Use the toolbar to format text; content is stored as HTML.</div>
+                <div className={`${styles.smallMuted} ${styles.richTextHint}`}>Use the toolbar to format text; content is stored as HTML.</div>
                 <RichTextEditor
                   value={String(form.details || '')}
                   onChange={(value) => setForm(f => ({ ...f, details: value }))}
@@ -541,16 +556,18 @@ export default function ProjectEditor() {
               <label>
                 <div className={styles.fieldLabel}>Image path</div>
                 <input value={form.image_path} onChange={e=>setForm({...form, image_path: e.target.value})} className={styles.formInput} />
-                <div style={{marginTop:8}}>
-                  <div className={styles.smallMuted} style={{marginBottom:6}}>Main image (shown on list/cards)</div>
-                  <div style={{display:'flex', gap:12, alignItems:'center'}}>
-                    <div style={{position:'relative'}}>
-                      <Image src={toPublicUrl(form.image_path) || ''} alt={form.title || 'Main project image'} width={320} height={200} unoptimized style={{width:320, height:200, objectFit:'cover', borderRadius:6, background:'#0b2430'}} />
-                      <div style={{position:'absolute', right:8, top:8, display:'flex', gap:6}}>
+                <div className={styles.mt6}>
+                  <div className={`${styles.smallMuted} ${styles.mb8}`}>Main image (shown on list/cards)</div>
+                  <div className={styles.mainImageRow}>
+                    <div className={styles.mainImageFrame}>
+                      <div className={styles.mainImageMedia}>
+                        <AdminObjectImage src={form.image_path} alt={form.title || 'Main project image'} width={320} height={200} fallbackLabel="No image" />
+                      </div>
+                      <div className={styles.mainImageActions}>
                         <button type="button" className={styles.btnGhost} onClick={editMainImage} title="Edit main image URL">✎</button>
                         <button type="button" className={styles.btnGhost} onClick={deleteMainImage} title="Delete main image">🗑</button>
-                        <label title="Upload new main image" className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{display:'inline-flex', alignItems:'center', gap:8}}>
-                          <input type="file" accept="image/*" onChange={e=>uploadMainImage(e.target.files?.[0] || null)} style={{display:'none'}} />
+                        <label title="Upload new main image" className={`${styles.btnGhost} ${styles.btnGhostSmall} ${styles.inlineBtnLabel}`}>
+                          <input type="file" accept="image/*" onChange={e=>uploadMainImage(e.target.files?.[0] || null)} className={styles.srOnlyInput} />
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           Upload
                         </label>
@@ -562,7 +579,7 @@ export default function ProjectEditor() {
               </label>
               <label>
                 <div className="field-label">Description (HTML allowed)</div>
-                <div style={{marginBottom:8}} className={styles.smallMuted}>This is the main project description shown on the projects list and project page.</div>
+                <div className={`${styles.smallMuted} ${styles.richTextHint}`}>This is the main project description shown on the projects list and project page.</div>
                 <RichTextEditor
                   value={String(form.description || '')}
                   onChange={(value) => setForm(f => ({ ...f, description: value }))}
@@ -583,9 +600,9 @@ export default function ProjectEditor() {
                   <span className={styles.switchLabel}>{form.is_published ? 'Published' : 'Draft'}</span>
                 </label>
               </div>
-          <div style={{gridColumn: '1/-1'}}>
+          <div className={styles.fullSpan}>
             <div className={styles.stickyBar}>
-              <div style={{marginRight:'auto'}} className={styles.smallMuted}>
+              <div className={`${styles.smallMuted} ${styles.topBarInfo}`}>
                 {saving ? (
                   'Saving…'
                 ) : (
@@ -607,15 +624,15 @@ export default function ProjectEditor() {
           {previewOpen && (
             <div className={styles.modalOverlay} onClick={()=>setPreviewOpen(false)}>
               <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-                  <div style={{fontWeight:700}}>Preview</div>
+                <div className={`${styles.rowBetween12} ${styles.mb12}`}>
+                  <div className={styles.titleStrong}>Preview</div>
                   <button className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
                 </div>
-                <div style={{maxWidth:920}}>
+                <div className={styles.previewDialogWide}>
                   {form.slug ? (
-                    <div style={{display:'flex',flexDirection:'column',gap:12}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                        <div style={{fontWeight:600}}>{`/projects/${form.slug}`}</div>
+                    <div className={styles.stack12}>
+                      <div className={styles.rowBetween12}>
+                        <div className={styles.titleStrong}>{`/projects/${form.slug}`}</div>
                         <div>
                           <a className={styles.btnGhost} href={`/projects/${form.slug}`} target="_blank" rel="noopener noreferrer">Open in new tab</a>
                         </div>
@@ -623,38 +640,38 @@ export default function ProjectEditor() {
                       {/* Compact card preview styled with public project CSS to match front-end */}
                       <div>
                         <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
-                          <div className={projectStyles.content} style={{gap:8}}>
+                          <div className={`${projectStyles.content} ${styles.projectStoryGap}`}>
                             <div className={projectStyles.media}>
                               {form.image_path ? (
-                                <div className={projectStyles.mainPhotoWrap} style={{maxWidth:320}}>
-                                  <Image src={toPublicUrl(form.image_path) || ''} alt={form.title || 'Project preview image'} width={320} height={240} unoptimized className={projectStyles.mainPhoto} />
+                                <div className={`${projectStyles.mainPhotoWrap} ${styles.maxWidth320}`}>
+                                  <AdminObjectImage src={form.image_path} alt={form.title || 'Project preview image'} width={320} height={240} imageClassName={projectStyles.mainPhoto} fallbackLabel="No image" />
                                 </div>
                               ) : null}
                             </div>
                             <div className={projectStyles.story}>
-                              <div style={{ color: 'var(--white-95)' }} dangerouslySetInnerHTML={{ __html: safeDescription }} />
-                              {form.details ? <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: (safeDetails || '').slice(0, 400) + ((String(safeDetails || '').length > 400) ? '…' : '') }} /> : null}
+                              <div className={styles.whiteText} dangerouslySetInnerHTML={{ __html: safeDescription }} />
+                              {form.details ? <div className={styles.storyTopGap} dangerouslySetInnerHTML={{ __html: (safeDetails || '').slice(0, 400) + ((String(safeDetails || '').length > 400) ? '…' : '') }} /> : null}
                             </div>
                           </div>
                         </Card>
                       </div>
-                      <div style={{border:'1px solid rgba(255,255,255,0.04)', borderRadius:8, overflow:'hidden'}}>
-                        <iframe src={`/projects/${form.slug}`} title={`Preview ${form.slug}`} style={{width:'100%', height:720, border:0}} />
+                      <div className={styles.previewFrame}>
+                        <iframe src={`/projects/${form.slug}`} title={`Preview ${form.slug}`} className={styles.previewIframe} />
                       </div>
                     </div>
                   ) : (
                     <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
-                      <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
-                        <div style={{width:140, height:100, background:'#061426', borderRadius:8, overflow:'hidden', flex:'0 0 140px'}}>
-                          {form.image_path ? <Image src={toPublicUrl(form.image_path) || ''} alt={form.title || 'Project preview image'} width={140} height={100} unoptimized style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#9fb7d6'}}>No image</div>}
+                      <div className={styles.previewContentRow}>
+                        <div className={styles.previewMedia}>
+                          <AdminObjectImage src={form.image_path} alt={form.title || 'Project preview image'} width={140} height={100} fallbackLabel="No image" />
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: safeDescription }} />
+                        <div className={styles.previewCopy}>
+                          <div className={styles.previewHtml} dangerouslySetInnerHTML={{ __html: safeDescription }} />
                           {(() => {
                             const generated = (form.details || '').trim() ? `/projects/${form.slug}` : null
                             const linkUrl = form.external_link || generated
                             return linkUrl ? (
-                              <div style={{marginTop:8}} className={styles.smallMuted}><a href={linkUrl} target="_blank" rel="noopener noreferrer">Click here to read more</a></div>
+                              <div className={`${styles.smallMuted} ${styles.previewLinkText}`}><a href={linkUrl} target="_blank" rel="noopener noreferrer">Click here to read more</a></div>
                             ) : null
                           })()}
                         </div>

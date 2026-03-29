@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
 import bcrypt from 'bcryptjs'
+import { parseJsonObject, readBoolean, readNumber, readString, readStringArray, validationErrorResponse } from '@/lib/validation'
 
 export async function GET(req: Request) {
   const admin = await requireAdmin()
@@ -23,9 +24,22 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { name, email, password, roles } = body
-  if (!email || !password) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  let body: Record<string, unknown>
+  let name: string | null
+  let email: string | null
+  let password: string | null
+  let roles: string[] | null
+  try {
+    body = await parseJsonObject(req)
+    name = readString(body, 'name', { maxLength: 255, allowEmpty: true })
+    email = readString(body, 'email', { required: true, maxLength: 255, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ })
+    password = readString(body, 'password', { required: true, minLength: 8, maxLength: 255 })
+    roles = readStringArray(body, 'roles', { maxItems: 20 })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
   const hashed = bcrypt.hashSync(password, 12)
   const insertRes = await query('INSERT INTO users (name, email, hashed_password, is_active) VALUES (?, ?, ?, 1)', [name || null, email, hashed])
   const userId = (insertRes as unknown as { insertId?: number })?.insertId ?? null
@@ -43,9 +57,26 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { id, name, email, password, is_active, roles } = body
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  let body: Record<string, unknown>
+  let id: number | null
+  let name: string | null
+  let email: string | null
+  let password: string | null
+  let is_active: boolean | null
+  let roles: string[] | null
+  try {
+    body = await parseJsonObject(req)
+    id = readNumber(body, 'id', { required: true, integer: true, min: 1 })
+    name = readString(body, 'name', { maxLength: 255, allowEmpty: true })
+    email = readString(body, 'email', { required: true, maxLength: 255, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ })
+    password = readString(body, 'password', { minLength: 8, maxLength: 255, allowEmpty: true })
+    is_active = readBoolean(body, 'is_active')
+    roles = readStringArray(body, 'roles', { maxItems: 20 })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
   if (password) {
     const hashed = bcrypt.hashSync(password, 12)
     await query('UPDATE users SET name=?, email=?, hashed_password=?, is_active=? WHERE id=?', [name || null, email, hashed, is_active ? 1 : 0, id])

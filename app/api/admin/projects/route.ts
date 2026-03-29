@@ -3,7 +3,10 @@ import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
+import { archiveDeletedContent } from '@/lib/deletionArchive'
 import { deleteObjectStrict, deletePrefixStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { listObjectKeysByPrefix } from '@/lib/objectStorage'
+import { parseJsonObject, readBoolean, readNumber, readString, readUrlString, validationErrorResponse } from '@/lib/validation'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -32,15 +35,29 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { slug, title, subtitle, image_path, description, external_link, is_published, sort_order, createDetails } = body
-  // basic validation
-  if (!slug || !title) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-  if (typeof slug !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(slug)) return NextResponse.json({ error: 'Invalid slug' }, { status: 400 })
-  if (typeof title !== 'string' || title.length > 255) return NextResponse.json({ error: 'Invalid title' }, { status: 400 })
-  if (image_path && image_path.length > 1024) return NextResponse.json({ error: 'Invalid image_path' }, { status: 400 })
-  if (external_link) {
-    try { new URL(external_link, 'http://example.com') } catch (e) { void e; return NextResponse.json({ error: 'Invalid external_link' }, { status: 400 }) }
+  let body: Record<string, unknown>
+  let slug: string | null
+  let title: string | null
+  let subtitle: string | null
+  let image_path: string | null
+  let description: string | null
+  let external_link: string | null
+  let is_published: boolean | null
+  let sort_order: number | null
+  try {
+    body = await parseJsonObject(req)
+    slug = readString(body, 'slug', { required: true, maxLength: 255, pattern: /^[a-zA-Z0-9-_]+$/ })
+    title = readString(body, 'title', { required: true, maxLength: 255 })
+    subtitle = readString(body, 'subtitle', { maxLength: 255, allowEmpty: true })
+    image_path = readString(body, 'image_path', { maxLength: 1024, allowEmpty: true })
+    description = readString(body, 'description', { allowEmpty: true })
+    external_link = readUrlString(body, 'external_link', { allowRelative: true, maxLength: 2048 })
+    is_published = readBoolean(body, 'is_published')
+    sort_order = readNumber(body, 'sort_order', { integer: true })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
   }
 
   // sanitize description server-side
@@ -60,7 +77,7 @@ export async function POST(req: Request) {
     }
     return body?.details ?? ''
   })()
-  if (createDetails) {
+  if (body.createDetails) {
     finalExternal = finalExternal || `/projects/${slug}`
     // sanitize details
     const safeDetails = detailsInput ? DOMPurify.sanitize(String(detailsInput)) : ''
@@ -91,15 +108,31 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { id, slug, title, subtitle, image_path, description, external_link, is_published, sort_order, metadata } = body
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-  // basic validation
-  if (slug && (typeof slug !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(slug))) return NextResponse.json({ error: 'Invalid slug' }, { status: 400 })
-  if (title && (typeof title !== 'string' || title.length > 255)) return NextResponse.json({ error: 'Invalid title' }, { status: 400 })
-  if (image_path && image_path.length > 1024) return NextResponse.json({ error: 'Invalid image_path' }, { status: 400 })
-  if (external_link) {
-    try { new URL(external_link, 'http://example.com') } catch { return NextResponse.json({ error: 'Invalid external_link' }, { status: 400 }) }
+  let body: Record<string, unknown>
+  let id: number | null
+  let slug: string | null
+  let title: string | null
+  let subtitle: string | null
+  let image_path: string | null
+  let description: string | null
+  let external_link: string | null
+  let is_published: boolean | null
+  let sort_order: number | null
+  try {
+    body = await parseJsonObject(req)
+    id = readNumber(body, 'id', { required: true, integer: true, min: 1 })
+    slug = readString(body, 'slug', { maxLength: 255, pattern: /^[a-zA-Z0-9-_]+$/, allowEmpty: true })
+    title = readString(body, 'title', { maxLength: 255, allowEmpty: true })
+    subtitle = readString(body, 'subtitle', { maxLength: 255, allowEmpty: true })
+    image_path = readString(body, 'image_path', { maxLength: 1024, allowEmpty: true })
+    description = readString(body, 'description', { allowEmpty: true })
+    external_link = readUrlString(body, 'external_link', { allowRelative: true, maxLength: 2048 })
+    is_published = readBoolean(body, 'is_published')
+    sort_order = readNumber(body, 'sort_order', { integer: true })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
   }
 
   const { window } = new JSDOM('')
@@ -135,13 +168,16 @@ export async function DELETE(req: Request) {
   const id = url.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   // find the project to get its slug so we can delete related objects
-  const rows = await query<{ slug: string; image_path?: string | null }[]>('SELECT slug, image_path FROM projects WHERE id = ?', [id])
+  const rows = await query<Array<Record<string, unknown>>>('SELECT * FROM projects WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const slug = rows[0].slug
+  const row = rows[0]
+  const slug = String(row.slug || '')
   try {
     const prefix = `${process.env.S3_UPLOAD_PREFIX || 'projects/'}${slug}/`
+    const prefixKeys = await listObjectKeysByPrefix(prefix)
+    const imageKey = resolveObjectKeyFromReference(row.image_path)
+    await archiveDeletedContent({ contentType: 'project', originalId: Number(id), slug, snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
     await deletePrefixStrict(prefix)
-    const imageKey = resolveObjectKeyFromReference(rows[0].image_path)
     if (imageKey) await deleteObjectStrict(imageKey)
   } catch (e: unknown) {
     return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })

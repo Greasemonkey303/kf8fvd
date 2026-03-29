@@ -37,7 +37,12 @@ function metricKey(name: string) {
   return `metrics:${getMetricsPrefix()}:${name}`
 }
 
+function dbFallbackConfigured() {
+  return Boolean(process.env.DB_USER && process.env.DB_NAME)
+}
+
 function disableDbFallback() {
+  if (!dbFallbackConfigured()) return true
   const v = process.env.DISABLE_DB_FALLBACK
   if (v === undefined || v === null || v === '') return process.env.NODE_ENV === 'production'
   return v === '1' || v === 'true'
@@ -221,7 +226,7 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
 
       // audit
       try {
-        if (key.startsWith('email:') || key.startsWith('ip:')) {
+        if (!disableDbFallback() && (key.startsWith('email:') || key.startsWith('ip:'))) {
           const parts = key.split(':')
           const email = parts[0] === 'email' ? parts.slice(1).join(':') : null
           const ip = parts[0] === 'ip' ? parts.slice(1).join(':') : null
@@ -234,12 +239,14 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
 
       if (cur >= max) {
         const until = Date.now() + lockMs
-        try {
-          // ensure auth_locks record is written (best-effort)
-          const { query } = await import('./db')
-          await query('INSERT INTO auth_locks (key_name, locked_until, reason) VALUES (?, FROM_UNIXTIME(?/1000), ?) ON DUPLICATE KEY UPDATE locked_until = VALUES(locked_until), reason = VALUES(reason)', [key, until, opts?.reason || 'too_many_attempts'])
-        } catch (err) {
-          try { console.warn('[rateLimiter] auth_locks insert failed', err) } catch {}
+        if (!disableDbFallback()) {
+          try {
+            // ensure auth_locks record is written (best-effort)
+            const { query } = await import('./db')
+            await query('INSERT INTO auth_locks (key_name, locked_until, reason) VALUES (?, FROM_UNIXTIME(?/1000), ?) ON DUPLICATE KEY UPDATE locked_until = VALUES(locked_until), reason = VALUES(reason)', [key, until, opts?.reason || 'too_many_attempts'])
+          } catch (err) {
+            try { console.warn('[rateLimiter] auth_locks insert failed', err) } catch {}
+          }
         }
         // increment lock metrics (namespaced); also set TTL
         try {
@@ -394,7 +401,9 @@ export async function resetKey(key: string) {
         // best-effort: still delete keys
         try { if (typeof r.del === 'function') await r.del(countKey, lockKey) } catch {}
       }
-      try { const { query } = await import('./db'); await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch {}
+      if (!disableDbFallback()) {
+        try { const { query } = await import('./db'); await query('DELETE FROM auth_locks WHERE key_name = ?', [key]) } catch {}
+      }
     } catch (err) {
       try { logRateEvent('error', 'redis_reset_failed', { key, err: String(err) }) } catch {}
       markRedisUnavailable(err)

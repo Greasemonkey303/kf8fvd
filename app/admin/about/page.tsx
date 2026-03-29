@@ -4,7 +4,8 @@ import React, { useCallback, useEffect, useEffectEvent, useId, useMemo, useState
 import styles from '../admin.module.css'
 import ProjectsList from '../../../components/admin/projects/ProjectsList'
 import RichTextEditor from '../../../components/admin/RichTextEditor'
-import Image from 'next/image'
+import AdminNotice from '@/components/admin/AdminNotice'
+import AdminObjectImage from '@/components/admin/AdminObjectImage'
 import createDOMPurify from 'dompurify'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
@@ -25,6 +26,7 @@ export default function AdminAboutList() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const toast = useToast()
   const [creating, setCreating] = useState(false)
   const draftId = useId()
@@ -45,6 +47,7 @@ export default function AdminAboutList() {
 
   async function load() {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch('/admin/api/pages?page=1&limit=1000')
       const data = await res.json()
@@ -104,6 +107,7 @@ export default function AdminAboutList() {
       }
     } catch (error) {
       console.error(error)
+      setError(error instanceof Error ? error.message : 'Failed to load about sections')
     } finally { setLoading(false) }
   }
 
@@ -111,14 +115,29 @@ export default function AdminAboutList() {
 
   async function submit(e?: React.FormEvent) {
     if (e) e.preventDefault()
-    if (!form.slug || !form.title) return
+    setError(null)
+    if (!form.slug || !form.title) {
+      setError('Slug and title are required before creating a section.')
+      return
+    }
     setCreating(true)
     try {
       const metadata = { aboutCard: { title: form.title, subtitle: form.subtitle, content: form.description, image: form.image_path } }
       const res = await fetch('/admin/api/pages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, title: form.title, content: '', metadata, is_published: form.is_published ? 1 : 0 }) })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok) { alert('Create failed: ' + (j?.error || res.status)); return }
-    } catch (err) { console.error(err); alert('Create failed'); return } finally { setCreating(false) }
+      if (!res.ok) {
+        const message = `Create failed: ${j?.error || res.status}`
+        setError(message)
+        showToast(message, 'error')
+        return
+      }
+    } catch (err) {
+      console.error(err)
+      const message = err instanceof Error ? err.message : 'Create failed'
+      setError(message)
+      showToast(message, 'error')
+      return
+    } finally { setCreating(false) }
     clearDraft(`admin_about_draft:${form.slug}`)
     resetForm()
     await load()
@@ -246,10 +265,16 @@ export default function AdminAboutList() {
 
   const performBulkAction = async (action: 'publish' | 'unpublish' | 'delete') => {
     if (!selectedIds || selectedIds.length === 0) return
+    setError(null)
     try {
       const res = await fetch('/admin/api/pages/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds, action }) })
       const j = await res.json().catch(()=>({}))
-      if (!res.ok) { alert('Bulk action failed: ' + (j?.error || res.status)); return }
+      if (!res.ok) {
+        const message = `Bulk action failed: ${j?.error || res.status}`
+        setError(message)
+        showToast(message, 'error')
+        return
+      }
       if (action === 'delete') {
         // server returns deleted rows for undo
         const deleted = j?.deleted || []
@@ -266,7 +291,9 @@ export default function AdminAboutList() {
       setSelectedIds([])
       showToast('Bulk action complete', 'success')
     } catch (error) {
-      alert('Bulk action failed: ' + String(error))
+      const message = error instanceof Error ? error.message : String(error)
+      setError(`Bulk action failed: ${message}`)
+      showToast(`Bulk action failed: ${message}`, 'error')
     }
   }
 
@@ -289,10 +316,17 @@ export default function AdminAboutList() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!form.slug) { alert('Please enter a slug before uploading'); return }
+    setError(null)
+    if (!form.slug) {
+      setError('Enter a slug before uploading an image.')
+      return
+    }
 
     const MAX_BYTES = 50 * 1024 * 1024
-    if (file.size > MAX_BYTES) { alert('Main image too large (max 50MB)'); return }
+    if (file.size > MAX_BYTES) {
+      setError('Main image is too large. The maximum supported size is 50MB.')
+      return
+    }
 
     try {
       const fd = new FormData()
@@ -312,7 +346,12 @@ export default function AdminAboutList() {
 
     const res = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, filename: file.name, contentType: file.type }) })
     const data = await res.json()
-    if (!data.url) { alert('Upload presign failed: ' + (data.error || 'unknown')); return }
+    if (!data.url) {
+      const message = `Upload presign failed: ${data.error || 'unknown'}`
+      setError(message)
+      showToast(message, 'error')
+      return
+    }
 
     try {
       const upload = await fetch(data.url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
@@ -321,16 +360,27 @@ export default function AdminAboutList() {
         const direct = await fetch('/api/uploads/direct', { method: 'POST', body: fd })
         const d = await direct.json()
         if (direct.ok && d.publicUrl) { setForm(f => ({ ...f, image_path: d.publicUrl || d.key })); return }
-        alert('Upload failed')
+        setError('Upload failed after both direct and presigned attempts.')
         return
       }
     } catch (err) {
       console.error('upload error', getErrMsg(err))
       try {
         const upload2 = await fetch(data.url, { method: 'PUT', body: file })
-        if (!upload2.ok) { alert('Upload failed'); return }
-      } catch (err2) { console.error('upload retry error', getErrMsg(err2)); alert('Upload failed: ' + getErrMsg(err2)); return }
+        if (!upload2.ok) {
+          setError('Upload failed after retrying the presigned upload.')
+          return
+        }
+      } catch (err2) {
+        console.error('upload retry error', getErrMsg(err2))
+        setError('Upload failed: ' + getErrMsg(err2))
+        return
+      }
     }
+
+    try {
+      await fetch('/api/uploads/finalize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: data.key }) })
+    } catch (error) { console.error('upload finalize error', getErrMsg(error)) }
 
     setForm(f => ({ ...f, image_path: data.publicUrl || data.key }))
     setUploadProgress(0)
@@ -344,6 +394,7 @@ export default function AdminAboutList() {
 
   return (
     <main className={styles.pageBody}>
+          {error ? <AdminNotice message={error} variant="error" actionLabel={loading ? undefined : 'Retry'} onAction={loading ? undefined : load} /> : null}
           <h2>About Sections</h2>
           <div className="stack">
             <div className={styles.editorGrid}>
@@ -372,16 +423,16 @@ export default function AdminAboutList() {
                   <label>
                     <div className="field-label">Image path</div>
                     <input suppressHydrationWarning value={form.image_path} onChange={e => setForm({ ...form, image_path: e.target.value })} className={styles.formInput} />
-                    <div style={{ marginTop: 8 }}>
-                      <label className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <input suppressHydrationWarning type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                    <div className={styles.mt6}>
+                      <label className={`${styles.btnGhost} ${styles.btnGhostSmall} ${styles.inlineBtnLabel}`}>
+                        <input suppressHydrationWarning type="file" accept="image/*" onChange={handleFileChange} className={styles.srOnlyInput} />
                         Upload image
                       </label>
                     </div>
                   </label>
                   <label>
                     <div className="field-label">Description (HTML allowed)</div>
-                    <div style={{ marginBottom: 8 }} className={styles.smallMuted}>Use the toolbar to format text; content is stored as HTML.</div>
+                    <div className={`${styles.smallMuted} ${styles.richTextHint}`}>Use the toolbar to format text; content is stored as HTML.</div>
                     <RichTextEditor
                       value={String(form.description || '')}
                       onChange={(value) => setForm(f => ({ ...f, description: value }))}
@@ -391,7 +442,7 @@ export default function AdminAboutList() {
                     />
                   </label>
 
-                  <div style={{ display: 'flex', gap: 2 }}>
+                  <div className={styles.actionsRowCompact}>
                     <button suppressHydrationWarning className={styles.btnGhost} type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create'}</button>
                     <button type="button" className={styles.btnGhost} onClick={() => setPreviewOpen(true)}>Preview</button>
                     <button type="button" className={styles.btnDanger} onClick={handleDiscardDraft}>Discard draft</button>
@@ -400,8 +451,8 @@ export default function AdminAboutList() {
               </div>
 
               <aside>
-                <div className={styles.panel} style={{ padding: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className={`${styles.panel} ${styles.panelCompact}`}>
+                  <div className={styles.rowBetween12}>
                     <div>
                       <div className={styles.fieldLabel}>About Sections</div>
                         <div className="muted">Total: {items.length} (published: {items.filter(i => i && Number(i.is_published) === 1).length})</div>
@@ -410,28 +461,24 @@ export default function AdminAboutList() {
                       <button className={styles.btnGhost} type="button" onClick={load}>Refresh</button>
                     </div>
                   </div>
-                  <div style={{ marginTop: 12 }}>
+                  <div className={styles.sectionPanel}>
                     <input placeholder="Search by title or slug" className={styles.formInput} value={query} onChange={e => { setQuery(e.target.value) }} />
-                    <div className={styles.smallMuted} style={{ marginTop: 8 }}>Tip: click Edit to open section editor</div>
+                    <div className={`${styles.smallMuted} ${styles.panelHint}`}>Tip: click Edit to open section editor</div>
                     {uploadProgress < 0 ? (
-                      <span style={{ display: 'block', marginTop: 8, color: '#9fb7d6' }}>Uploading…</span>
+                      <span className={styles.uploadStatus}>Uploading…</span>
                     ) : uploadProgress > 0 ? (
-                      <div style={{ display: 'block', marginTop: 8 }}>
-                        <div className="progress-bar" style={{ width: 120 }}>
-                          <div className="progress-bar-inner" style={{ width: `${uploadProgress}%` }} />
-                        </div>
-                      </div>
+                      <progress className={`${styles.progressNative} ${styles.progressCompact} ${styles.panelHint}`} max={100} value={uploadProgress} aria-label="About image upload progress" />
                     ) : null}
                   </div>
                 </div>
               </aside>
             </div>
 
-            <div style={{ gridColumn: '1/-1' }}>
+            <div className={styles.fullSpan}>
               <hr />
               {selectedIds && selectedIds.length > 0 ? (
-                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-                  <div style={{fontWeight:700}}>{selectedIds.length} selected</div>
+                <div className={styles.selectionBar}>
+                  <div className={styles.titleStrong}>{selectedIds.length} selected</div>
                   <button className={styles.btnGhost} onClick={()=>performBulkAction('publish')}>Publish</button>
                   <button className={styles.btnGhost} onClick={()=>performBulkAction('unpublish')}>Unpublish</button>
                   <button className={styles.btnDanger} onClick={()=>performBulkAction('delete')}>Delete</button>
@@ -450,7 +497,7 @@ export default function AdminAboutList() {
                 onSelectionChange={(ids: (string|number)[]) => setSelectedIds(ids)}
               />
               {deletedUndoBuffer ? (
-                <div style={{marginTop:12, display:'flex', gap:8, alignItems:'center'}}>
+                <div className={`${styles.actionsRow} ${styles.sectionPanel}`}>
                   <div className={styles.smallMuted}>Deleted {deletedUndoBuffer.items?.length || 0} item(s)</div>
                   <button className={styles.btnGhost} onClick={undoDelete}>Undo</button>
                 </div>
@@ -460,22 +507,18 @@ export default function AdminAboutList() {
             {previewOpen && (
               <div className={styles.modalOverlay} onClick={() => setPreviewOpen(false)}>
                 <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <div style={{ fontWeight: 700 }}>Preview</div>
+                  <div className={`${styles.rowBetween12} ${styles.mb12}`}>
+                    <div className={styles.titleStrong}>Preview</div>
                     <button className={styles.btnGhost} onClick={() => setPreviewOpen(false)}>Close</button>
                   </div>
-                  <div style={{ maxWidth: 520 }}>
+                  <div className={styles.previewDialogBody}>
                     <Card title={form.title || 'Untitled'} subtitle={form.subtitle || ''}>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                          <div style={{ width: 140, height: 100, background: '#061426', borderRadius: 8, overflow: 'hidden', flex: '0 0 140px' }}>
-                            {form.image_path ? (
-                              <Image src={String(form.image_path)} alt={form.title || ''} width={140} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} unoptimized />
-                            ) : (
-                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9fb7d6' }}>No image</div>
-                            )}
+                      <div className={styles.previewContentRow}>
+                          <div className={styles.previewMedia}>
+                            <AdminObjectImage src={form.image_path} alt={form.title || 'About preview image'} width={140} height={100} fallbackLabel="No image" />
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: ((form as Record<string, unknown>)['description_sanitized'] ?? (purify ? purify.sanitize(String(form.description || '')) : String(form.description || ''))) as string }} />
+                          <div className={styles.previewCopy}>
+                            <div className={styles.previewHtml} dangerouslySetInnerHTML={{ __html: ((form as Record<string, unknown>)['description_sanitized'] ?? (purify ? purify.sanitize(String(form.description || '')) : String(form.description || ''))) as string }} />
                           </div>
                       </div>
                     </Card>

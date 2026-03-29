@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     return (
       <main className="page-pad">
         <div className="center-max">
-          <div style={{maxWidth:720}}>
+          <div className={styles.authGate}>
             <h2>Admin</h2>
             <p>You must be logged in as an administrator to view this page.</p>
             <p><Link href="/signin">Sign In</Link> or <Link href="/">Return home</Link></p>

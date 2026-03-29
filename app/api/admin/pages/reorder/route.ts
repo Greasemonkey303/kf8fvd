@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../../lib/auth'
 import { transaction } from '../../../../../lib/db'
+import { parseJsonObject, readStringArray, validationErrorResponse } from '@/lib/validation'
 
 const parseOrderId = (id: string) => {
   // formats: "<pageId>-c-<cardIdx>" or "<pageId>-about"/"<pageId>-topology"/"<pageId>-hamshack"
@@ -15,9 +16,16 @@ const parseOrderId = (id: string) => {
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json().catch(() => ({}))
-  const order = Array.isArray(body?.order) ? body.order as string[] : null
-  if (!order) return NextResponse.json({ error: 'Order array required' }, { status: 400 })
+  let order: string[] | null
+  try {
+    const body = await parseJsonObject(req)
+    order = readStringArray(body, 'order', { maxItems: 1000 })
+    if (!order) return NextResponse.json({ error: 'Validation failed', details: [{ field: 'order', message: 'order is required' }] }, { status: 400 })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
 
   const entries = order.map((id, idx) => ({ raw: id, pos: idx, parsed: parseOrderId(String(id)) }))
   const pageIds = Array.from(new Set(entries.map(e => e.parsed && e.parsed.pageId).filter(Boolean))) as number[]

@@ -9,6 +9,7 @@ import createDOMPurify from 'dompurify'
 import modalStyles from '@/components/modal/imageModal.module.css'
 import { createPortal } from 'react-dom'
 import { useEffect } from 'react'
+import { getSiteMediaUrl } from '@/lib/siteMedia'
 
 type AboutCard = {
   title?: string
@@ -86,7 +87,7 @@ export default function About({ data }: { data?: AboutData }) {
         subtitle: String(c?.subtitle ?? ''),
         content: String(c?.content ?? ''),
         content_sanitized: c?.content_sanitized ?? c?.contentSanitized ?? null,
-        image: String(c?.image ?? '/headshot.jpg'),
+        image: String(c?.image ?? getSiteMediaUrl('aboutHeadshot')),
         templateSmall: String(c?.templateSmall ?? ''),
         templateLarge: String(c?.templateLarge ?? '')
       }))
@@ -128,7 +129,7 @@ export default function About({ data }: { data?: AboutData }) {
                 return (
                   <div className={contentClass}>
                     {/* Use Next.js Image for optimization; fallback to unoptimized for data/blob URLs */}
-                    <Image src={String(card.image || '/headshot.jpg')} alt={card.title || 'About'} width={tp.width} height={tp.height} sizes="(max-width: 899px) 140px, 180px" className={tp.className} style={{objectFit:'cover', display:'block'}} unoptimized={String(card.image || '').startsWith('data:') || String(card.image || '').startsWith('blob:')} />
+                    <Image src={String(card.image || getSiteMediaUrl('aboutHeadshot'))} alt={card.title || 'About'} width={tp.width} height={tp.height} sizes="(max-width: 899px) 140px, 180px" className={tp.className} style={{objectFit:'cover', display:'block'}} unoptimized={String(card.image || '').startsWith('data:') || String(card.image || '').startsWith('blob:')} />
                     <div className={styles.copy}>
                       <div dangerouslySetInnerHTML={{ __html: (card.content_sanitized ?? (purify ? purify.sanitize(String(card.content || '')) : String(card.content || ''))) }} />
                     </div>
@@ -137,8 +138,8 @@ export default function About({ data }: { data?: AboutData }) {
               })()
             ) : (
               <div className={styles.topo}>
-                <div className={styles.topoImage} onClick={() => setOpen(card.image || '/apts.jpg')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen(card.image || '/apts.jpg') }}>
-                  <Image src={card.image || '/apts.jpg'} alt={card.title || ''} width={1200} height={700} sizes="(max-width: 899px) 100vw, 420px" className={styles.topoImg} loading="lazy" />
+                <div className={styles.topoImage} onClick={() => setOpen(card.image || getSiteMediaUrl('aboutTopology'))} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen(card.image || getSiteMediaUrl('aboutTopology')) }}>
+                  <Image src={card.image || getSiteMediaUrl('aboutTopology')} alt={card.title || ''} width={1200} height={700} sizes="(max-width: 899px) 100vw, 420px" className={styles.topoImg} loading="lazy" />
                   <div className={styles.imgHint} aria-hidden>Click image to view full screen</div>
                 </div>
                 <div className={styles.topoCopy}>

@@ -2,6 +2,7 @@ import React from 'react'
 import { Card } from '@/components'
 import styles from './hotspot.module.css'
 import { HotspotGallery } from '@/components'
+import { getHotspotGalleryUrls } from '@/lib/siteMedia'
 
 export default function Page(){
   const hardwareLinks = [
@@ -52,7 +53,7 @@ export default function Page(){
 
           <div className={styles.content}>
           <div className={styles.media}>
-            <HotspotGallery images={[ '/hotspot/hotspot-1.jpg', '/hotspot/hotspot-2.jpg', '/hotspot/hotspot-3.jpg' ]} />
+            <HotspotGallery images={getHotspotGalleryUrls()} />
             <div className={styles.calloutBox}>Tap an image to enlarge and compare the packaging, cabling, and final assembly layout.</div>
             <div className={styles.calloutBox}>
               <span className={styles.calloutLabel}>Parts used</span>

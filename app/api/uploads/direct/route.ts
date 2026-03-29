@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
 import { requireAdmin } from '@/lib/auth'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
+import { generateWebpVariantForObject } from '@/lib/webpVariants'
+import { logRouteError, logRouteEvent } from '@/lib/observability'
 
 export async function POST(req: Request) {
   try {
@@ -26,7 +28,7 @@ export async function POST(req: Request) {
     const key = await getUploadKey(slug, filename, prefixOverride)
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
     if (!bucket) {
-      console.error('direct upload error: missing bucket env', { bucket: process.env.NEXT_PUBLIC_S3_BUCKET })
+      logRouteEvent('error', { route: 'api/uploads/direct', action: 'direct_upload_failed', actor: admin.email, resourceId: key, reason: 'missing_bucket_env' })
       return NextResponse.json({ error: 'MinIO bucket not configured (NEXT_PUBLIC_S3_BUCKET)' }, { status: 500 })
     }
 
@@ -39,28 +41,30 @@ export async function POST(req: Request) {
     })
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('direct upload attempt', { bucket, key, filename, contentType })
+      logRouteEvent('debug', { route: 'api/uploads/direct', action: 'direct_upload_attempt', actor: admin.email, resourceId: key, bucket, filename, contentType })
     }
     const buffer = Buffer.from(await file.arrayBuffer())
     await new Promise<void>((resolve, reject) => {
       // pass buffer length and annotate callback with Error|null
       minioClient.putObject(bucket, key, buffer, buffer.length, (err?: Error | null) => {
         if (err) {
-          console.error('minio.putObject error', err)
+          logRouteError('api/uploads/direct', err, { action: 'direct_upload_put_object', actor: admin.email, resourceId: key, reason: 'minio_put_failed' })
           return reject(err)
         }
         if (process.env.NODE_ENV !== 'production') {
-          console.log('minio.putObject success', { bucket, key })
+          logRouteEvent('debug', { route: 'api/uploads/direct', action: 'direct_upload_success_debug', actor: admin.email, resourceId: key, bucket })
         }
         resolve()
       })
     })
 
     const publicUrl = buildPublicUrl(key)
+    const variant = await generateWebpVariantForObject(key).catch(() => null)
 
-    return NextResponse.json({ key, publicUrl })
+    logRouteEvent('info', { route: 'api/uploads/direct', action: 'direct_upload_success', actor: admin.email, resourceId: key, bucket })
+    return NextResponse.json({ key, publicUrl, variants: variant && variant.webpKey ? { webp: variant.webpKey } : null })
   } catch (err: unknown) {
-    console.error('direct upload error', err)
+    logRouteError('api/uploads/direct', err, { action: 'direct_upload_failed', reason: 'route_exception' })
     let msg = 'Unknown error'
     const payload: Record<string, unknown> = {}
     if (err instanceof Error) {

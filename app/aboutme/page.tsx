@@ -3,6 +3,7 @@ import About from '@/containers/about/about'
 import { query } from '@/lib/db'
 import { JSDOM } from 'jsdom'
 import { buildPublicUrl } from '@/lib/s3'
+import { getSiteMediaUrl, replaceLegacyBundledImagePath } from '@/lib/siteMedia'
 import createDOMPurify from 'dompurify'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
@@ -12,7 +13,7 @@ type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
 export const metadata = {
   title: 'About — KF8FVD',
   description: 'About Zachary (KF8FVD) — ham radio operator, maker, and technician in Kentwood, MI.',
-  openGraph: { images: ['/apts.jpg'], title: 'About — KF8FVD' }
+  openGraph: { images: [getSiteMediaUrl('aboutTopology')], title: 'About — KF8FVD' }
 }
 
 export default async function Page() {
@@ -70,8 +71,10 @@ export default async function Page() {
 
     // helper: convert presigned S3/MinIO URLs to proxied API GET (same-origin)
     const toPublicUrl = (p: unknown) => {
-      if (!p) return '/headshot.jpg'
+      if (!p) return getSiteMediaUrl('aboutHeadshot')
       const s = String(p)
+      const mapped = replaceLegacyBundledImagePath(s)
+      if (mapped !== s) return mapped
       if (s.indexOf('X-Amz-Algorithm') !== -1 || s.indexOf('minio') !== -1 || s.indexOf('127.0.0.1') !== -1 || s.indexOf('amazonaws.com') !== -1) {
         try {
           const u = new URL(s)
@@ -83,6 +86,7 @@ export default async function Page() {
           return s
         }
       }
+      if (!s.startsWith('/') && !/^https?:\/\//i.test(s)) return buildPublicUrl(s)
       return s
     }
 
@@ -94,7 +98,7 @@ export default async function Page() {
         const content = sanitize(card['content'] ?? '')
         const cleaned = removeDebugBlock(content)
         const pos = typeof card['position'] === 'number' ? (card['position'] as number) : undefined
-        return { title: String(card['title'] ?? ''), subtitle: String(card['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(card['image'] ?? '/headshot.jpg'), templateLarge: String(card['templateLarge'] ?? ''), templateSmall: String(card['templateSmall'] ?? ''), position: pos }
+        return { title: String(card['title'] ?? ''), subtitle: String(card['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(card['image'] ?? getSiteMediaUrl('aboutHeadshot')), templateLarge: String(card['templateLarge'] ?? ''), templateSmall: String(card['templateSmall'] ?? ''), position: pos }
       })
     } else if (primaryMeta?.aboutCard) {
       // Backwards-compatible: if primary page uses legacy aboutCard, include it
@@ -102,7 +106,7 @@ export default async function Page() {
       const content = sanitize(c['content'] ?? '')
       const cleaned = removeDebugBlock(content)
       const pos = typeof c['position'] === 'number' ? (c['position'] as number) : undefined
-      mergedCards.push({ title: String(c['title'] ?? primary.title ?? ''), subtitle: String(c['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(c['image'] ?? '/headshot.jpg'), templateLarge: String(c['templateLarge'] ?? ''), templateSmall: String(c['templateSmall'] ?? ''), position: pos })
+      mergedCards.push({ title: String(c['title'] ?? primary.title ?? ''), subtitle: String(c['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(c['image'] ?? getSiteMediaUrl('aboutHeadshot')), templateLarge: String(c['templateLarge'] ?? ''), templateSmall: String(c['templateSmall'] ?? ''), position: pos })
     }
 
     // Merge in any additional about-* pages (append their aboutCard or cards)
@@ -116,14 +120,14 @@ export default async function Page() {
           const content = sanitize(card['content'] ?? '')
           const cleaned = removeDebugBlock(content)
           const pos = typeof card['position'] === 'number' ? (card['position'] as number) : undefined
-          mergedCards.push({ title: String(card['title'] ?? ''), subtitle: String(card['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(card['image'] ?? '/headshot.jpg'), templateLarge: String(card['templateLarge'] ?? ''), templateSmall: String(card['templateSmall'] ?? ''), position: pos })
+          mergedCards.push({ title: String(card['title'] ?? ''), subtitle: String(card['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(card['image'] ?? getSiteMediaUrl('aboutHeadshot')), templateLarge: String(card['templateLarge'] ?? ''), templateSmall: String(card['templateSmall'] ?? ''), position: pos })
         }
       } else if (otherMeta['aboutCard']) {
         const c = otherMeta['aboutCard'] as Record<string, unknown>
         const content = sanitize(c['content'] ?? '')
         const cleaned = removeDebugBlock(content)
         const pos = typeof c['position'] === 'number' ? (c['position'] as number) : undefined
-        mergedCards.push({ title: String(c['title'] ?? row.title ?? ''), subtitle: String(c['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(c['image'] ?? '/headshot.jpg'), templateLarge: String(c['templateLarge'] ?? ''), templateSmall: String(c['templateSmall'] ?? ''), position: pos })
+        mergedCards.push({ title: String(c['title'] ?? row.title ?? ''), subtitle: String(c['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(c['image'] ?? getSiteMediaUrl('aboutHeadshot')), templateLarge: String(c['templateLarge'] ?? ''), templateSmall: String(c['templateSmall'] ?? ''), position: pos })
       }
     }
 

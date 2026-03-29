@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import Modal from '@/components/modal/Modal'
 import Image from 'next/image'
 import styles from './HotspotGallery.module.css'
+import { getHotspotGalleryUrls } from '@/lib/siteMedia'
 
 type Props = { images?: string[] }
 
@@ -14,9 +15,7 @@ export default function HotspotGallery({ images }: Props){
     try { const s = JSON.parse(localStorage.getItem(storageKey) || '[]'); return Array.isArray(s) ? s : [] } catch { return [] }
   })
   const imgs = [ ...(images && images.length>0 ? images : [
-    '/hotspot/hotspot-1.jpg',
-    '/hotspot/hotspot-2.jpg',
-    '/hotspot/hotspot-3.jpg'
+    ...getHotspotGalleryUrls()
   ]), ...stored ]
   const [open, setOpen] = useState<string | null>(null)
 

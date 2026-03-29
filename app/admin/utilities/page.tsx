@@ -10,7 +10,7 @@ export default function UtilitiesLanding() {
 
       <div className={styles.sectionsGrid}>
         <div className={styles.adminSectionCard}>
-          <h3 style={{margin:0}}>Auth Locks</h3>
+          <h3 className={styles.sectionTitle}>Auth Locks</h3>
           <p className={styles.smallMuted}>View and clear account/IP locks created by the rate limiter.</p>
           <div className={styles.controls}>
             <Link href="/admin/utilities/locks" className={styles.btnGhost}>View locks</Link>
@@ -18,7 +18,7 @@ export default function UtilitiesLanding() {
         </div>
 
         <div className={styles.adminSectionCard}>
-          <h3 style={{margin:0}}>Login Attempts</h3>
+          <h3 className={styles.sectionTitle}>Login Attempts</h3>
           <p className={styles.smallMuted}>Browse recent successful and failed login attempts for auditing.</p>
           <div className={styles.controls}>
             <Link href="/admin/utilities/login-attempts" className={styles.btnGhost}>View attempts</Link>
@@ -26,7 +26,15 @@ export default function UtilitiesLanding() {
         </div>
 
         <div className={styles.adminSectionCard}>
-          <h3 style={{margin:0}}>Call Log (ADIF)</h3>
+          <h3 className={styles.sectionTitle}>Monitoring</h3>
+          <p className={styles.smallMuted}>Inspect dependency health, abuse counters, and storage policy status.</p>
+          <div className={styles.controls}>
+            <Link href="/admin/utilities/monitoring" className={styles.btnGhost}>Open monitoring</Link>
+          </div>
+        </div>
+
+        <div className={styles.adminSectionCard}>
+          <h3 className={styles.sectionTitle}>Call Log (ADIF)</h3>
           <p className={styles.smallMuted}>Upload and manage ADIF (.adi) call logs for the DX map and Recent QSOs.</p>
           <div className={styles.controls}>
             <Link href="/admin/utilities/call-log" className={styles.btnGhost}>Manage call log</Link>
@@ -34,7 +42,7 @@ export default function UtilitiesLanding() {
         </div>
 
         <div className={styles.adminSectionCard}>
-          <h3 style={{margin:0}}>Create User</h3>
+          <h3 className={styles.sectionTitle}>Create User</h3>
           <p className={styles.smallMuted}>Create new administrative or editorial users (admin-only).</p>
           <div className={styles.controls}>
             <Link href="/admin/utilities/create-user" className={styles.btnGhost}>Create user</Link>

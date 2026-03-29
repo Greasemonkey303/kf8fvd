@@ -1,6 +1,7 @@
 import Dashboard from '@/containers/dashboard/dashboard';
 import styles from "./home.module.css";
 import { Hero, Bands, MainLogo } from "@/containers";
+import { getSiteMediaUrl } from '@/lib/siteMedia';
 
 export const metadata = {
   title: 'KF8FVD — Amateur Radio',
@@ -8,7 +9,7 @@ export const metadata = {
   openGraph: {
     title: 'KF8FVD — Amateur Radio',
     description: 'KF8FVD — Ham radio operator in Kentwood, MI. Browse bands, equipment, and projects.',
-    images: ['/grand_rapids.jpg'],
+    images: [getSiteMediaUrl('homeHero')],
   },
   twitter: { card: 'summary_large_image' }
 }

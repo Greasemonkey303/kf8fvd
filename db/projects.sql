@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS `projects` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Seed example hotspot project (image references existing public/hotspot files)
+-- Seed example hotspot project (image references object storage media)
 INSERT INTO projects (slug, title, subtitle, image_path, description, external_link, is_published, sort_order)
 VALUES
-('hotspot', 'Hotspot Project', 'Raspberry Pi 4 + MMDVM Hotspot', '/hotspot/hotspot-2.jpg', 'This project documents building a compact local amateur radio hotspot using a Raspberry Pi 4 and an MMDVM HAT. Click the image to view it full-size.', '/projects/hotspot', 1, 1)
+('hotspot', 'Hotspot Project', 'Raspberry Pi 4 + MMDVM Hotspot', 'projects/hotspot/static/hotspot-2.jpg', 'This project documents building a compact local amateur radio hotspot using a Raspberry Pi 4 and an MMDVM HAT. Click the image to view it full-size.', '/projects/hotspot', 1, 1)
 ON DUPLICATE KEY UPDATE title=VALUES(title);

@@ -10,6 +10,7 @@ import styles from '../hotspot/hotspot.module.css'
 import { HotspotGallery } from '@/components'
 import { query } from '@/lib/db'
 import { sanitizeHtmlServer } from '@/lib/sanitize'
+import { getHotspotGalleryUrls, replaceLegacyBundledImagePath, resolveManagedImageUrl } from '@/lib/siteMedia'
 
 type Props = { params: { slug: string } | Promise<{ slug: string }> }
 
@@ -51,34 +52,34 @@ export default async function Page({ params }: Props) {
 
   function normalizeImages(value: unknown): string[] {
     if (!value) return []
-    if (Array.isArray(value)) return value.filter(Boolean) as string[]
+    if (Array.isArray(value)) return value.filter(Boolean).map((entry) => resolveManagedImageUrl(entry)).filter(Boolean) as string[]
 
     if (typeof value === 'object' && value !== null && 'images' in value) {
       const images = (value as Record<string, unknown>).images
-      if (Array.isArray(images)) return images.filter(Boolean) as string[]
+      if (Array.isArray(images)) return images.filter(Boolean).map((entry) => resolveManagedImageUrl(entry)).filter(Boolean) as string[]
       if (typeof images === 'string') {
         try {
           const parsed = JSON.parse(images)
-          if (Array.isArray(parsed)) return parsed.filter(Boolean) as string[]
+          if (Array.isArray(parsed)) return parsed.filter(Boolean).map((entry) => resolveManagedImageUrl(entry)).filter(Boolean) as string[]
         } catch {}
-        return images.split(',').map((entry: string) => entry.trim()).filter(Boolean)
+        return images.split(',').map((entry: string) => resolveManagedImageUrl(entry)).filter(Boolean)
       }
     }
 
     if (typeof value === 'string') {
       try {
         const parsed = JSON.parse(value)
-        if (Array.isArray(parsed)) return parsed.filter(Boolean) as string[]
+        if (Array.isArray(parsed)) return parsed.filter(Boolean).map((entry) => resolveManagedImageUrl(entry)).filter(Boolean)
         if (parsed && typeof parsed === 'object' && 'images' in parsed && Array.isArray((parsed as Record<string, unknown>).images)) {
-          return ((parsed as Record<string, unknown>).images as string[]).filter(Boolean)
+          return ((parsed as Record<string, unknown>).images as string[]).filter(Boolean).map((entry) => resolveManagedImageUrl(entry)).filter(Boolean)
         }
       } catch {}
 
       const urlRegex = /(https?:\/\/[^\s"']+)/g
       const matches = Array.from(value.matchAll(urlRegex)).map((match) => match[1])
-      if (matches.length) return matches
+      if (matches.length) return matches.map((entry) => resolveManagedImageUrl(entry)).filter(Boolean)
 
-      const parts = value.split(/[,\n\s]+/).map((entry: string) => entry.trim()).filter(Boolean)
+      const parts = value.split(/[,\n\s]+/).map((entry: string) => resolveManagedImageUrl(entry)).filter(Boolean)
       if (parts.length) return parts
     }
 
@@ -125,6 +126,8 @@ export default async function Page({ params }: Props) {
         }
       }
       if (mainImage.startsWith('http') || mainImage.startsWith('/')) return mainImage
+      if (mainImage.startsWith('http')) return mainImage
+      if (mainImage.startsWith('/')) return replaceLegacyBundledImagePath(mainImage)
       return buildPublicUrl(mainImage)
     } catch {
       return mainImage
@@ -203,7 +206,7 @@ export default async function Page({ params }: Props) {
           <div className={styles.content}>
             <div className={styles.media}>
               {project.slug === 'hotspot' ? (
-                <HotspotGallery images={['/hotspot/hotspot-1.jpg', '/hotspot/hotspot-2.jpg', '/hotspot/hotspot-3.jpg']} />
+                <HotspotGallery images={getHotspotGalleryUrls()} />
               ) : (
                 <>
                   {mainImage ? (

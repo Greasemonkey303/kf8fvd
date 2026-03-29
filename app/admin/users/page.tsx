@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import styles from '../admin.module.css'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
 
 type UserItem = { id: number; name: string; email: string; is_active: number; roles?: string[] }
 
@@ -81,7 +82,7 @@ export default function AdminUsers() {
         <hr />
 
         {loading ? (
-          <p>Loading…</p>
+          <AdminLoadingState label="Loading users" />
         ) : (
           <ul className={styles.simpleList}>
             {users.map(u => (

@@ -1,38 +1,10 @@
 import { NextResponse } from 'next/server'
-
-function parseBasicAuth(header: string | null) {
-  if (!header) return null
-  const m = header.match(/^Basic (.+)$/i)
-  if (!m) return null
-  try {
-    const decoded = Buffer.from(m[1], 'base64').toString('utf8')
-    const idx = decoded.indexOf(':')
-    if (idx < 0) return null
-    return { user: decoded.slice(0, idx), pass: decoded.slice(idx + 1) }
-  } catch (e) { void e; return null }
-}
-
-function checkAdmin(req: Request) {
-  const secret = process.env.ADMIN_API_KEY || ''
-  const headerKey = req.headers.get('x-admin-key') || ''
-  if (secret && headerKey && headerKey === secret) return { ok: true, actor: 'api-key', actor_type: 'api_key' }
-
-  const auth = req.headers.get('authorization') || ''
-  if (secret && auth.toLowerCase().startsWith('bearer ') && auth.slice(7) === secret) return { ok: true, actor: 'api-key', actor_type: 'api_key' }
-
-  const basic = parseBasicAuth(auth)
-  if (basic && process.env.ADMIN_BASIC_USER && process.env.ADMIN_BASIC_PASSWORD) {
-    if (basic.user === process.env.ADMIN_BASIC_USER && basic.pass === process.env.ADMIN_BASIC_PASSWORD) return { ok: true, actor: basic.user, actor_type: 'basic' }
-  }
-
-  if (!process.env.ADMIN_API_KEY && !process.env.ADMIN_BASIC_USER && (process.env.NODE_ENV || 'development') !== 'production') return { ok: true, actor: 'dev', actor_type: 'dev' }
-
-  return { ok: false }
-}
+import { authorizeAdminRequest } from '@/lib/auth'
+import { logRouteError, logRouteEvent } from '@/lib/observability'
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req)
-  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const auth = await authorizeAdminRequest(req, { allowUtilityCredentials: true })
+  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const url = new URL(req.url)
@@ -104,9 +76,11 @@ export async function GET(req: Request) {
         })
       }
 
+      logRouteEvent('info', { route: 'api/admin/admin-actions', action: format === 'csv' ? 'export' : 'list', actor: auth.actor, actorType: auth.actor_type, resourceId: total, reason: filterAction || filterActor ? 'filtered' : null })
+
       return NextResponse.json({ ok: true, source: 'db', total, actions })
     } catch (e) {
-      void e
+      logRouteError('api/admin/admin-actions', e, { action: 'list', actor: auth.actor, actorType: auth.actor_type, reason: 'db_query_failed' })
       // If DB not available and CSV requested, return header-only CSV
       if (format === 'csv') {
         const header = 'id,createdAt,actor,actor_type,action,target_key,reason,ip,meta\n'
@@ -118,10 +92,11 @@ export async function GET(req: Request) {
           }
         })
       }
+      logRouteEvent('warn', { route: 'api/admin/admin-actions', action: format === 'csv' ? 'export' : 'list', actor: auth.actor, actorType: auth.actor_type, reason: 'fallback_empty_result' })
       return NextResponse.json({ ok: true, source: 'none', total: 0, actions: [] })
     }
   } catch (e) {
-    void e
+    logRouteError('api/admin/admin-actions', e, { action: 'list', actor: auth.actor, actorType: auth.actor_type, reason: 'route_exception' })
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

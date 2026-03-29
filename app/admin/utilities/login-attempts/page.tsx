@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 export default async function LoginAttemptsPage({ searchParams }: { searchParams?: Record<string, unknown> }) {
   const admin = await requireAdmin()
-  if (!admin) return <main style={{padding:20}}>Unauthorized</main>
+  if (!admin) return <main className={styles.pagePad20}>Unauthorized</main>
 
   // `searchParams` may be a Promise in some Next.js versions; await if so.
   const sp = (searchParams ? await searchParams : {}) || {}
@@ -80,11 +80,11 @@ export default async function LoginAttemptsPage({ searchParams }: { searchParams
         </table>
       </div>
 
-      <div style={{marginTop:12}}>
+      <div className={styles.sectionSpacing}>
         <div>Page {page} / {totalPages} — {total} rows</div>
-        <div style={{marginTop:6}}>
+        <div className={styles.mt6}>
           {page > 1 && <Link href={baseQuery(page-1)} className={styles.btn}>Prev</Link>}
-          {page < totalPages && <Link href={baseQuery(page+1)} className={styles.btn} style={{marginLeft:8}}>Next</Link>}
+          {page < totalPages && <Link href={baseQuery(page+1)} className={`${styles.btn} ${styles.inlineGapLeft8}`}>Next</Link>}
         </div>
       </div>
     </main>

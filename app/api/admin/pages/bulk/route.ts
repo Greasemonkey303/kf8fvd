@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../../lib/auth'
+import { archiveDeletedContent } from '@/lib/deletionArchive'
 import { query } from '../../../../../lib/db'
-import { deletePrefixStrict } from '@/lib/objectStorage'
+import { deletePrefixStrict, listObjectKeysByPrefix } from '@/lib/objectStorage'
+import { parseJsonObject, readEnumString, readNumberArray, validationErrorResponse } from '@/lib/validation'
 
 const getErrMsg = (err: unknown) => {
   if (err instanceof Error) return err.message
@@ -11,11 +13,18 @@ const getErrMsg = (err: unknown) => {
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json().catch(()=>({}))
-  const idsRaw = Array.isArray(body?.ids) ? (body.ids as unknown[]) : []
-  const ids: number[] = idsRaw.map(v => Number(v)).filter((n: number) => !Number.isNaN(n))
-  const action = String(body?.action || '').toLowerCase()
-  if (!ids.length) return NextResponse.json({ error: 'Missing ids' }, { status: 400 })
+  let ids: number[] | null
+  let action: string | null
+  try {
+    const body = await parseJsonObject(req)
+    ids = readNumberArray(body, 'ids', { integer: true, min: 1, maxItems: 1000 })
+    action = readEnumString(body, 'action', ['publish', 'unpublish', 'delete'], { required: true })
+    if (!ids || ids.length === 0) return NextResponse.json({ error: 'Validation failed', details: [{ field: 'ids', message: 'ids is required' }] }, { status: 400 })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
 
   const placeholders = ids.map(()=>'?').join(',')
 
@@ -40,12 +49,21 @@ export async function POST(req: Request) {
       const seen = new Set<string>()
       for (const r of rows) {
         const slug = String(r.slug || '')
+        const archiveKeys: string[] = []
         for (const rawPrefix of candidates) {
           const np = normalize(rawPrefix)
           if (!np) continue
           const candidate = np.endsWith('/') ? `${np}${slug}/` : `${np}/${slug}/`
           if (seen.has(candidate)) continue
           seen.add(candidate)
+          archiveKeys.push(...await listObjectKeysByPrefix(candidate))
+        }
+        await archiveDeletedContent({ contentType: 'page', originalId: Number(r.id || 0), slug, snapshot: r, objectReferences: archiveKeys, deletedBy: admin.email })
+        for (const rawPrefix of candidates) {
+          const np = normalize(rawPrefix)
+          if (!np) continue
+          const candidate = np.endsWith('/') ? `${np}${slug}/` : `${np}/${slug}/`
+          if (!seen.has(candidate)) continue
           await deletePrefixStrict(candidate)
         }
       }
@@ -55,7 +73,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, deleted: rows })
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    return NextResponse.json({ error: 'Validation failed', details: [{ field: 'action', message: 'action contains an invalid value' }] }, { status: 400 })
   } catch (e) {
     return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
   }

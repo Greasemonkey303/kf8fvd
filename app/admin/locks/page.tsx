@@ -1,5 +1,8 @@
 "use client"
 import { useState } from 'react'
+import AdminNotice from '@/components/admin/AdminNotice'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
+import styles from '../admin.module.css'
 
 type Lock = {
   key: string
@@ -56,31 +59,48 @@ export default function LocksPage() {
   }
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Admin: Auth Locks</h2>
-      <div style={{ marginBottom: 8 }}>
-        <input placeholder="Admin key (or leave blank to use Basic auth)" value={adminKey} onChange={e => setAdminKey(e.target.value)} style={{ padding: 8, width: 360 }} />
-        <button onClick={load} style={{ marginLeft: 8, padding: '8px 12px' }}>{loading ? 'Loading...' : 'Load Locks'}</button>
-      </div>
-      <div style={{ marginBottom: 8 }}>
-        <input placeholder="Admin user" value={adminUser} onChange={e => setAdminUser(e.target.value)} style={{ padding: 8, width: 170, marginRight: 8 }} />
-        <input placeholder="Admin pass" type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} style={{ padding: 8, width: 170 }} />
-      </div>
-      {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
+    <main className={styles.utilityPage}>
       <div>
-        {locks.length === 0 && <div>No locks found.</div>}
-        <ul>
-          {locks.map((l, idx) => (
-            <li key={idx} style={{ marginBottom: 8 }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <div style={{ minWidth: 400 }}>{l.key}</div>
-                <div style={{ color: '#666' }}>{l.ttlMs ? `${Math.ceil(l.ttlMs/1000)}s` : (l.expiresAt ? new Date(l.expiresAt).toLocaleString() : '')}</div>
-                <button onClick={() => unlock(l.key)} style={{ marginLeft: 'auto' }}>Unlock</button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <h2 className={styles.pageTitle}>Admin: Auth Locks</h2>
+        <div className={styles.pageSubtitle}>Inspect and clear active auth lock entries. Signed-in admins can use this directly; key/basic auth is optional for scripted access.</div>
       </div>
-    </div>
+      {error ? <AdminNotice message={error} variant="error" actionLabel="Retry" onAction={() => { void load() }} /> : null}
+      <div className={styles.utilityControls}>
+        <label className={styles.utilityField}>
+          <div className={styles.fieldLabel}>Admin key</div>
+          <input className={styles.formInput} placeholder="Optional admin key" value={adminKey} onChange={e => setAdminKey(e.target.value)} />
+        </label>
+        <label className={styles.utilityField}>
+          <div className={styles.fieldLabel}>Admin user</div>
+          <input className={styles.formInput} placeholder="Optional basic-auth user" value={adminUser} onChange={e => setAdminUser(e.target.value)} />
+        </label>
+        <label className={styles.utilityField}>
+          <div className={styles.fieldLabel}>Admin password</div>
+          <input className={styles.formInput} placeholder="Optional basic-auth password" type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} />
+        </label>
+        <div className={styles.utilityActions}>
+          <button type="button" className={styles.btnGhost} onClick={load} disabled={loading}>
+            {loading ? 'Loading locks...' : 'Load locks'}
+          </button>
+        </div>
+      </div>
+      {loading ? <AdminLoadingState label="Loading locks" /> : null}
+      {!loading && locks.length === 0 ? <div className={styles.emptyStateCard}>No locks found.</div> : null}
+      <div className={styles.utilityList}>
+        {locks.map((l, idx) => (
+          <div key={idx} className={styles.utilityRow}>
+            <div className={styles.utilityRowMeta}>
+              <strong>{l.key}</strong>
+              <div className={styles.utilityMetaText}>{l.ttlMs ? `${Math.ceil(l.ttlMs / 1000)}s remaining` : (l.expiresAt ? new Date(l.expiresAt).toLocaleString() : 'No expiry metadata')}</div>
+            </div>
+            <div className={styles.utilityActions}>
+              <button type="button" className={styles.btnDanger} onClick={() => unlock(l.key)} disabled={loading}>
+                Unlock
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </main>
   )
 }

@@ -10,6 +10,8 @@ export type AdminActionDetails = {
   ip?: string | null
 }
 
+import { logRouteError } from './observability'
+
 export async function insertAdminAction(details: AdminActionDetails) {
   try {
     const { query } = await import('./db')
@@ -36,12 +38,12 @@ export async function insertAdminAction(details: AdminActionDetails) {
           return
         } catch (e3) {
           void e3
-          try { console.warn('[admin] failed to write admin_actions', e3) } catch (_err) { void _err }
+          try { logRouteError('lib/adminActions', e3, { action: 'insert_admin_action', reason: 'fallback_insert_failed' }) } catch (_err) { void _err }
         }
       }
     }
   } catch (e) {
     void e
-    try { console.warn('[admin] failed to write admin_actions', e) } catch (_err) { void _err }
+    try { logRouteError('lib/adminActions', e, { action: 'insert_admin_action', reason: 'query_loader_failed' }) } catch (_err) { void _err }
   }
 }

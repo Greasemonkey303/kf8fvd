@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import styles from '../../admin.module.css'
 import useAdmin from '../../../../components/hooks/useAdmin'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
 import Link from 'next/link'
 import { useToast } from '../../../../components/toast/ToastProvider'
 
@@ -20,7 +21,7 @@ export default function CreateUserPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  if (loading) return <p>Loading…</p>
+  if (loading) return <AdminLoadingState label="Loading user tools" />
   if (!isAdmin) return (
     <div className={styles.emptyStateCard}>
       <h2 className={styles.pageTitle}>Unauthorized</h2>
@@ -93,7 +94,7 @@ export default function CreateUserPage() {
                       <span className={styles.checkboxBox} aria-hidden>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </span>
-                      <span style={{fontSize:13}}>{r.label}</span>
+                      <span className={styles.fontSize13}>{r.label}</span>
                     </label>
                   )
                 })}
@@ -103,14 +104,14 @@ export default function CreateUserPage() {
             <div className={styles.formActions}>
               <Link href="/admin/users" className={styles.btnGhost}>Cancel</Link>
               <button className={styles.btnPrimary} type="submit" disabled={submitting}>
-                {submitting ? (<><span className={styles.spinner} style={{width:16,height:16}} aria-hidden></span>&nbsp;Creating…</>) : 'Create user'}
+                {submitting ? (<><span className={`${styles.spinner} ${styles.spinnerSmall}`} aria-hidden></span>&nbsp;Creating…</>) : 'Create user'}
               </button>
             </div>
           </form>
 
-          {error && <div style={{marginTop:12}} className={styles.modalError}>{String(error)}</div>}
+          {error && <div className={`${styles.modalError} ${styles.sectionSpacing}`}>{String(error)}</div>}
           {success && (
-            <div style={{marginTop:12, padding:10, borderRadius:8, background:'linear-gradient(90deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02))', color:'#bbf7d0'}}>
+            <div className={styles.successBanner}>
               User created successfully — <Link href="/admin/users">View users</Link>
             </div>
           )}

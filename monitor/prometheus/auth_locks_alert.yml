@@ -18,3 +18,48 @@ groups:
         annotations:
           summary: "Many rate-limiter keys in Redis"
           description: "redis rl:* keys exceed threshold (50). Investigate unusual auth activity."
+
+      - alert: FailedLoginSpike
+        expr: failed_login_attempts_10m > 25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Failed login spike detected"
+          description: "Failed login attempts exceeded 25 over the last 10 minutes. Investigate credential stuffing or brute-force traffic."
+
+      - alert: ContactAbuseSpike
+        expr: contact_abuse_events_10m > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Contact abuse spike detected"
+          description: "Contact abuse rejections exceeded 5 over the last 10 minutes. Inspect contact-form traffic and top source IPs."
+
+      - alert: PasswordResetSpike
+        expr: password_reset_requests_10m > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Password reset spike detected"
+          description: "Password reset requests exceeded 10 over the last 10 minutes. Review source traffic and possible account enumeration attempts."
+
+      - alert: AdminUnlockSpike
+        expr: admin_unlocks_24h > 3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Repeated admin unlock activity"
+          description: "Admin unlocks exceeded 3 over the last 24 hours. Confirm the actions were expected and targeted."
+
+      - alert: SuspiciousAdminActionsSpike
+        expr: suspicious_admin_actions_24h > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Suspicious admin action volume detected"
+          description: "Admin unlock and export actions exceeded 5 over the last 24 hours. Review recent admin actions for misuse or operator error."

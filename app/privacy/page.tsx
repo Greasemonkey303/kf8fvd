@@ -31,8 +31,10 @@ export default function PrivacyPage() {
       <h2>How we use the data</h2>
       <p>
         Messages and attachments submitted via the contact form are emailed to
-        the site owner using SendGrid and appended to a local log file for
-        administration. We use this data only to respond to inquiries and for
+        the site owner using SendGrid and the message record is appended to a
+        local log file for administration. Attachments retained for admin
+        follow-up are stored in the site&apos;s private object storage and are not
+        publicly posted. We use this data only to respond to inquiries and for
         site maintenance.
       </p>
 
@@ -40,9 +42,10 @@ export default function PrivacyPage() {
       <p>
         Messages are appended to <code>./data/messages.log</code> on the server
         for operational purposes. Attachments are included in the email sent to
-        the site owner and are not stored long-term by the site itself. If you
-        would like your message or attachments deleted, please contact the site
-        owner requesting removal.
+        the site owner and may also be retained in private object storage for
+        administrative follow-up and backup/restore integrity. If you would like
+        your message or attachments deleted, please contact the site owner
+        requesting removal.
       </p>
 
       <h2>Third-party services</h2>

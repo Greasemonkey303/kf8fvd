@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { query } from '@/lib/db'
+import { assertAtLeastOneField, parseJsonObject, readNumber, readString, validationErrorResponse } from '@/lib/validation'
 
 type Body = { id?: number; title?: string; subtitle?: string; content?: string }
 
@@ -26,18 +27,23 @@ export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
-    const body = (await req.json()) as Body
-    if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
+    const body = await parseJsonObject(req) as Body & Record<string, unknown>
+    const id = readNumber(body, 'id', { integer: true, min: 1 })
+    const title = readString(body, 'title', { maxLength: 255, allowEmpty: true })
+    const subtitle = readString(body, 'subtitle', { maxLength: 255, allowEmpty: true })
+    const content = readString(body, 'content', { allowEmpty: true })
     // Upsert: if id provided, update, else insert
-    if (body.id) {
-      await query('UPDATE hero SET title = ?, subtitle = ?, content = ? WHERE id = ?', [body.title || '', body.subtitle || '', body.content || '', body.id])
-      const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero WHERE id = ?', [body.id])
+    if (id) {
+      await query('UPDATE hero SET title = ?, subtitle = ?, content = ? WHERE id = ?', [title || '', subtitle || '', content || '', id])
+      const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero WHERE id = ?', [id])
       return NextResponse.json({ item: rows[0] })
     }
-    await query('INSERT INTO hero (title, subtitle, content) VALUES (?, ?, ?)', [body.title || '', body.subtitle || '', body.content || ''])
+    await query('INSERT INTO hero (title, subtitle, content) VALUES (?, ?, ?)', [title || '', subtitle || '', content || ''])
     const [newRow] = await query<Record<string, unknown>[]>('SELECT * FROM hero ORDER BY id DESC LIMIT 1')
     return NextResponse.json({ item: newRow })
   } catch (err: unknown) {
+    const validationResponse = validationErrorResponse(err)
+    if (validationResponse) return validationResponse
     console.error('api/admin/hero POST error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
@@ -48,20 +54,22 @@ export async function PUT(req: Request) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   // allow partial updates: body must include id
   try {
-    const body = await req.json()
-    if (!body?.id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    const body = await parseJsonObject(req)
+    const id = readNumber(body, 'id', { required: true, integer: true, min: 1 })
+    assertAtLeastOneField(body, ['title', 'subtitle', 'content'])
     const fields: string[] = []
     const params: unknown[] = []
     if (body.title !== undefined) { fields.push('title = ?'); params.push(body.title) }
     if (body.subtitle !== undefined) { fields.push('subtitle = ?'); params.push(body.subtitle) }
     if (body.content !== undefined) { fields.push('content = ?'); params.push(body.content) }
-    if (fields.length === 0) return NextResponse.json({ error: 'no fields to update' }, { status: 400 })
-    params.push(body.id)
+    params.push(id)
     const sql = `UPDATE hero SET ${fields.join(', ')} WHERE id = ?`
     await query(sql, params)
-    const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero WHERE id = ?', [body.id])
+    const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero WHERE id = ?', [id])
     return NextResponse.json({ item: rows[0] })
   } catch (err: unknown) {
+    const validationResponse = validationErrorResponse(err)
+    if (validationResponse) return validationResponse
     console.error('api/admin/hero PUT error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }

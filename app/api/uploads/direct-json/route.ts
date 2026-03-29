@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
 import { requireAdmin } from '@/lib/auth'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
+import { generateWebpVariantForObject } from '@/lib/webpVariants'
 
 type Body = { slug?: string; filename?: string; contentType?: string; data?: string }
 
@@ -39,15 +40,10 @@ export async function POST(req: Request) {
     const metadata: ObjectMetadata = { 'Content-Type': contentType }
     await minioClient.putObject(bucket, key, buffer, buffer.length, metadata)
 
-    let publicUrl: string
-    try {
-      const getExpires = 24 * 60 * 60
-      publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
-    } catch {
-      publicUrl = buildPublicUrl(key)
-    }
+    const publicUrl = buildPublicUrl(key)
+    const variant = await generateWebpVariantForObject(key).catch(() => null)
 
-    return NextResponse.json({ key, publicUrl })
+    return NextResponse.json({ key, publicUrl, variants: variant && variant.webpKey ? { webp: variant.webpKey } : null })
   } catch (err: unknown) {
     console.error('direct-json upload error', err)
     let msg = 'Unknown error'

@@ -16,6 +16,7 @@ try {
 } catch {}
 import { useRouter } from 'next/navigation'
 import styles from '../../admin.module.css'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
 
 function isProbablyHtml(value: string) {
   return /<\/?[a-z][\s\S]*>/i.test(value)
@@ -74,7 +75,7 @@ export default function PageEditor({ params }: { params: { id: string } }) {
               <div className={styles.pageSubtitle}>Editing page ID: {id}</div>
             </div>
           </div>
-          {loading ? <p>Loading…</p> : (
+          {loading ? <AdminLoadingState label="Loading page editor" /> : (
             <form onSubmit={save} className="form-grid">
               <label>
                 <div className={styles.fieldLabel}>Slug</div>
@@ -93,7 +94,7 @@ export default function PageEditor({ params }: { params: { id: string } }) {
                   minHeight={280}
                   expandedMinHeight={520}
                 />
-                <div className={styles.smallMuted} style={{ marginTop: 8 }}>
+                <div className={`${styles.smallMuted} ${styles.mt6}`}>
                   Existing Markdown content still previews correctly, and new edits can use the full rich editor.
                 </div>
               </div>

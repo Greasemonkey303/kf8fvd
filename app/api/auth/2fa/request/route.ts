@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { isLocked, incrementFailure, resetKey } from '@/lib/rateLimiter'
 import { verifyTurnstileToken } from '@/lib/turnstile'
+import { logRouteError, logRouteEvent } from '@/lib/observability'
 
 // verifyTurnstileToken now provided by '@/lib/turnstile'
 
@@ -29,12 +30,18 @@ export async function POST(req: Request) {
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown').toString().split(',')[0]
     const ipKey = `ip:${ip}`
     const emailKey = `email:${email}`
-    if (await isLocked(ipKey) || await isLocked(emailKey)) return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
+    if (await isLocked(ipKey) || await isLocked(emailKey)) {
+      logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_request_rejected', ip, resourceId: email, reason: 'lock_active', status: 429 })
+      return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
+    }
 
     // Allow bypassing Turnstile for local debug by sending `_bypass: '1'` in the request body.
     if (process.env.CF_TURNSTILE_SECRET && !allowBypass) {
       const ok = await verifyTurnstileToken(String(cfToken || ''))
-      if (!ok) return NextResponse.json({ error: 'Captcha validation failed' }, { status: 400 })
+      if (!ok) {
+        logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_request_rejected', ip, resourceId: email, reason: 'captcha_failed', status: 400 })
+        return NextResponse.json({ error: 'Captcha validation failed' }, { status: 400 })
+      }
     }
 
     const rows = await query<Record<string, unknown>[]>('SELECT id, email, name, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [email])
@@ -54,13 +61,6 @@ export async function POST(req: Request) {
     try { await resetKey(ipKey) } catch (e) { void e }
     try { await resetKey(emailKey) } catch (e) { void e }
 
-    // Ensure storage table exists (best-effort)
-    try {
-      await query('CREATE TABLE IF NOT EXISTS two_factor_codes (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, email VARCHAR(255), code_hash VARCHAR(255), expires_at DATETIME, used_at DATETIME DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX (user_id), INDEX (email))')
-    } catch (e) {
-      void e
-    }
-
     // generate 6-digit code
     const code = String(Math.floor(100000 + Math.random() * 900000))
     const codeHash = await bcrypt.hash(code, 10)
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
     await query('INSERT INTO two_factor_codes (user_id, email, code_hash, expires_at) VALUES (?, ?, ?, ?)', [user.id, user.email, codeHash, expiresAt])
     if (process.env.NODE_ENV !== 'production') {
-      try { console.log('[api/auth/2fa/request] generated code for', { userId: user.id, email: user.email }) } catch (e) { void e }
+      logRouteEvent('debug', { route: 'api/auth/2fa/request', action: '2fa_code_generated', ip, actor: user.email, resourceId: user.id })
     }
 
     // Send email via SendGrid if configured
@@ -99,11 +99,11 @@ export async function POST(req: Request) {
           body: JSON.stringify(bodyReq)
         }, 5000)
         if (!sendgridRes.ok) {
-          try { console.warn('[api/auth/2fa/request] sendgrid non-2xx', sendgridRes.status) } catch (e) { void e }
+          logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_email_send', ip, actor: user.email, resourceId: user.id, status: sendgridRes.status, reason: 'sendgrid_non_2xx' })
         }
       } catch (e) {
         // log but don't fail the request
-        console.warn('[api/auth/2fa/request] sendgrid error', e)
+        logRouteError('api/auth/2fa/request', e, { action: '2fa_email_send', ip, actor: user.email, resourceId: user.id, reason: 'sendgrid_request_failed' })
       }
     }
 
@@ -112,9 +112,10 @@ export async function POST(req: Request) {
     if (process.env.NODE_ENV !== 'production' && (((process.env.DEBUG_2FA || '').toString() === '1') || String(body?._debug || '') === '1')) {
       return NextResponse.json({ ok: true, debugCode: code })
     }
+    logRouteEvent('info', { route: 'api/auth/2fa/request', action: '2fa_requested', ip, actor: user.email, resourceId: user.id })
     return NextResponse.json({ ok: true })
   } catch (e) {
-    void e
+    logRouteError('api/auth/2fa/request', e, { action: '2fa_request_failed', reason: 'invalid_request' })
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }

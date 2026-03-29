@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
+import { parseJsonObject, readBoolean, readEnumString, readNumber, readNumberArray, validationErrorResponse } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,9 +46,15 @@ export async function GET(req: Request) {
       const parsed = typeof r.attachments === 'string' ? JSON.parse(r.attachments || '[]') : (r.attachments || [])
       return (parsed || []).map((a: unknown) => {
         try {
+          if (a && typeof a === 'object' && (a as Record<string, unknown>).key && (a as Record<string, unknown>).filename) {
+            const obj = a as Record<string, unknown>
+            const params = new URLSearchParams({ key: String(obj.key), filename: String(obj.filename), type: String(obj.type || '') })
+            return { ...obj, url: `/admin/api/messages/attachments?${params.toString()}` }
+          }
           if (a && typeof a === 'object' && (a as Record<string, unknown>).dir && (a as Record<string, unknown>).filename) {
             const obj = a as Record<string, unknown>
-            return { ...obj, url: `/admin/messages/attachments/${encodeURIComponent(String(obj.dir))}/${encodeURIComponent(String(obj.filename))}` }
+            const params = new URLSearchParams({ dir: String(obj.dir), filename: String(obj.filename), type: String(obj.type || '') })
+            return { ...obj, url: `/admin/api/messages/attachments?${params.toString()}` }
           }
         } catch (e) { void e }
         return a as Record<string, unknown>
@@ -65,8 +72,21 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json().catch(() => ({}))
-  const { id, ids, read, action } = body as { id?: number | string; ids?: Array<number | string>; read?: boolean; action?: string }
+  let id: number | null
+  let ids: number[] | null
+  let read: boolean | null
+  let action: string | null
+  try {
+    const body = await parseJsonObject(req)
+    id = readNumber(body, 'id', { integer: true, min: 1 })
+    ids = readNumberArray(body, 'ids', { integer: true, min: 1, maxItems: 1000 })
+    read = readBoolean(body, 'read')
+    action = readEnumString(body, 'action', ['mark_all_read'])
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
 
   if (id != null) {
     await query('UPDATE messages SET is_read = ? WHERE id = ?', [read ? 1 : 0, id])
@@ -96,8 +116,14 @@ export async function DELETE(req: Request) {
     await query('UPDATE messages SET is_deleted = 1 WHERE id = ?', [id])
     return NextResponse.json({ ok: true })
   }
-  const body = await req.json().catch(() => ({}))
-  const { ids } = body as { ids?: Array<number | string> }
+  let ids: number[] | null = null
+  try {
+    const body = await parseJsonObject(req)
+    ids = readNumberArray(body, 'ids', { integer: true, min: 1, maxItems: 1000 })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+  }
   if (Array.isArray(ids) && ids.length) {
     const placeholders = ids.map(() => '?').join(',')
     await query(`UPDATE messages SET is_deleted = 1 WHERE id IN (${placeholders})`, ids)

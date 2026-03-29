@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
+import { logRouteError, logRouteEvent } from '@/lib/observability'
 
 type ReqBody = { key?: string; contentType?: string; slug?: string; filename?: string; size?: number; prefix?: string; prefixOverride?: string }
 
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
     })
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('uploads.presign (minio): bucket=', bucket, 'key=', key, 'contentType=', body.contentType)
+      logRouteEvent('debug', { route: 'api/uploads', action: 'presign_requested', resourceId: key, bucket, contentType: body.contentType || contentTypeRaw })
     }
 
     // MinIO presigned PUT
@@ -85,15 +86,16 @@ export async function POST(req: Request) {
         if (process.env.NODE_ENV !== 'production') {
         const maskedCred = cred ? (cred.slice(0, 6) + '...' + cred.slice(-6)) : null
         debug = { maskedCred, signedHeaders }
-        console.log('uploads.presign debug', debug)
+        logRouteEvent('debug', { route: 'api/uploads', action: 'presign_debug', resourceId: key, ...debug })
       }
     } catch (e: unknown) {
       void e
     }
 
+    logRouteEvent('info', { route: 'api/uploads', action: 'presign_created', resourceId: key, bucket })
     return NextResponse.json(Object.assign({ url, key, publicUrl }, debug ? { _debug: debug } : {}))
   } catch (err: unknown) {
-    console.error('upload presign error', err)
+    logRouteError('api/uploads', err, { action: 'presign_failed', reason: 'minio_presign_failed' })
     let msg = 'Unknown error'
     if (typeof err === 'object' && err !== null) {
       const maybe = (err as { message?: unknown }).message

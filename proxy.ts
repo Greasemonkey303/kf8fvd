@@ -6,7 +6,7 @@ export async function proxy(req: NextRequest) {
   const internalAppOrigin = process.env.INTERNAL_APP_ORIGIN || `http://127.0.0.1:${process.env.PORT || '3000'}`
   const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
   const pathname = req.nextUrl.pathname
-  const allowAdminInlineStyles = pathname.startsWith('/admin')
+  const allowAdminInlineStyles = false
 
   // Generate a per-request CSP nonce for production. Keep this lightweight
   // to avoid adding heavy crypto dependencies in the proxy runtime.

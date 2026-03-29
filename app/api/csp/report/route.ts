@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { logRouteError, logRouteEvent } from '@/lib/observability'
 
 export async function POST(req: Request) {
   try {
@@ -18,9 +19,11 @@ export async function POST(req: Request) {
 
     await query('INSERT INTO csp_reports (document_uri, referrer, blocked_uri, violated_directive, original_policy, user_agent) VALUES (?, ?, ?, ?, ?, ?)', [documentUri, referrer, blockedUri, violatedDirective, originalPolicy, userAgent])
 
+    logRouteEvent('warn', { route: 'api/csp/report', action: 'csp_report_received', resourceId: documentUri, reason: typeof violatedDirective === 'string' ? violatedDirective : null })
+
     return NextResponse.json({ ok: true })
   } catch (e) {
-    console.warn('[csp report] error', e)
+    logRouteError('api/csp/report', e, { action: 'csp_report_failed', reason: 'invalid_csp_report' })
     return NextResponse.json({ error: 'Invalid CSP report' }, { status: 400 })
   }
 }

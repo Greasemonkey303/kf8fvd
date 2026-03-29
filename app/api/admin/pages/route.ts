@@ -4,7 +4,10 @@ import { query } from '../../../../lib/db'
 import { marked } from 'marked'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
+import { archiveDeletedContent } from '@/lib/deletionArchive'
 import { deleteObjectsStrict, deletePrefixStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { listObjectKeysByPrefix } from '@/lib/objectStorage'
+import { parseJsonObject, readBoolean, readNumber, readString, validationErrorResponse } from '@/lib/validation'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -55,9 +58,24 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { slug, title, content, metadata, is_published } = body
-  if (!slug || !title) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  let body: Record<string, unknown>
+  let slug: string | null
+  let title: string | null
+  let content: string | null
+  let metadata: Record<string, unknown> | null
+  let is_published: boolean | null
+  try {
+    body = await parseJsonObject(req)
+    slug = readString(body, 'slug', { required: true, maxLength: 255, pattern: /^[a-zA-Z0-9-_]+$/ })
+    title = readString(body, 'title', { required: true, maxLength: 255 })
+    content = readString(body, 'content', { allowEmpty: true })
+    metadata = (body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)) ? body.metadata as Record<string, unknown> : (body.metadata ? body.metadata as Record<string, unknown> : null)
+    is_published = readBoolean(body, 'is_published')
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
   // Sanitize content server-side before saving
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
@@ -146,9 +164,26 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { id, slug, title, content, metadata, is_published } = body
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  let body: Record<string, unknown>
+  let id: number | null
+  let slug: string | null
+  let title: string | null
+  let content: string | null
+  let metadata: Record<string, unknown> | null
+  let is_published: boolean | null
+  try {
+    body = await parseJsonObject(req)
+    id = readNumber(body, 'id', { required: true, integer: true, min: 1 })
+    slug = readString(body, 'slug', { maxLength: 255, pattern: /^[a-zA-Z0-9-_]+$/, allowEmpty: true })
+    title = readString(body, 'title', { maxLength: 255, allowEmpty: true })
+    content = readString(body, 'content', { allowEmpty: true })
+    metadata = (body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)) ? body.metadata as Record<string, unknown> : (body.metadata ? body.metadata as Record<string, unknown> : null)
+    is_published = readBoolean(body, 'is_published')
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
   // Sanitize content server-side before saving
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
@@ -224,6 +259,7 @@ export async function DELETE(req: Request) {
       }
 
       try {
+        await archiveDeletedContent({ contentType: 'page_card', originalId: Number(id), slug: String(row.slug || id), snapshot: { pageId: Number(id), cardIndex: idx, card }, objectReferences: keysToDelete, deletedBy: admin.email })
         await deleteObjectsStrict(keysToDelete)
       } catch (e: unknown) {
         return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
@@ -258,6 +294,7 @@ export async function DELETE(req: Request) {
         }
       }
       try {
+        await archiveDeletedContent({ contentType: 'page_card', originalId: Number(id), slug: String(row.slug || id), snapshot: { pageId: Number(id), cardName: keyName, card }, objectReferences: keysToDelete, deletedBy: admin.email })
         await deleteObjectsStrict(keysToDelete)
       } catch (e: unknown) {
         return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
@@ -277,12 +314,15 @@ export async function DELETE(req: Request) {
 
   // No card param: delete the whole page and its bucket prefix
   // Find the page to determine slug for S3 cleanup
-  const rows = await query<{ slug: string }[]>('SELECT slug FROM pages WHERE id = ?', [id])
+  const rows = await query<Array<Record<string, unknown>>>('SELECT * FROM pages WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const slug = rows[0].slug
+  const row = rows[0]
+  const slug = String(row.slug || '')
 
   try {
     const prefix = `${process.env.S3_UPLOAD_PREFIX || 'pages/'}${slug}/`
+    const prefixKeys = await listObjectKeysByPrefix(prefix)
+    await archiveDeletedContent({ contentType: 'page', originalId: Number(id), slug, snapshot: row, objectReferences: prefixKeys, deletedBy: admin.email })
     await deletePrefixStrict(prefix)
   } catch (e: unknown) {
     return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })

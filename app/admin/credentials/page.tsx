@@ -3,10 +3,11 @@
 import React, { useEffect, useState, useRef } from 'react'
 import styles from '../admin.module.css'
 import Card from '../../../components/card/card'
+import AdminNotice from '@/components/admin/AdminNotice'
+import AdminObjectImage from '@/components/admin/AdminObjectImage'
 import { useToast } from '../../../components/toast/ToastProvider'
 import RichTextEditor from '../../../components/admin/RichTextEditor'
 import createDOMPurify from 'dompurify'
-import Image from 'next/image'
 
 type CredItem = { id?: number | null; section: string; slug: string; s3_prefix?: string; title: string; tag?: string; authority?: string; image_path?: string | null; description?: string | null; is_published?: number; sort_order?: number }
 type Section = { id?: number | null; name?: string; slug?: string; subtitle?: string; image_path?: string | null; sort_order?: number }
@@ -34,6 +35,7 @@ export default function AdminCredentials() {
   const [sectionsLoading, setSectionsLoading] = useState(true)
   const [showSectionsPanel, setShowSectionsPanel] = useState(false)
   const [sectionForm, setSectionForm] = useState<Section>(EMPTY_SECTION_FORM)
+  const [error, setError] = useState<string | null>(null)
   const [slugEdited, setSlugEdited] = useState(false)
   const [sectionSlugEdited, setSectionSlugEdited] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -70,20 +72,27 @@ export default function AdminCredentials() {
 
   const submit = React.useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!form.slug || !form.title || !form.section) return
+    setError(null)
+    if (!form.slug || !form.title || !form.section) {
+      setError('Section, slug, and title are required before saving a credential.')
+      return
+    }
     try {
       const isUpdate = !!form.id
-      if (isUpdate) {
-        await fetch('/admin/api/credentials', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-      } else {
-        await fetch('/admin/api/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-      }
+      const response = await fetch('/admin/api/credentials', { method: isUpdate ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body?.error || 'Credential save failed')
       // clear any saved draft for this slug
       clearDraft()
       resetForm()
       await load()
       showToast(isUpdate ? 'Credential updated' : 'Credential created', 'success')
-    } catch (err) { console.error('create error', err) }
+    } catch (err) {
+      console.error('create error', err)
+      const message = err instanceof Error ? err.message : 'Credential save failed'
+      setError(message)
+      showToast(message, 'error')
+    }
   }, [clearDraft, form, load, resetForm, showToast])
 
   // Ctrl/Cmd+S handler for save
@@ -105,7 +114,6 @@ export default function AdminCredentials() {
       try {
         const payload = { form, updated: Date.now() }
         try { localStorage.setItem(currentDraftKey, JSON.stringify(payload)) } catch {}
-        showToast('Draft saved locally', 'info')
       } catch {}
     }, 800)
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
@@ -175,9 +183,16 @@ export default function AdminCredentials() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!form.slug || !form.section) { alert('Please select a section and enter a slug before uploading'); return }
+    setError(null)
+    if (!form.slug || !form.section) {
+      setError('Select a section and enter a slug before uploading an image.')
+      return
+    }
     const MAX_BYTES = 50 * 1024 * 1024
-    if (file.size > MAX_BYTES) { alert('Image too large (max 50MB)'); return }
+    if (file.size > MAX_BYTES) {
+      setError('Image is too large. The maximum supported size is 50MB.')
+      return
+    }
     // Use XHR for progress events and a prefix override so keys live under credentials/
     const sectionSlug = String(form.section || '').toLowerCase().replace(/[^a-z0-9]+/g,'-')
     const uploadSlug = `${sectionSlug}/${form.slug}`
@@ -215,7 +230,9 @@ export default function AdminCredentials() {
       })
     } catch (err) {
       console.error('upload error', err)
-      alert('Upload error: ' + (err instanceof Error ? err.message : String(err)))
+      const message = 'Upload error: ' + (err instanceof Error ? err.message : String(err))
+      setError(message)
+      showToast(message, 'error')
       setUploadProgress(0)
       setUploadCompleted(false)
     }
@@ -224,14 +241,23 @@ export default function AdminCredentials() {
 
   async function submitSection(e?: React.FormEvent) {
     if (e) e.preventDefault()
+    setError(null)
     try {
       const isUpdate = !!sectionForm.id
       const payload: Section = { ...sectionForm }
-      if (!payload.name) { alert('Name is required'); return }
+      if (!payload.name) {
+        setError('Section name is required before saving.')
+        return
+      }
       if (!payload.slug) payload.slug = String(payload.name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-')
       const res = await fetch('/admin/api/credential-sections', { method: isUpdate ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
-      if (!res.ok) { alert(data?.error || 'Error saving section'); return }
+      if (!res.ok) {
+        const message = data?.error || 'Error saving section'
+        setError(message)
+        showToast(message, 'error')
+        return
+      }
       const newSlug = payload.slug || (sectionForm.slug || String(sectionForm.name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-'))
       setSectionForm(EMPTY_SECTION_FORM)
       setSectionSlugEdited(false)
@@ -239,7 +265,12 @@ export default function AdminCredentials() {
       // auto-select the newly created section in the credential form
       setForm(f => ({ ...f, section: newSlug }))
       showToast(isUpdate ? 'Section updated' : 'Section created', 'success')
-    } catch (err) { console.error('submitSection err', err) }
+    } catch (err) {
+      console.error('submitSection err', err)
+      const message = err instanceof Error ? err.message : 'Error saving section'
+      setError(message)
+      showToast(message, 'error')
+    }
   }
 
   async function deleteSection(id?: number) {
@@ -285,6 +316,7 @@ export default function AdminCredentials() {
 
   async function performBulkAction(action: 'publish' | 'unpublish' | 'delete') {
     if (!selectedIds || selectedIds.length === 0) return
+    setError(null)
     const ids = selectedIds.map(x => Number(x)).filter(n => Number.isFinite(n))
     if (ids.length === 0) return
 
@@ -298,7 +330,9 @@ export default function AdminCredentials() {
       const res = await fetch('/admin/api/credentials/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ids }) })
       const data = await res.json()
       if (!res.ok) {
-        alert(data?.error || 'Bulk action failed')
+        const message = data?.error || 'Bulk action failed'
+        setError(message)
+        showToast(message, 'error')
         return
       }
       setSelectedIds([])
@@ -307,7 +341,8 @@ export default function AdminCredentials() {
       if (action === 'delete') setTimeout(() => setDeletedUndoBuffer(null), 30_000)
     } catch (err) {
       console.error('bulk action error', err)
-      alert('Bulk action failed')
+      setError('Bulk action failed')
+      showToast('Bulk action failed', 'error')
     }
   }
 
@@ -371,7 +406,12 @@ export default function AdminCredentials() {
       const res = await fetch('/admin/api/credential-sections/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(() => ({}))
       try { console.debug('[admin/credentials] manual saveSectionOrder response', res.status, data) } catch {}
-      if (!res.ok) { alert('Save section order failed: ' + (data?.error || res.status)); return }
+      if (!res.ok) {
+        const message = 'Save section order failed: ' + (data?.error || res.status)
+        setError(message)
+        showToast(message, 'error')
+        return
+      }
       setNeedSectionOrderSave(false)
       await loadSections()
       showToast('Sections order saved', 'success')
@@ -476,7 +516,12 @@ export default function AdminCredentials() {
       const payload = newSections.map((s) => ({ id: s.id, sort_order: s.sort_order || 0 }))
       const res = await fetch('/admin/api/credential-sections/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: payload }) })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) { alert('Save section order failed: ' + (data?.error || res.status)); setNeedSectionOrderSave(true) } else {
+      if (!res.ok) {
+        const message = 'Save section order failed: ' + (data?.error || res.status)
+        setError(message)
+        showToast(message, 'error')
+        setNeedSectionOrderSave(true)
+      } else {
         setNeedSectionOrderSave(false)
         await loadSections()
         showToast('Sections order saved', 'success')
@@ -603,6 +648,7 @@ export default function AdminCredentials() {
 
   return (
     <main className={styles.pageBody}>
+          {error ? <AdminNotice message={error} variant="error" actionLabel="Retry" onAction={() => { void load(); void loadSections() }} /> : null}
           <div className={styles.adminTop}>
             <div>
               <h2 className="title">Credentials</h2>
@@ -636,13 +682,13 @@ export default function AdminCredentials() {
               <div>
                 <form suppressHydrationWarning onSubmit={submit} className="form-grid">
                   {(pendingDraftTemp || pendingDraftSlug) && (
-                    <div style={{marginBottom:12, padding:12, borderRadius:8, background:'var(--card-bg)', border:'1px solid var(--card-border)'}}>
-                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
+                    <div className={styles.draftPrompt}>
+                      <div className={styles.rowBetween12}>
                         <div>
-                          <div style={{fontWeight:700}}>{pendingDraftTemp ? 'Unsaved draft found' : `Draft available for "${form.slug}"`}</div>
-                          <div className={styles.smallMuted} style={{marginTop:6}}>{pendingDraftTemp ? 'You have an unsaved draft from a previous session.' : 'A local draft exists for this slug.'}</div>
+                          <div className={styles.draftPromptTitle}>{pendingDraftTemp ? 'Unsaved draft found' : `Draft available for "${form.slug}"`}</div>
+                          <div className={`${styles.smallMuted} ${styles.mt6}`}>{pendingDraftTemp ? 'You have an unsaved draft from a previous session.' : 'A local draft exists for this slug.'}</div>
                         </div>
-                        <div style={{display:'flex', gap:8}}>
+                        <div className={styles.actionsRow}>
                           <button type="button" className={styles.btnGhost} onClick={()=>applyDraftObject(pendingDraftTemp || pendingDraftSlug)}>Load draft</button>
                           <button type="button" className={styles.btnGhost} onClick={()=>discardDraftObject(pendingDraftTemp || pendingDraftSlug)}>Discard</button>
                         </div>
@@ -651,10 +697,10 @@ export default function AdminCredentials() {
                   )}
                   <label>
                     <div className="field-label">Section</div>
-                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                    <div className={styles.inputRow}>
                       <select suppressHydrationWarning value={form.section} onChange={e=>setForm({...form, section: e.target.value})} className={styles.formInput}>
                         <option value="">-- Select section --</option>
-                        {sectionsLoading ? <option disabled>Loading...</option> : sections.map(s => (
+                        {sectionsLoading ? <option disabled>Loading sections...</option> : sections.map(s => (
                           <option key={s.id} value={s.slug}>{s.name}{s.subtitle ? ` — ${s.subtitle}` : ''}</option>
                         ))}
                       </select>
@@ -679,7 +725,7 @@ export default function AdminCredentials() {
                   </label>
                   <label>
                     <div className="field-label">Authority</div>
-                    <input suppressHydrationWarning value={form.authority} onChange={e=>setForm({...form, authority: e.target.value})} className={styles.formInput + ' ' + styles.formInputSubtitle} style={{textAlign:'center'}} />
+                    <input suppressHydrationWarning value={form.authority} onChange={e=>setForm({...form, authority: e.target.value})} className={styles.formInput + ' ' + styles.formInputSubtitle + ' ' + styles.formInputCenter} />
                   </label>
                   <label>
                     <div className="field-label">Tag / Label</div>
@@ -687,23 +733,21 @@ export default function AdminCredentials() {
                   </label>
                   <label>
                     <div className="field-label">Image path</div>
-                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                    <div className={styles.inputRow}>
                       <input suppressHydrationWarning value={form.image_path || ''} onChange={e=>setForm({...form, image_path: e.target.value})} className={styles.formInput} />
-                      <label className={styles.btnGhost + ' ' + styles.btnGhostSmall} style={{display:'inline-flex', alignItems:'center', gap:8}}>
-                        <input type="file" accept="image/*" onChange={handleFileChange} style={{display:'none'}} />
+                      <label className={`${styles.btnGhost} ${styles.btnGhostSmall} ${styles.inlineBtnLabel}`}>
+                        <input type="file" accept="image/*" onChange={handleFileChange} className={styles.srOnlyInput} />
                         Upload image
                       </label>
                       <button type="button" className={styles.btnGhost} onClick={()=>{ setForm(f=>({...f, image_path: ''})); setUploadCompleted(false); }}>Clear</button>
                     </div>
-                    <div style={{marginTop:8}}>
+                    <div className={styles.mt6}>
                       {uploadProgress < 0 ? (
-                        <span style={{display:'block', color:'#9fb7d6'}}>Uploading…</span>
+                        <span className={styles.uploadStatus}>Uploading…</span>
                       ) : uploadProgress > 0 ? (
-                        <div className="progress-bar" style={{width:180}}>
-                          <div className="progress-bar-inner" style={{width: `${uploadProgress}%`}} />
-                        </div>
+                        <progress className={`${styles.progressNative} ${styles.progressWide}`} max={100} value={uploadProgress} aria-label="Credential image upload progress" />
                       ) : uploadCompleted ? (
-                        <div style={{color:'#7bd389', fontWeight:600}}>Upload complete ✓</div>
+                        <div className={styles.uploadSuccess}>Upload complete ✓</div>
                       ) : null}
                     </div>
                   </label>
@@ -737,40 +781,34 @@ export default function AdminCredentials() {
               </div>
 
               <aside>
-                <div className={styles.panel} style={{padding:12}}>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                <div className={`${styles.panel} ${styles.panelCompact}`}>
+                  <div className={styles.rowBetween12}>
                     <div>
                       <div className={styles.fieldLabel}>Credentials</div>
                       <div className="muted">Total: {items.length}</div>
                     </div>
-                    <div>
-                        <div style={{display:'flex', gap:8}}>
-                        <button className={styles.btnGhost} type="button" onClick={load}>Refresh</button>
-                        <button className={styles.btnGhost} type="button" onClick={()=>performBulkAction('publish')} disabled={selectedIds.length===0}>Publish selected</button>
-                        <button className={styles.btnGhost} type="button" onClick={()=>performBulkAction('unpublish')} disabled={selectedIds.length===0}>Unpublish selected</button>
-                        <button className={styles.btnDanger} type="button" onClick={()=>performBulkAction('delete')} disabled={selectedIds.length===0}>Delete selected</button>
-                        <button className={styles.btnGhost} type="button" onClick={saveOrder} disabled={!needOrderSave}>Save order</button>
-                      </div>
+                    <div className={styles.actionsRow}>
+                      <button className={styles.btnGhost} type="button" onClick={load}>Refresh</button>
+                      <button className={styles.btnGhost} type="button" onClick={()=>performBulkAction('publish')} disabled={selectedIds.length===0}>Publish selected</button>
+                      <button className={styles.btnGhost} type="button" onClick={()=>performBulkAction('unpublish')} disabled={selectedIds.length===0}>Unpublish selected</button>
+                      <button className={styles.btnDanger} type="button" onClick={()=>performBulkAction('delete')} disabled={selectedIds.length===0}>Delete selected</button>
+                      <button className={styles.btnGhost} type="button" onClick={saveOrder} disabled={!needOrderSave}>Save order</button>
                     </div>
                   </div>
-                  <div style={{marginTop:12}}>
-                    <div className={styles.smallMuted} style={{marginTop:8}}>Tip: click Edit on a card to populate the form (not implemented: single-edit yet).</div>
+                  <div className={styles.sectionPanel}>
+                    <div className={`${styles.smallMuted} ${styles.panelHint}`}>Tip: click Edit on a card to populate the form (not implemented: single-edit yet).</div>
                     {uploadProgress < 0 ? (
-                      <span style={{display:'block', marginTop:8, color:'#9fb7d6'}}>Uploading…</span>
+                      <span className={styles.uploadStatus}>Uploading…</span>
                     ) : uploadProgress > 0 ? (
-                      <div style={{display:'block', marginTop:8}}>
-                        <div className="progress-bar" style={{width:120}}>
-                          <div className="progress-bar-inner" style={{width: `${uploadProgress}%`}} />
-                        </div>
-                      </div>
+                      <progress className={`${styles.progressNative} ${styles.progressCompact} ${styles.progressBlock}`} max={100} value={uploadProgress} aria-label="Credentials upload progress" />
                     ) : null}
 
-                    <div style={{marginTop:12}}>
+                    <div className={styles.sectionPanel}>
                       <button className={styles.btnGhost} type="button" onClick={() => setShowSectionsPanel(s => !s)}>{showSectionsPanel ? 'Hide Sections' : 'Manage Sections'}</button>
                     </div>
 
                     {showSectionsPanel && (
-                      <div style={{marginTop:12}}>
+                      <div className={styles.sectionPanel}>
                         <form onSubmit={submitSection} className="form-grid">
                           <label>
                             <div className="field-label">Name</div>
@@ -802,25 +840,25 @@ export default function AdminCredentials() {
 
                         <hr />
                         <div>
-                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
-                            <div style={{fontWeight:700}}>Sections</div>
-                            <div style={{display:'flex', gap:8}}>
+                          <div className={styles.sectionHeader}>
+                            <div className={styles.titleStrong}>Sections</div>
+                            <div className={styles.actionsRow}>
                               <button className={styles.btnGhost} type="button" onClick={loadSections}>Refresh</button>
                               <button className={styles.btnGhost} type="button" onClick={saveSectionOrder} disabled={!needSectionOrderSave}>Save order</button>
                             </div>
                           </div>
-                          {sectionsLoading ? <div className="muted">Loading...</div> : sections.length === 0 ? <div className="muted">No sections</div> : sections.map((s, sIdx: number) => (
-                            <div key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:8, padding:8, borderRadius:8, background: sectionDragOverIndex === sIdx ? 'rgba(255,255,255,0.02)' : 'transparent'}} draggable onDragStart={(e)=>handleSectionDragStart(e, sIdx)} onDragOver={(e)=>handleSectionDragOver(e, sIdx)} onDragLeave={handleSectionDragLeave} onDrop={(e)=>handleSectionDrop(e, sIdx)}>
+                          {sectionsLoading ? <div className={styles.smallMuted}>Loading sections...</div> : sections.length === 0 ? <div className="muted">No sections</div> : sections.map((s, sIdx: number) => (
+                            <div key={s.id} className={`${styles.sectionRow} ${sectionDragOverIndex === sIdx ? styles.sectionRowActive : ''}`} draggable onDragStart={(e)=>handleSectionDragStart(e, sIdx)} onDragOver={(e)=>handleSectionDragOver(e, sIdx)} onDragLeave={handleSectionDragLeave} onDrop={(e)=>handleSectionDrop(e, sIdx)}>
                               <div>
-                                <div style={{display:'flex', alignItems:'center', gap:8}}>
-                                  <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6}} aria-hidden>≡</div>
+                                <div className={styles.sectionRowMain}>
+                                  <div className={styles.dragHandle} aria-hidden>≡</div>
                                   <strong>{s.name}</strong>
                                 </div>
                                 <div className="muted">{s.slug}{s.subtitle ? ' — ' + s.subtitle : ''}</div>
                               </div>
-                              <div style={{display:'flex', gap:8}}>
+                              <div className={styles.actionsRow}>
                                 <button className={styles.btnGhost} onClick={() => editSection(s)}>Edit</button>
-                                  <button className={styles.btnDanger} onClick={() => deleteSection(s.id ?? undefined)}>Delete</button>
+                                <button className={styles.btnDanger} onClick={() => deleteSection(s.id ?? undefined)}>Delete</button>
                               </div>
                             </div>
                           ))}
@@ -831,17 +869,17 @@ export default function AdminCredentials() {
                 </div>
               </aside>
 
-              <div style={{gridColumn:'1/-1'}}>
+              <div className={styles.fullSpan}>
                 <hr />
-                    <div className={styles.sectionsGrid}>
+                <div className={styles.sectionsGrid}>
                   {(sections && sections.length > 0) ? sections.map((s, sIdx: number) => (
                     <Card key={s.id} className={styles.adminSectionCard} title={s.name} subtitle={s.subtitle ? s.subtitle : s.slug}>
-                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginBottom:8}}>
-                        <div draggable onDragStart={(e)=>handleSectionDragStart(e, sIdx)} onDragOver={(e)=>handleSectionDragOver(e, sIdx)} onDragLeave={handleSectionDragLeave} onDrop={(e)=>handleSectionDrop(e, sIdx)} style={{display:'flex', alignItems:'center', gap:8}}>
-                          <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6}} aria-hidden>≡</div>
-                          <div className="muted" style={{fontSize:12}}>{s.slug}</div>
+                      <div className={styles.sectionHeader}>
+                        <div draggable onDragStart={(e)=>handleSectionDragStart(e, sIdx)} onDragOver={(e)=>handleSectionDragOver(e, sIdx)} onDragLeave={handleSectionDragLeave} onDrop={(e)=>handleSectionDrop(e, sIdx)} className={styles.sectionRowMain}>
+                          <div className={styles.dragHandle} aria-hidden>≡</div>
+                          <div className={`muted ${styles.muted12}`}>{s.slug}</div>
                         </div>
-                        <div style={{display:'flex', gap:8}}>
+                        <div className={styles.actionsRow}>
                           <button className={styles.btnGhost} onClick={() => editSection(s)}>Edit</button>
                           <button className={styles.btnDanger} onClick={() => deleteSection(s.id ?? undefined)}>Delete</button>
                         </div>
@@ -851,11 +889,11 @@ export default function AdminCredentials() {
                         {(groupedItems.groups[String((s as Record<string, unknown>)['slug'] || '')] || []).map((it, idx: number) => (
                           <div key={it.id} className={styles.credentialRow} draggable onDragStart={(e)=>handleCardDragStart(e, String(s.slug || ''), idx)} onDragOver={handleCardDragOver} onDragLeave={handleCardDragLeave} onDrop={(e)=>handleCardDrop(e, String(s.slug || ''), idx)}>
                             <div className={styles.credentialRowInner}>
-                              <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6}} aria-hidden>≡</div>
+                              <div className={styles.dragHandle} aria-hidden>≡</div>
                               <input type="checkbox" checked={it.id != null && selectedIds.includes(Number(it.id))} onChange={()=>{ if (it.id != null) toggleSelect(Number(it.id)) }} />
                               <div>
                                 <strong>{it.title}</strong>
-                                <div className={styles.smallMuted} style={{fontSize:12}}>{it.slug}</div>
+                                <div className={`${styles.smallMuted} ${styles.muted12}`}>{it.slug}</div>
                               </div>
                             </div>
                             <div className={styles.credentialActions}>
@@ -869,18 +907,18 @@ export default function AdminCredentials() {
                       </div>
                     </Card>
                   )) : (
-                    <div style={{display:'grid', gap:8}}>
+                    <div className={styles.stackGrid8}>
                       {items.map((it, idx) => (
-                        <div key={it.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}} draggable onDragStart={(e)=>handleDragStart(e, idx)} onDragOver={(e)=>handleDragOver(e, idx)} onDragLeave={handleDragLeave} onDrop={(e)=>handleDrop(e, idx)}>
-                          <div style={{display:'flex', alignItems:'center', gap:8, flex:1}}>
-                            <div style={{cursor:'grab', padding:'6px 8px', borderRadius:6, background: dragOverIndex === idx ? 'rgba(255,255,255,0.02)' : 'transparent'}} aria-hidden>≡</div>
+                        <div key={it.id} className={styles.sectionRow} draggable onDragStart={(e)=>handleDragStart(e, idx)} onDragOver={(e)=>handleDragOver(e, idx)} onDragLeave={handleDragLeave} onDrop={(e)=>handleDrop(e, idx)}>
+                          <div className={styles.sectionRowMain + ' ' + styles.flex1}>
+                            <div className={`${styles.dragHandle} ${dragOverIndex === idx ? styles.dragHandleActive : ''}`} aria-hidden>≡</div>
                             <input type="checkbox" checked={it.id != null && selectedIds.includes(Number(it.id))} onChange={()=>{ if (it.id != null) toggleSelect(Number(it.id)) }} />
                             <div>
                               <strong>{it.title}</strong> <span className="muted">({it.section})</span>
                               <div className={styles.smallMuted}>{it.slug}</div>
                             </div>
                           </div>
-                          <div style={{display:'flex', gap:8}}>
+                          <div className={styles.actionsRow}>
                             <button className={styles.btnGhost} onClick={()=>{ setForm({ id: it.id ?? null, section: it.section, slug: it.slug, title: it.title, tag: it.tag, authority: it.authority, image_path: it.image_path, description: it.description, is_published: it.is_published, sort_order: it.sort_order, s3_prefix: it.s3_prefix }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button>
                             <button className={styles.btnGhost} onClick={()=>moveItemUp(it.id == null ? undefined : Number(it.id))}>Up</button>
                             <button className={styles.btnGhost} onClick={()=>moveItemDown(it.id == null ? undefined : Number(it.id))}>Down</button>
@@ -892,18 +930,18 @@ export default function AdminCredentials() {
                   )}
 
                   {groupedItems.others && groupedItems.others.length > 0 ? (
-                    <div style={{marginTop:12}}>
-                      <div style={{fontWeight:700, marginBottom:8}}>Uncategorized</div>
+                    <div className={styles.sectionPanel}>
+                      <div className={`${styles.titleStrong} ${styles.mb8}`}>Uncategorized</div>
                       {groupedItems.others.map((it) => (
-                        <div key={it.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
-                          <div style={{display:'flex', alignItems:'center', gap:8, flex:1}}>
+                        <div key={it.id} className={styles.sectionRow}>
+                          <div className={styles.sectionRowMain + ' ' + styles.flex1}>
                             <input type="checkbox" checked={it.id != null && selectedIds.includes(Number(it.id))} onChange={()=>{ if (it.id != null) toggleSelect(Number(it.id)) }} />
                             <div>
                               <strong>{it.title}</strong>
                               <div className={styles.smallMuted}>{it.slug}</div>
                             </div>
                           </div>
-                          <div style={{display:'flex', gap:8}}>
+                          <div className={styles.actionsRow}>
                             <button className={styles.btnGhost} onClick={()=>{ setForm({ id: it.id ?? null, section: it.section, slug: it.slug, title: it.title, tag: it.tag, authority: it.authority, image_path: it.image_path, description: it.description, is_published: it.is_published, sort_order: it.sort_order, s3_prefix: it.s3_prefix }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button>
                             <button className={styles.btnGhost} onClick={()=>moveItemUp(it.id == null ? undefined : Number(it.id))}>Up</button>
                             <button className={styles.btnGhost} onClick={()=>moveItemDown(it.id == null ? undefined : Number(it.id))}>Down</button>
@@ -919,22 +957,18 @@ export default function AdminCredentials() {
               {previewOpen && (
                 <div className={styles.modalOverlay} onClick={()=>setPreviewOpen(false)}>
                   <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-                      <div style={{fontWeight:700}}>Preview</div>
+                    <div className={`${styles.rowBetween12} ${styles.mb12}`}>
+                      <div className={styles.titleStrong}>Preview</div>
                       <button className={styles.btnGhost} onClick={()=>setPreviewOpen(false)}>Close</button>
                     </div>
-                    <div style={{maxWidth:520}}>
+                    <div className={styles.previewDialogBody}>
                       <Card title={form.title || 'Untitled'} subtitle={(sections.find((s)=>s.slug===form.section)?.name) || form.section || ''}>
-                        <div style={{display:'flex', gap:12, alignItems:'flex-start'}}>
-                          <div style={{ width: 140, height: 100, background: '#061426', borderRadius: 8, overflow: 'hidden', flex: '0 0 140px' }}>
-                            {form.image_path ? (
-                              <Image src={String(form.image_path)} alt={form.title || ''} width={140} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} unoptimized />
-                            ) : (
-                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9fb7d6' }}>No image</div>
-                            )}
+                        <div className={styles.previewContentRow}>
+                          <div className={styles.previewMedia}>
+                            <AdminObjectImage src={form.image_path} alt={form.title || 'Credential preview image'} width={140} height={100} fallbackLabel="No image" />
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ color: 'var(--white-95)', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: (((form as Record<string, unknown>)['description_sanitized'] ?? (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))) as string) }} />
+                          <div className={styles.previewCopy}>
+                            <div className={styles.previewHtml} dangerouslySetInnerHTML={{ __html: (((form as Record<string, unknown>)['description_sanitized'] ?? (purify ? purify.sanitize(String(form.description || '')) : (form.description || ''))) as string) }} />
                           </div>
                         </div>
                       </Card>

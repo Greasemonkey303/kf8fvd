@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import styles from './admin.module.css'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
 import { buildPublicUrl } from '@/lib/s3'
 
 type DashboardMessage = {
@@ -15,6 +16,48 @@ type DashboardMessage = {
   message?: string | null
   is_read?: boolean
   created_at?: string
+}
+
+type MonitoringDependency = {
+  ok: boolean
+  error?: string
+  latencyMs?: number
+}
+
+type MonitoringSnapshot = {
+  generatedAt: string
+  health: {
+    ok: boolean
+    missing: string[]
+    dependencies: {
+      mysql: MonitoringDependency
+      redis: MonitoringDependency
+      objectStorage: MonitoringDependency
+    }
+  }
+  abuse: {
+    overallStatus: 'ok' | 'warning' | 'critical'
+    summary: {
+      failedLogins10m: number
+      contactMessages10m: number
+      contactAbuse10m: number
+      passwordResets10m: number
+      adminUnlocks24h: number
+      suspiciousAdminActions24h: number
+    }
+    statuses: Record<string, 'ok' | 'warning' | 'critical'>
+  }
+  storagePolicy: {
+    target: string
+    exception: string
+  }
+}
+
+function statusTone(status: 'ok' | 'warning' | 'critical' | 'unknown') {
+  if (status === 'ok') return styles.monitorStatusOk
+  if (status === 'warning') return styles.monitorStatusWarning
+  if (status === 'critical') return styles.monitorStatusCritical
+  return styles.monitorStatusUnknown
 }
 
 export default function AdminPage() {
@@ -27,6 +70,9 @@ export default function AdminPage() {
   const [onairSaving, setOnairSaving] = useState(false)
   const [onairError, setOnairError] = useState<string | null>(null)
   const [onairUpdatedAt, setOnairUpdatedAt] = useState<string | null>(null)
+  const [monitoring, setMonitoring] = useState<MonitoringSnapshot | null>(null)
+  const [monitoringError, setMonitoringError] = useState<string | null>(null)
+  const [monitoringRefreshing, setMonitoringRefreshing] = useState(false)
 
   const mountedRef = useRef(true)
 
@@ -78,15 +124,37 @@ export default function AdminPage() {
     }
   }
 
+  const fetchMonitoring = async () => {
+    setMonitoringRefreshing(true)
+    try {
+      const res = await fetch('/admin/monitoring', { cache: 'no-store' })
+      const j = await res.json().catch(() => null)
+      if (!mountedRef.current) return
+      if (!res.ok) {
+        setMonitoringError((j && typeof j.error === 'string') ? j.error : 'Failed to load monitoring status')
+        return
+      }
+      setMonitoring(j as MonitoringSnapshot)
+      setMonitoringError(null)
+    } catch (error) {
+      if (!mountedRef.current) return
+      setMonitoringError(error instanceof Error ? error.message : String(error))
+    } finally {
+      if (mountedRef.current) setMonitoringRefreshing(false)
+    }
+  }
+
   useEffect(()=>{
     const dashboardTimeoutId = window.setTimeout(() => { void fetchDashboard() }, 0)
     const featuredHeroTimeoutId = window.setTimeout(() => { void fetchFeaturedHero() }, 0)
     const timeoutId = window.setTimeout(() => { void fetchOnAir() }, 0)
-    const pollId = window.setInterval(() => { void fetchDashboard() }, 30000)
+    const monitoringTimeoutId = window.setTimeout(() => { void fetchMonitoring() }, 0)
+    const pollId = window.setInterval(() => { void fetchDashboard(); void fetchMonitoring() }, 30000)
     return () => {
       window.clearTimeout(dashboardTimeoutId)
       window.clearTimeout(featuredHeroTimeoutId)
       window.clearTimeout(timeoutId)
+      window.clearTimeout(monitoringTimeoutId)
       window.clearInterval(pollId)
     }
   }, [])
@@ -132,7 +200,7 @@ export default function AdminPage() {
     return () => { mountedRef.current = false; clearInterval(id) }
   }, [])
 
-  if (status === 'loading') return <p>Loading…</p>
+  if (status === 'loading') return <AdminLoadingState label="Loading admin console" />
   if (!session) {
     return (
       <div className={styles.emptyStateCard}>
@@ -149,21 +217,21 @@ export default function AdminPage() {
   return (
     <main className={styles.pageBody}>
           <h2>Admin Console</h2>
-          <div style={{display:'flex', alignItems:'center', gap:12, marginTop:8, marginBottom:12}}>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:700}}>On Air</div>
+          <div className={`${styles.rowCenter12} ${styles.sectionSpacing}`}>
+            <div className={styles.flex1}>
+              <div className={styles.titleStrong}>On Air</div>
               <div className={styles.smallMuted}>Toggle whether the public site shows the On Air indicator.</div>
             </div>
-            <div style={{display:'flex', alignItems:'center', gap:8}}>
-              <label className={styles.switch} style={{alignItems:'center'}}>
+            <div className={styles.rowCenter8}>
+              <label className={styles.switch}>
                 <input type="checkbox" checked={Boolean(onAir)} onChange={toggleOnAir} disabled={onairSaving} />
                 <div className={`${styles.slider} ${onAir ? styles.on : ''}`}></div>
               </label>
-              <div style={{minWidth:140, textAlign:'center'}}>
-                <div style={{fontWeight:800}}>{onAir ? 'On Air' : 'Standby'}</div>
-                {onairError && <div className={styles.smallMuted} style={{color:'#ffd6d6', fontSize:12}}>{onairError}</div>}
+              <div className={styles.statusPanel}>
+                <div className={styles.titleExtraStrong}>{onAir ? 'On Air' : 'Standby'}</div>
+                {onairError && <div className={styles.smallMutedError}>{onairError}</div>}
                 {onairUpdatedAt && (
-                  <div className={styles.smallMuted} style={{fontSize:12, marginTop:6, display:'flex', alignItems:'center', gap:8, justifyContent:'center'}}>
+                  <div className={`${styles.smallMuted} ${styles.metaInline}`}>
                     <div>
                       Last updated: {(() => {
                         try {
@@ -177,7 +245,6 @@ export default function AdminPage() {
                       className={`${styles.btnGhost} ${styles.btnGhostSmall}`}
                       onClick={async () => { setOnairError(null); try { await fetchOnAir() } catch (e) { setOnairError(String(e)) } }}
                       disabled={onairSaving}
-                      style={{fontSize:12}}
                     >
                       Refresh
                     </button>
@@ -188,15 +255,15 @@ export default function AdminPage() {
           </div>
           {/* Featured hero preview — full width, centered image */}
           {featuredHero && (
-            <div style={{marginBottom:12, display:'flex', justifyContent:'center'}}>
-              <div className="card-action" style={{width:'100%', maxWidth:980, display:'flex', justifyContent:'center', alignItems:'center', padding:12, boxSizing:'border-box', overflow:'hidden'}}>
-                <div style={{textAlign:'center', width:'100%'}}>
-                    <div style={{display:'block', margin:'0 auto 8px', width:'100%', maxWidth:520, height:220, overflow:'hidden', borderRadius:12, boxSizing:'border-box'}}>
-                    <Image src={getPreviewSrc(featuredHero.url)} alt={featuredHero.title || 'Featured hero'} width={520} height={220} unoptimized style={{width:'100%', height:'100%', objectFit:'cover', display:'block', maxWidth:'100%'}} />
+            <div className={styles.heroPreviewSection}>
+              <div className={`card-action ${styles.heroPreviewCard}`}>
+                <div className={styles.heroPreviewInner}>
+                    <div className={styles.heroPreviewImageWrap}>
+                    <Image src={getPreviewSrc(featuredHero.url)} alt={featuredHero.title || 'Featured hero'} width={520} height={220} unoptimized className={styles.heroPreviewImage} />
                   </div>
-                  <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:12}}>
+                  <div className={styles.rowCenter12}>
                     <div>
-                      <div className={styles.statNumber} style={{fontSize:18}}>Hero</div>
+                      <div className={`${styles.statNumber} ${styles.statNumberSmall}`}>Hero</div>
                       <div className={styles.statLabel}>{featuredHero.title || 'Featured image'}</div>
                     </div>
                     <Link prefetch={false} href="/admin/home/hero">Edit Hero</Link>
@@ -205,9 +272,9 @@ export default function AdminPage() {
               </div>
             </div>
           )}
-          <div className={styles.dashboardGrid} style={{marginTop:12}}>
+          <div className={`${styles.dashboardGrid} ${styles.dashboardGridTop}`}>
             <div className="card-action">
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
+              <div className={styles.cardMetric}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="4" rx="1" fill="#60a5fa"/><rect x="3" y="10" width="12" height="4" rx="1" fill="#a78bfa"/><rect x="3" y="16" width="6" height="4" rx="1" fill="var(--logo-green)"/></svg>
                 <div>
                   <div className={styles.statNumber}>{counts.projects}</div>
@@ -217,7 +284,7 @@ export default function AdminPage() {
               <Link prefetch={false} href="/admin/projects">Open Projects</Link>
             </div>
               <div className="card-action">
-                <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div className={styles.cardMetric}>
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="4" rx="1" fill="#60a5fa"/><rect x="3" y="10" width="12" height="4" rx="1" fill="#a78bfa"/><rect x="3" y="16" width="6" height="4" rx="1" fill="var(--logo-green)"/></svg>
                   <div>
                     <div className={styles.statNumber}>{counts.aboutPosts}</div>
@@ -227,7 +294,7 @@ export default function AdminPage() {
                 <Link prefetch={false} href="/admin/about">Open About</Link>
               </div>
             <div className="card-action">
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
+              <div className={styles.cardMetric}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 7a2 2 0 012-2h16a2 2 0 012 2v8a2 2 0 01-2 2H6l-4 4V7z" fill="#60a5fa"/></svg>
                 <div>
                   <div className={styles.statNumber}>{counts.messages}</div>
@@ -237,7 +304,7 @@ export default function AdminPage() {
               <Link prefetch={false} href="/admin/messages">Open Messages</Link>
             </div>
             <div className="card-action">
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
+              <div className={styles.cardMetric}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="3" fill="var(--logo-green)"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6" fill="#60a5fa"/></svg>
                 <div>
                   <div className={styles.statNumber}>{counts.users}</div>
@@ -247,15 +314,98 @@ export default function AdminPage() {
               <Link prefetch={false} href="/admin/users">Manage Users</Link>
             </div>
             <div className="card-action">
-              <div style={{marginTop:'auto'}}>
+              <div className={styles.autoMarginTop}>
                 <button onClick={() => signOut()} className={styles.btnGhost}>Sign Out</button>
               </div>
             </div>
           </div>
-          <div style={{marginTop:20}}>
-            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10}}>
-              <h3 style={{margin:0}}>Recent Messages</h3>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
+          <div className={styles.sectionSpacing}>
+            <div className={styles.messagesHeader}>
+              <h3 className={styles.titleReset}>Live Server Monitoring</h3>
+              <div className={styles.rowCenter10}>
+                {monitoring?.generatedAt ? <span className={styles.smallMuted}>Updated {new Date(monitoring.generatedAt).toLocaleTimeString()}</span> : null}
+                <button className={styles.btnGhost} onClick={() => { void fetchMonitoring() }} disabled={monitoringRefreshing}>Refresh</button>
+              </div>
+            </div>
+            {monitoringError ? (
+              <div className={`${styles.notice} ${styles.noticeError}`}>
+                <div className={styles.noticeMessage}>{monitoringError}</div>
+                <button className={styles.noticeAction} onClick={() => { void fetchMonitoring() }}>Retry</button>
+              </div>
+            ) : null}
+            <div className={styles.monitorGrid}>
+              <div className="card-action">
+                <div className={styles.cardMetric}>
+                  <div>
+                    <div className={styles.statNumber}>{monitoring?.health?.ok ? 'OK' : 'Check'}</div>
+                    <div className={styles.statLabel}>Dependency health</div>
+                  </div>
+                </div>
+                <div className={styles.monitorDependencyList}>
+                  {(['mysql', 'redis', 'objectStorage'] as const).map((key) => {
+                    const dependency = monitoring?.health?.dependencies?.[key]
+                    const state = dependency ? (dependency.ok ? 'ok' : 'critical') : 'unknown'
+                    return (
+                      <div key={key} className={styles.monitorRow}>
+                        <div>
+                          <div className={styles.titleStrong}>{key}</div>
+                          <div className={styles.smallMuted}>{dependency?.latencyMs != null ? `${dependency.latencyMs} ms` : 'No sample yet'}</div>
+                        </div>
+                        <span className={`${styles.monitorStatusBadge} ${statusTone(state)}`}>{state}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+                {monitoring?.health?.missing?.length ? (
+                  <div className={styles.monitorCallout}>Missing config: {monitoring.health.missing.join(', ')}</div>
+                ) : (
+                  <div className={styles.smallMuted}>Required backend config is present.</div>
+                )}
+              </div>
+              <div className="card-action">
+                <div className={styles.cardMetric}>
+                  <div>
+                    <div className={styles.statNumber}>{monitoring?.abuse?.overallStatus || '...'}</div>
+                    <div className={styles.statLabel}>Abuse monitoring</div>
+                  </div>
+                </div>
+                <div className={styles.monitorMetricList}>
+                  {[
+                    ['Failed logins / 10m', monitoring?.abuse?.summary?.failedLogins10m ?? 0, monitoring?.abuse?.statuses?.failedLogins10m || 'unknown'],
+                    ['Contact abuse / 10m', monitoring?.abuse?.summary?.contactAbuse10m ?? 0, monitoring?.abuse?.statuses?.contactAbuse10m || 'unknown'],
+                    ['Password resets / 10m', monitoring?.abuse?.summary?.passwordResets10m ?? 0, monitoring?.abuse?.statuses?.passwordResets10m || 'unknown'],
+                    ['Admin unlocks / 24h', monitoring?.abuse?.summary?.adminUnlocks24h ?? 0, monitoring?.abuse?.statuses?.adminUnlocks24h || 'unknown'],
+                    ['Suspicious admin actions / 24h', monitoring?.abuse?.summary?.suspiciousAdminActions24h ?? 0, monitoring?.abuse?.statuses?.suspiciousAdminActions24h || 'unknown'],
+                  ].map(([label, value, tone]) => (
+                    <div key={String(label)} className={styles.monitorRow}>
+                      <div>
+                        <div className={styles.titleStrong}>{label}</div>
+                        <div className={styles.smallMuted}>Current count: {value}</div>
+                      </div>
+                      <span className={`${styles.monitorStatusBadge} ${statusTone(tone as 'ok' | 'warning' | 'critical' | 'unknown')}`}>{tone}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="card-action">
+                <div className={styles.cardMetric}>
+                  <div>
+                    <div className={styles.statNumber}>{monitoring?.abuse?.summary?.contactMessages10m ?? 0}</div>
+                    <div className={styles.statLabel}>Recent contact volume</div>
+                  </div>
+                </div>
+                <div className={styles.monitorPolicyList}>
+                  <div className={styles.monitorCallout}>{monitoring?.storagePolicy?.target || 'Store all non-logo images in object storage (S3/MinIO).'}</div>
+                  <div className={styles.smallMuted}>{monitoring?.storagePolicy?.exception || 'Brand/logo assets can remain in app files when they are static build assets.'}</div>
+                  <Link prefetch={false} href="/admin/projects">Review media-backed content</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={styles.sectionSpacing}>
+            <div className={styles.messagesHeader}>
+              <h3 className={styles.titleReset}>Recent Messages</h3>
+              <div className={styles.rowCenter10}>
                 <button className={styles.btnGhost} onClick={() => { void fetchDashboard() }}>Refresh</button>
                 <Link prefetch={false} href="/admin/messages">Open all messages</Link>
               </div>
@@ -265,19 +415,19 @@ export default function AdminPage() {
                 <div className={styles.smallMuted}>No messages yet.</div>
               </div>
             ) : (
-              <div style={{display:'grid', gap:10}}>
+              <div className={styles.messagesList}>
                 {recentMessages.map((item) => (
-                  <div key={item.id} className="card-action" style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16}}>
-                    <div style={{minWidth:0, flex:1}}>
-                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap'}}>
+                  <div key={item.id} className={`card-action ${styles.messageCard}`}>
+                    <div className={styles.messageBody}>
+                      <div className={styles.messageHeader}>
                         <strong>{item.name || 'Visitor'}</strong>
                         <span className={styles.smallMuted}>{item.email || 'No email provided'}</span>
-                        {!item.is_read ? <span style={{background:'#e11d48', color:'#fff', borderRadius:999, padding:'2px 8px', fontSize:12, fontWeight:700}}>New</span> : null}
+                        {!item.is_read ? <span className={styles.badgeNew}>New</span> : null}
                       </div>
-                      <div className={styles.smallMuted} style={{marginBottom:6}}>
+                      <div className={`${styles.smallMuted} ${styles.messageTimestamp}`}>
                         {item.created_at ? new Date(item.created_at).toLocaleString() : '-'}
                       </div>
-                      <div style={{whiteSpace:'pre-wrap', overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical'}}>
+                      <div className={styles.messageClamp}>
                         {String(item.message || '').trim() || 'No message body'}
                       </div>
                     </div>

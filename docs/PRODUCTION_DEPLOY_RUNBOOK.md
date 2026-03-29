@@ -20,7 +20,7 @@ This runbook is for deploying the current app without changing how it runs today
 - `npm run build` passes.
 - Local production-like Docker build passes.
 - HTTPS smoke checks pass locally behind the reverse proxy.
-- `/api/health` returns `200` when required production configuration is present.
+- `/api/health` returns `200` only when required production configuration is present and MySQL, Redis, and MinIO are reachable.
 - Unauthenticated `/admin` redirects to `/signin?callbackUrl=%2Fadmin`.
 - The root request handler is already migrated to `proxy.ts`.
 
@@ -67,7 +67,7 @@ These must be set for production.
 | `SENDGRID_FROM` | yes | Sender address for outbound mail. |
 | `SENDGRID_TO` | yes | Contact form destination address. |
 | `INTERNAL_APP_ORIGIN` | yes | Internal HTTP origin used by `proxy.ts` for self-calls. If the app container name is `kf8fvd`, set this to `http://kf8fvd:3000`. |
-| `ADMIN_API_KEY` or `ADMIN_BASIC_USER` + `ADMIN_BASIC_PASSWORD` | yes | Required by `/api/health` and by admin utility endpoints protected outside the session flow. |
+| `ADMIN_API_KEY` or `ADMIN_BASIC_USER` + `ADMIN_BASIC_PASSWORD` | optional | Optional non-session credentials for scripted access to a small set of admin utility endpoints. Signed-in admin sessions remain the primary auth path. |
 
 ### Required Hardening Flags
 
@@ -202,6 +202,7 @@ After the schema is in place, use [c:\Users\zachs\Documents\code\kf8fvd\deploy\F
 
 Run these checks after the stack is up:
 
+0. Run `npm run readiness:backend` inside the app environment. Use `npm run readiness:backend -- --storage-write-test` only when you want a safe MinIO write/delete verification.
 1. `GET /api/health` returns `200`.
 2. `GET /signin` loads and the Turnstile widget appears.
 3. `GET /admin` when signed out redirects to `/signin?callbackUrl=%2Fadmin`.
@@ -210,12 +211,24 @@ Run these checks after the stack is up:
 6. The admin dashboard loads.
 7. At least one upload path works against MinIO.
 8. Contact form submission stores a row in `messages` and delivers mail through SendGrid.
-9. Forgot-password email flow works.
-10. Failed admin requests increment the admin rate limiter and do not break normal authenticated admin navigation.
+9. Admin message attachments download successfully through `/admin/api/messages/attachments` for both new MinIO-backed and migrated legacy messages.
+10. Forgot-password email flow works.
+11. Failed admin requests increment the admin rate limiter and do not break normal authenticated admin navigation.
+12. `content_deletion_log` migration is applied before using admin delete actions in environments where safer delete recovery is required.
 
 ## Health Check Expectations
 
-`/api/health` fails if any of these are missing:
+`/api/health` returns `503` if any required setting is missing or if any dependency probe fails.
+
+The response body includes a `missing` array plus per-dependency results for MySQL, Redis, and object storage.
+
+Admin authorization pattern:
+
+- Standard admin API routes use the signed-in session and `requireAdmin()`.
+- Utility endpoints may additionally accept `ADMIN_API_KEY` or Basic auth for scripted/operator access.
+- Utility credentials are optional and are not part of readiness.
+
+Required configuration still includes:
 
 - `NEXTAUTH_SECRET`
 - `NEXT_PUBLIC_S3_BUCKET`
@@ -223,9 +236,10 @@ Run these checks after the stack is up:
 - `DB_USER`
 - `DB_NAME`
 - `REDIS_URL`
-- one admin auth method (`ADMIN_API_KEY` or `ADMIN_BASIC_USER` + `ADMIN_BASIC_PASSWORD`)
 
 Use that endpoint as the first readiness check after the app container starts.
+
+For direct operator validation, use `npm run readiness:backend`. That script checks required backend env, MySQL, Redis, and MinIO directly, and can optionally verify a temporary object write/delete round trip.
 
 ## First-Run Operational Notes
 

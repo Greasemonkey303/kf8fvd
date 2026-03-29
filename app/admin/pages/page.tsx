@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import styles from '../admin.module.css'
+import AdminLoadingState from '@/components/admin/AdminLoadingState'
 
 type PageItem = { id: number; slug: string; title: string; is_published: number }
 
@@ -75,7 +76,7 @@ export default function AdminPages() {
 
             <hr />
 
-        {loading ? <p>Loading…</p> : (
+        {loading ? <AdminLoadingState label="Loading pages" /> : (
               <>
             <ul className={styles.simpleList}>
                   {pages.map(p => (

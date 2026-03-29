@@ -6,13 +6,6 @@ export async function GET() {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
-    await query(`CREATE TABLE IF NOT EXISTS onair (
-      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      is_on TINYINT(1) NOT NULL DEFAULT 0,
-      note TEXT DEFAULT NULL,
-      updated_by VARCHAR(128) DEFAULT NULL,
-      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )`)
     const rows = await query<Record<string, unknown>[]>('SELECT * FROM onair ORDER BY id ASC LIMIT 1')
     const item = Array.isArray(rows) && rows.length ? rows[0] : { id: null, is_on: 0 }
     return NextResponse.json({ item })
@@ -30,14 +23,6 @@ export async function PATCH(req: Request) {
     const is_on = body && (body.is_on === 1 || body.is_on === true) ? 1 : 0
     const updated_by = body?.updated_by ? String(body.updated_by).slice(0,128) : null
     const note = body?.note ? String(body.note).slice(0,1000) : null
-
-    await query(`CREATE TABLE IF NOT EXISTS onair (
-      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      is_on TINYINT(1) NOT NULL DEFAULT 0,
-      note TEXT DEFAULT NULL,
-      updated_by VARCHAR(128) DEFAULT NULL,
-      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )`)
 
     const rows = await query<Record<string, unknown>[]>('SELECT id FROM onair ORDER BY id ASC LIMIT 1')
     if (Array.isArray(rows) && rows.length) {

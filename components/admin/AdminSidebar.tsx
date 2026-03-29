@@ -14,7 +14,7 @@ export default function AdminSidebar({ admin }: { admin: { name?: string; email?
     let mounted = true
     const loadUnread = async () => {
       try {
-        const res = await fetch('/api/admin/messages?unread=true', { cache: 'no-store' })
+        const res = await fetch('/admin/api/messages?unread=true', { cache: 'no-store' })
         const j = await res.json()
         if (!mounted) return
         if (j && typeof j.unread === 'number') setUnread(Number(j.unread))
@@ -47,6 +47,7 @@ export default function AdminSidebar({ admin }: { admin: { name?: string; email?
         <div className={styles.navSubList}>
           <Link prefetch={false} className={`${styles.navLink} ${styles.navSubLink} ${isActive('/admin/utilities/locks') ? styles.navLinkActive : ''}`} href="/admin/utilities/locks">Locks</Link>
           <Link prefetch={false} className={`${styles.navLink} ${styles.navSubLink} ${isActive('/admin/utilities/login-attempts') ? styles.navLinkActive : ''}`} href="/admin/utilities/login-attempts">Login Attempts</Link>
+          <Link prefetch={false} className={`${styles.navLink} ${styles.navSubLink} ${isActive('/admin/utilities/monitoring') ? styles.navLinkActive : ''}`} href="/admin/utilities/monitoring">Monitoring</Link>
           <Link prefetch={false} className={`${styles.navLink} ${styles.navSubLink} ${isActive('/admin/utilities/call-log') ? styles.navLinkActive : ''}`} href="/admin/utilities/call-log">Call Log</Link>
           <Link prefetch={false} className={`${styles.navLink} ${styles.navSubLink} ${isActive('/admin/utilities/create-user') ? styles.navLinkActive : ''}`} href="/admin/utilities/create-user">Create User</Link>
           <Link prefetch={false} className={`${styles.navLink} ${styles.navSubLink} ${isActive('/admin/audit') ? styles.navLinkActive : ''}`} href="/admin/audit">Audit Log</Link>

@@ -4,6 +4,7 @@ import { query } from '@/lib/db'
 import { JSDOM } from 'jsdom'
 import createDOMPurify from 'dompurify'
 import { deleteObjectStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { parseJsonObject, readNumber, readString, validationErrorResponse } from '@/lib/validation'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -24,14 +25,25 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const name = body && body.name ? String(body.name).trim() : ''
-  let slug = body && body.slug ? String(body.slug).trim() : ''
-  const subtitle = body && body.subtitle ? String(body.subtitle).trim() : null
-  const image_path = body && body.image_path ? String(body.image_path) : null
-  if (!name) return NextResponse.json({ error: 'Missing name' }, { status: 400 })
+  let body: Record<string, unknown>
+  let name: string | null
+  let slug: string | null
+  let subtitle: string | null
+  let image_path: string | null
+  let sort_order: number | null
+  try {
+    body = await parseJsonObject(req)
+    name = readString(body, 'name', { required: true, maxLength: 255 })
+    slug = readString(body, 'slug', { maxLength: 255, pattern: /^[a-z0-9-_]+$/, allowEmpty: true })
+    subtitle = readString(body, 'subtitle', { maxLength: 255, allowEmpty: true })
+    image_path = readString(body, 'image_path', { maxLength: 1024, allowEmpty: true })
+    sort_order = readNumber(body, 'sort_order', { integer: true })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
   if (!slug) slug = slugify(name)
-  if (!/^[a-z0-9-_]+$/.test(slug)) return NextResponse.json({ error: 'Invalid slug' }, { status: 400 })
 
   // uniqueness
   try {
@@ -46,7 +58,7 @@ export async function POST(req: Request) {
   if (typeof configuredPurifier.setConfig === 'function') configuredPurifier.setConfig({ FORBID_TAGS: ['script', 'style'] })
   const safeSubtitle = subtitle ? DOMPurify.sanitize(subtitle) : null
 
-  const res = await query('INSERT INTO credential_sections (slug, name, subtitle, image_path, sort_order) VALUES (?, ?, ?, ?, ?)', [slug, name, safeSubtitle, image_path || null, body.sort_order || 0])
+  const res = await query('INSERT INTO credential_sections (slug, name, subtitle, image_path, sort_order) VALUES (?, ?, ?, ?, ?)', [slug, name, safeSubtitle, image_path || null, sort_order || 0])
   const id = (res as unknown as { insertId?: number })?.insertId ?? null
   return NextResponse.json({ ok: true, id })
 }
@@ -54,23 +66,34 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { id } = body
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-  const name = body && body.name ? String(body.name).trim() : ''
-  let slug = body && body.slug ? String(body.slug).trim() : ''
-  const subtitle = body && body.subtitle ? String(body.subtitle).trim() : null
-  const image_path = body && body.image_path ? String(body.image_path) : null
-  if (!name) return NextResponse.json({ error: 'Missing name' }, { status: 400 })
+  let body: Record<string, unknown>
+  let id: number | null
+  let name: string | null
+  let slug: string | null
+  let subtitle: string | null
+  let image_path: string | null
+  let sort_order: number | null
+  try {
+    body = await parseJsonObject(req)
+    id = readNumber(body, 'id', { required: true, integer: true, min: 1 })
+    name = readString(body, 'name', { required: true, maxLength: 255 })
+    slug = readString(body, 'slug', { maxLength: 255, pattern: /^[a-z0-9-_]+$/, allowEmpty: true })
+    subtitle = readString(body, 'subtitle', { maxLength: 255, allowEmpty: true })
+    image_path = readString(body, 'image_path', { maxLength: 1024, allowEmpty: true })
+    sort_order = readNumber(body, 'sort_order', { integer: true })
+  } catch (error) {
+    const response = validationErrorResponse(error)
+    if (response) return response
+    throw error
+  }
   if (!slug) slug = slugify(name)
-  if (!/^[a-z0-9-_]+$/.test(slug)) return NextResponse.json({ error: 'Invalid slug' }, { status: 400 })
 
   // sanitize subtitle
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   const safeSubtitle = subtitle ? DOMPurify.sanitize(subtitle) : null
 
-  await query('UPDATE credential_sections SET slug = ?, name = ?, subtitle = ?, image_path = ?, sort_order = ? WHERE id = ?', [slug, name, safeSubtitle, image_path || null, body.sort_order || 0, id])
+  await query('UPDATE credential_sections SET slug = ?, name = ?, subtitle = ?, image_path = ?, sort_order = ? WHERE id = ?', [slug, name, safeSubtitle, image_path || null, sort_order || 0, id])
   return NextResponse.json({ ok: true })
 }
 

@@ -3,6 +3,7 @@ import styles from './hero.module.css'
 import { buildPublicUrl } from '@/lib/s3'
 import { query } from '@/lib/db'
 import { sanitizeHtmlServer } from '@/lib/sanitize'
+import { getSiteMediaUrl, replaceLegacyBundledImagePath } from '@/lib/siteMedia'
 
 type HeroRecord = Record<string, unknown> & {
   title?: string
@@ -36,13 +37,13 @@ export default async function Hero() {
   const images = Array.isArray(data?.images) ? (data.images as HeroImageRecord[]) : []
   const featured = images.find((image) => image.is_featured) || images[0] || null
 
-  let imageSrc = '/grand_rapids.jpg'
+  let imageSrc = getSiteMediaUrl('homeHero')
   try {
     if (featured && featured.url) {
       const raw = String(featured.url || '')
       // If the URL is already a local path, use it directly
       if (raw.startsWith('/')) {
-        imageSrc = raw
+        imageSrc = replaceLegacyBundledImagePath(raw)
       } else if (/^https?:\/\//i.test(raw)) {
         // Handle presigned MinIO/S3 URLs: try to convert to proxied API URL
         try {
@@ -66,7 +67,7 @@ export default async function Hero() {
       }
     }
   } catch {
-    imageSrc = '/grand_rapids.jpg'
+    imageSrc = getSiteMediaUrl('homeHero')
   }
 
   const rawAlt = featured?.alt ? String(featured.alt) : ''

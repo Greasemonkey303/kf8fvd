@@ -11,9 +11,37 @@ export type AdminUser = {
   name?: string
 }
 
+export type AdminRequestAuthorization = {
+  ok: true
+  admin: AdminUser | null
+  actor: string
+  actor_type: 'session' | 'api_key' | 'basic' | 'dev'
+}
+
+function parseBasicAuth(header: string | null) {
+  if (!header) return null
+  const match = header.match(/^Basic (.+)$/i)
+  if (!match) return null
+  try {
+    const decoded = Buffer.from(match[1], 'base64').toString('utf8')
+    const separatorIndex = decoded.indexOf(':')
+    if (separatorIndex < 0) return null
+    return {
+      user: decoded.slice(0, separatorIndex),
+      pass: decoded.slice(separatorIndex + 1),
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function getSessionServer(): Promise<Record<string, unknown> | null> {
-  const session = await getServerSession(authOptions as NextAuthOptions)
-  if (session) return session as unknown as Record<string, unknown>
+  try {
+    const session = await getServerSession(authOptions as NextAuthOptions)
+    if (session) return session as unknown as Record<string, unknown>
+  } catch (e) {
+    void e
+  }
 
   try {
     const hdrs = await headers()
@@ -62,5 +90,43 @@ export async function isAdminEmail(email: string) {
   return !!(await getAdminUserByEmail(email))
 }
 
-const auth = { getSessionServer, getAdminUserByEmail, requireAdmin, isAdminEmail }
+export async function authorizeAdminRequest(req: Request, options?: { allowUtilityCredentials?: boolean }): Promise<AdminRequestAuthorization | { ok: false }> {
+  const admin = await requireAdmin()
+  if (admin) {
+    return {
+      ok: true,
+      admin,
+      actor: admin.email,
+      actor_type: 'session',
+    }
+  }
+
+  if (!options?.allowUtilityCredentials) return { ok: false }
+
+  const secret = process.env.ADMIN_API_KEY || ''
+  const headerKey = req.headers.get('x-admin-key') || ''
+  if (secret && headerKey === secret) {
+    return { ok: true, admin: null, actor: 'api-key', actor_type: 'api_key' }
+  }
+
+  const authorization = req.headers.get('authorization') || ''
+  if (secret && authorization.toLowerCase().startsWith('bearer ') && authorization.slice(7) === secret) {
+    return { ok: true, admin: null, actor: 'api-key', actor_type: 'api_key' }
+  }
+
+  const basic = parseBasicAuth(authorization)
+  if (basic && process.env.ADMIN_BASIC_USER && process.env.ADMIN_BASIC_PASSWORD) {
+    if (basic.user === process.env.ADMIN_BASIC_USER && basic.pass === process.env.ADMIN_BASIC_PASSWORD) {
+      return { ok: true, admin: null, actor: basic.user, actor_type: 'basic' }
+    }
+  }
+
+  if (!process.env.ADMIN_API_KEY && !process.env.ADMIN_BASIC_USER && (process.env.NODE_ENV || 'development') !== 'production') {
+    return { ok: true, admin: null, actor: 'dev', actor_type: 'dev' }
+  }
+
+  return { ok: false }
+}
+
+const auth = { getSessionServer, getAdminUserByEmail, requireAdmin, isAdminEmail, authorizeAdminRequest }
 export default auth

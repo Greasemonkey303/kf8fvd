@@ -174,6 +174,149 @@
   background: var(--card-bg);
   border: 1px solid var(--card-border);
 }
+.loadingState {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  color: #cfe8ff;
+}
+.loadingSpinner {
+  width: 16px;
+  height: 16px;
+}
+.loadingLabel {
+  font-size: 0.95rem;
+  color: #cfe8ff;
+}
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 12px;
+}
+.noticeInfo {
+  background: rgba(64, 143, 209, 0.12);
+  color: #d8efff;
+}
+.noticeSuccess {
+  background: rgba(22,163,74,0.12);
+  color: #def9e7;
+}
+.noticeError {
+  background: rgba(123,31,31,0.18);
+  color: #ffd6d6;
+  border-color: rgba(255,110,110,0.2);
+}
+.noticeMessage {
+  min-width: 0;
+}
+.noticeAction {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.imageFrame {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #061426;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.imageFrameImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.imageFallback {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: #9fb7d6;
+  text-align: center;
+  font-size: 0.92rem;
+}
+.utilityPage {
+  display: grid;
+  gap: 16px;
+}
+.utilityControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+.utilityField {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 280px);
+  flex: 1 1 220px;
+}
+.utilityActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.utilityList {
+  display: grid;
+  gap: 10px;
+}
+.utilityRow {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.utilityRowMeta {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.utilityMetaText {
+  color: #9fb7d6;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+.utilityMetaPre {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+.btnDisabled {
+  background: rgba(255,255,255,0.04);
+  color: #8fa7c4;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+  cursor: not-allowed;
+}
 .editorGrid > aside {
   min-width: 0;
 }
@@ -227,6 +370,7 @@
 }
 .adminTop .title { font-size:20px; font-weight:800 }
 .topActions { display:flex; gap:8px; align-items:center }
+.topActions { flex-wrap: wrap; justify-content: flex-end }
 
 /* Consistent row for credential entries */
 .credentialRow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 10px; border-radius:8px; min-width:0 }
@@ -239,6 +383,7 @@
 /* Utility classes moved from inline styles in admin credentials page */
 .mt6 { margin-top: 6px }
 .topActionsInner { display:flex; gap:8px }
+.topActionsInner { flex-wrap: wrap }
 .undoBannerFull { display:flex; justify-content:space-between; align-items:center }
 .draftBox { margin-bottom:12px; padding:12px; border-radius:8px; background:var(--card-bg); border:1px solid var(--card-border) }
 .draftHeaderRow { display:flex; justify-content:space-between; align-items:center; gap:12px }
@@ -250,6 +395,281 @@
 .progressBarWidth180 { width:180px }
 .descEditorBox { border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:8px; background: var(--card-bg) }
 .descEditor { min-height:160px; max-height:400px; overflow:auto; resize:vertical }
+.authGate { max-width:720px }
+.srOnlyInput {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0, 0, 0, 0);
+  white-space:nowrap;
+  border:0;
+}
+.titleReset { margin:0 }
+.titleStrong { font-weight:700 }
+.titleExtraStrong { font-weight:800 }
+.sectionTitle { margin:0; font-size:1.1rem }
+.sectionSpacing { margin-top:20px }
+.stack8 { display:grid; gap:8px }
+.stack12 { display:grid; gap:12px }
+.rowCenter8,
+.rowCenter10,
+.rowCenter12,
+.rowBetween12,
+.rowEnd8 {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.rowCenter8 { gap:8px }
+.rowCenter10 { gap:10px }
+.rowCenter12 { gap:12px }
+.rowBetween12 { justify-content:space-between; gap:12px }
+.rowEnd8 { justify-content:flex-end; gap:8px }
+.editorSplit { display:flex; gap:16px; align-items:flex-start }
+.editorMain { flex:1; min-width:0 }
+.editorSidebar { width:360px; max-width:100% }
+.columnEnd8 { display:flex; flex-direction:column; align-items:flex-end; gap:8px }
+.flex1 { flex:1 }
+.autoMarginTop { margin-top:auto }
+.statusPanel { min-width:140px; text-align:center }
+.smallMutedTight { color:#9fb7d6; font-size:12px }
+.smallMutedError { color:#ffd6d6; font-size:12px }
+.metaInline { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px }
+.heroPreviewSection { margin-bottom:12px; display:flex; justify-content:center }
+.heroPreviewCard { width:100%; max-width:980px; display:flex; justify-content:center; align-items:center; padding:12px; box-sizing:border-box; overflow:hidden }
+.heroPreviewInner { width:100%; text-align:center }
+.heroPreviewImageWrap { display:block; margin:0 auto 8px; width:100%; max-width:520px; height:220px; overflow:hidden; border-radius:12px; box-sizing:border-box }
+.heroPreviewImage { width:100%; height:100%; object-fit:cover; display:block; max-width:100% }
+.statNumberSmall { font-size:18px }
+.dashboardGridTop { margin-top:12px }
+.cardMetric { display:flex; align-items:center; gap:10px }
+.messagesHeader { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px }
+.messagesList { display:grid; gap:10px }
+.messageCard { display:flex; justify-content:space-between; align-items:flex-start; gap:16px }
+.messageBody { min-width:0; flex:1 }
+.messageHeader { display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap }
+.messageTimestamp { margin-bottom:6px }
+.messageClamp {
+  white-space:pre-wrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+.badgeNew { background:#e11d48; color:#fff; border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700 }
+.mediaFrameLarge { width:100%; height:180px }
+.mediaFrameSmall { width:120px; height:80px }
+.mediaCard { width:120px }
+.imageMetaInputWide { width:180px }
+.imageMetaInputNarrow { width:120px }
+.progressNative {
+  width:100%;
+  height:10px;
+  appearance:none;
+  border:0;
+  border-radius:999px;
+  overflow:hidden;
+  background:rgba(255,255,255,0.08);
+}
+.progressNative::-webkit-progress-bar { background:rgba(255,255,255,0.08) }
+.progressNative::-webkit-progress-value { background:linear-gradient(90deg,#16a34a,#60a5fa) }
+.progressNative::-moz-progress-bar { background:linear-gradient(90deg,#16a34a,#60a5fa) }
+.progressCompact { width:120px }
+.progressWide { width:180px }
+.previewThumb { position:relative }
+.previewThumbImage { object-fit:cover; border-radius:6px }
+.previewThumbAction { position:absolute; top:4px; right:4px }
+.fullSpan { grid-column:1/-1 }
+.previewDialogBody { max-width:520px }
+.previewDialogWide { max-width:920px }
+.previewContentRow { display:flex; gap:12px; align-items:flex-start }
+.previewMedia { width:140px; height:100px; flex:0 0 140px }
+.previewCopy { flex:1; min-width:0 }
+.previewHtml { color:var(--white-95); margin-bottom:8px }
+.previewLinkText { margin-top:8px }
+.callLogCard { padding:12px }
+.callLogBody { margin-top:12px }
+.scrollX { overflow-x:auto }
+.preWrap { white-space:pre-wrap }
+.preWrapMax { white-space:pre-wrap; max-width:800px }
+.modalMediaPreview { width:120px; height:80px; background:#021022; border-radius:8px }
+.pagePad20 { padding:20px }
+.inlineGapLeft8 { margin-left:8px }
+.successBanner {
+  margin-top:12px;
+  padding:10px;
+  border-radius:8px;
+  background:linear-gradient(90deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02));
+  color:#bbf7d0;
+}
+.spinnerSmall {
+  width:16px;
+  height:16px;
+}
+.fontSize13 { font-size:13px }
+.mb8 { margin-bottom:8px }
+.mb12 { margin-bottom:12px }
+.dragHandle {
+  cursor:grab;
+  padding:6px 8px;
+  border-radius:6px;
+}
+.dragHandleActive {
+  background:rgba(255,255,255,0.02);
+}
+.muted12 {
+  font-size:12px;
+}
+.draftPrompt {
+  margin-bottom:12px;
+  padding:12px;
+  border-radius:8px;
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+}
+.draftPromptTitle {
+  font-weight:700;
+}
+.inputRow {
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.actionsRow {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.actionsRowCompact {
+  display:flex;
+  gap:2px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.panelHint {
+  margin-top:8px;
+}
+.progressBlock {
+  display:block;
+  margin-top:8px;
+}
+.sectionPanel {
+  margin-top:12px;
+}
+.sectionHeader {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-bottom:8px;
+}
+.sectionRow {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-top:8px;
+  padding:8px;
+  border-radius:8px;
+}
+.sectionRowActive {
+  background:rgba(255,255,255,0.02);
+}
+.sectionRowMain {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.stackGrid8 {
+  display:grid;
+  gap:8px;
+}
+.selectionBar {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:8px;
+  flex-wrap:wrap;
+}
+.topBarInfo {
+  margin-right:auto;
+}
+.debugPanel {
+  background:#071826;
+  padding:12px;
+  border-radius:8px;
+  margin-bottom:12px;
+}
+.debugPanelHeader {
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+}
+.debugPre {
+  white-space:pre-wrap;
+  max-height:240px;
+  overflow:auto;
+  font-size:12px;
+}
+.galleryThumbWrap96 {
+  position:relative;
+  width:96px;
+}
+.thumbSelectable {
+  cursor:pointer;
+}
+.thumbSelected {
+  box-shadow:0 0 0 3px #0b84ff66;
+}
+.mainImageRow {
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.mainImageFrame {
+  position:relative;
+}
+.mainImageMedia {
+  width:320px;
+  height:200px;
+}
+.mainImageActions {
+  position:absolute;
+  right:8px;
+  top:8px;
+  display:flex;
+  gap:6px;
+}
+.richTextHint {
+  margin-bottom:8px;
+}
+.previewFrame {
+  border:1px solid rgba(255,255,255,0.04);
+  border-radius:8px;
+  overflow:hidden;
+}
+.previewIframe {
+  width:100%;
+  height:720px;
+  border:0;
+}
+.projectStoryGap {
+  gap:8px;
+}
+.maxWidth320 {
+  max-width:320px;
+}
+.storyTopGap {
+  margin-top:8px;
+}
+.whiteText {
+  color:var(--white-95);
+}
 
 /* Denser list view for credential rows */
 .credentialRow.dense { padding:6px 8px; gap:8px }
@@ -412,6 +832,8 @@
 .formInput { width:100%; padding:12px 14px; border-radius:10px; background:#082033; border:1px solid rgba(255,255,255,0.035); color:#e6eef8 }
 .formInputSubtitle { width:100%; padding:8px 12px; border-radius:8px; background:#071627; border:1px solid rgba(255,255,255,0.02); color:#cfe8ff; text-align:center; font-size:0.95rem }
 .smallMuted { font-size:13px; color:#9fb7d6 }
+.uploadStatus { display:block; margin-top:8px; color:#9fb7d6; font-size:13px }
+.uploadSuccess { margin-top:8px; color:#7bd389; font-weight:600; font-size:13px }
 .thumb { width:112px; height:80px; object-fit:cover; border-radius:8px; box-shadow:0 6px 18px rgba(2,6,12,0.6) }
 .controls { display:flex; gap:8px; margin-top:8px }
 .btnGhost { background:transparent; border:1px solid rgba(255,255,255,0.06); color:#cfe8ff; padding:8px 12px; border-radius:10px; display:inline-flex; align-items:center; gap:8px; cursor:pointer; transition: transform .08s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease }
@@ -445,6 +867,15 @@
 .dashboardGrid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px }
 .cardAction, .card-action { background: var(--card-bg); padding:14px; border-radius:10px; border:1px solid var(--card-border); box-shadow: var(--card-shadow); display:flex; flex-direction:column; gap:8px; align-items:flex-start }
 .cardAction a, .card-action a { color: var(--logo-green); text-decoration: none; font-weight:700 }
+.monitorGrid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px }
+.monitorDependencyList, .monitorMetricList, .monitorPolicyList { width:100%; display:grid; gap:10px }
+.monitorRow { width:100%; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:10px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05) }
+.monitorStatusBadge { display:inline-flex; align-items:center; justify-content:center; min-width:88px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700; text-transform:capitalize }
+.monitorStatusOk { background: rgba(22,163,74,0.14); color:#d8ffe7; border:1px solid rgba(22,163,74,0.22) }
+.monitorStatusWarning { background: rgba(245,158,11,0.14); color:#ffe8bf; border:1px solid rgba(245,158,11,0.22) }
+.monitorStatusCritical { background: rgba(225,29,72,0.16); color:#ffd5de; border:1px solid rgba(225,29,72,0.24) }
+.monitorStatusUnknown { background: rgba(148,163,184,0.12); color:#dce6f3; border:1px solid rgba(148,163,184,0.2) }
+.monitorCallout { width:100%; padding:10px 12px; border-radius:10px; background: rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.2); color:#d9ecff }
 .statNumber { font-size:20px; font-weight:700; color:var(--white-95) }
 .statLabel { font-size:13px; color:var(--white-66) }
 
@@ -570,9 +1001,20 @@
     flex-direction: column;
   }
 
+  .notice,
+  .utilityRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .credentialActions {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .utilityActions,
+  .noticeAction {
+    width: 100%;
   }
 }
 

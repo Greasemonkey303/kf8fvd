@@ -1,3 +1,4 @@
+import styles from '../../../admin.module.css'
 import React from 'react'
 import CalllogUploader from '../../../../components/admin/CalllogUploader'
 import { query } from '../../../../lib/db'
@@ -23,17 +24,17 @@ export default async function Page() {
       <CalllogUploader />
 
       {error ? (
-        <div className="card" style={{padding:12}}>
+        <div className={`card ${styles.callLogCard}`}>
           <strong>Error loading call_logs:</strong>
-          <div style={{marginTop:8}}>{error}</div>
-          <div style={{marginTop:8}}>
+          <div className={styles.mt6}>{error}</div>
+          <div className={styles.mt6}>
             If this mentions &quot;call_logs&quot; table not found, run the migration SQL file in <em>migrations/</em> to create the table.
           </div>
         </div>
       ) : (
-        <div style={{marginTop:12}}>
+        <div className={styles.callLogBody}>
           <h2>Recent Entries</h2>
-          <div style={{overflowX:'auto'}}>
+          <div className={styles.scrollX}>
             <table className="table">
               <thead>
                 <tr>
@@ -59,8 +60,8 @@ export default async function Page() {
                     <td>
                       <details>
                         <summary>View ADIF</summary>
-                        <pre style={{whiteSpace:'pre-wrap', maxWidth:800}}>{String(r.raw_entry || '')}</pre>
-                        {Boolean(r.adif_tags) && <pre style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(r.adif_tags, null, 2)}</pre>}
+                        <pre className={styles.preWrapMax}>{String(r.raw_entry || '')}</pre>
+                        {Boolean(r.adif_tags) && <pre className={styles.preWrap}>{JSON.stringify(r.adif_tags, null, 2)}</pre>}
                       </details>
                     </td>
                     <td>{new Date(String(r.created_at || '')).toLocaleString()}</td>

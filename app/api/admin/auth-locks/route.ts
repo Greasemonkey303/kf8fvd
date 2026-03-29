@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
+import { incrementAbuseMetric } from '@/lib/abuseMetrics'
 import { getRedis, resetKey } from '../../../../lib/rateLimiter'
 import type { AdminActionDetails } from '../../../../lib/adminActions'
+import { authorizeAdminRequest } from '@/lib/auth'
+import { logRouteError, logRouteEvent } from '@/lib/observability'
 
 // Use shared admin action helper
 async function tryInsertAdminAction(details: AdminActionDetails | unknown) {
@@ -8,46 +11,13 @@ async function tryInsertAdminAction(details: AdminActionDetails | unknown) {
     const { insertAdminAction } = await import('../../../../lib/adminActions')
     await insertAdminAction(details as AdminActionDetails)
   } catch (e) {
-    try { console.warn('[admin] failed to write admin_actions', e) } catch (inner) { void inner }
+    try { logRouteError('api/admin/auth-locks', e, { action: 'insert_admin_action', reason: 'audit_write_failed' }) } catch (inner) { void inner }
   }
-}
-
-function parseBasicAuth(header: string | null) {
-  if (!header) return null
-  const m = header.match(/^Basic (.+)$/i)
-  if (!m) return null
-  try {
-    const decoded = Buffer.from(m[1], 'base64').toString('utf8')
-    const idx = decoded.indexOf(':')
-    if (idx < 0) return null
-    return { user: decoded.slice(0, idx), pass: decoded.slice(idx + 1) }
-  } catch (e) { void e; return null }
-}
-
-function checkAdmin(req: Request) {
-  const secret = process.env.ADMIN_API_KEY || ''
-  const headerKey = req.headers.get('x-admin-key') || ''
-  if (secret && headerKey && headerKey === secret) return { ok: true, actor: 'api-key', actor_type: 'api_key' }
-
-  // allow bearer token equal to ADMIN_API_KEY as legacy
-  const auth = req.headers.get('authorization') || ''
-  if (secret && auth.toLowerCase().startsWith('bearer ') && auth.slice(7) === secret) return { ok: true, actor: 'api-key', actor_type: 'api_key' }
-
-  // Basic auth fallback: check against ADMIN_BASIC_USER/PASSWORD env
-  const basic = parseBasicAuth(auth)
-  if (basic && process.env.ADMIN_BASIC_USER && process.env.ADMIN_BASIC_PASSWORD) {
-    if (basic.user === process.env.ADMIN_BASIC_USER && basic.pass === process.env.ADMIN_BASIC_PASSWORD) return { ok: true, actor: basic.user, actor_type: 'basic' }
-  }
-
-  // Allow non-production convenience if no admin key is configured
-  if (!process.env.ADMIN_API_KEY && !process.env.ADMIN_BASIC_USER && (process.env.NODE_ENV || 'development') !== 'production') return { ok: true, actor: 'dev', actor_type: 'dev' }
-
-  return { ok: false }
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req)
-  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const auth = await authorizeAdminRequest(req, { allowUtilityCredentials: true })
+  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const r = await getRedis()
     if (r) {
@@ -66,6 +36,7 @@ export async function GET(req: Request) {
           locks.push({ key: name, redisKey: k, ttlMs: (typeof ttl === 'number' && ttl > 0) ? ttl : null, expiresAt: (typeof ttl === 'number' && ttl > 0) ? Date.now() + ttl : null })
         } catch (e) { void e /* ignore per-key errors */ }
       }
+      logRouteEvent('info', { route: 'api/admin/auth-locks', action: 'list_locks', actor: auth.actor, actorType: auth.actor_type, reason: 'redis_source', resourceId: locks.length })
       return NextResponse.json({ ok: true, source: 'redis', locks })
     }
     // fallback to DB
@@ -73,20 +44,22 @@ export async function GET(req: Request) {
       const { query } = await import('../../../../lib/db')
       const rows = await query<Array<Record<string, unknown>>>('SELECT key_name, UNIX_TIMESTAMP(locked_until) * 1000 as locked_at_ms FROM auth_locks WHERE locked_until > NOW()')
       const locks = Array.isArray(rows) ? rows.map((r: Record<string, unknown>) => ({ key: r.key_name, expiresAt: r.locked_at_ms })) : []
+      logRouteEvent('info', { route: 'api/admin/auth-locks', action: 'list_locks', actor: auth.actor, actorType: auth.actor_type, reason: 'db_source', resourceId: locks.length })
       return NextResponse.json({ ok: true, source: 'db', locks })
     } catch (e) {
       void e
+      logRouteEvent('warn', { route: 'api/admin/auth-locks', action: 'list_locks', actor: auth.actor, actorType: auth.actor_type, reason: 'no_lock_source' })
       return NextResponse.json({ ok: true, source: 'none', locks: [] })
     }
   } catch (e) {
-    void e
+    logRouteError('api/admin/auth-locks', e, { action: 'list_locks', actor: auth.actor, actorType: auth.actor_type, reason: 'route_exception' })
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req)
-  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const auth = await authorizeAdminRequest(req, { allowUtilityCredentials: true })
+  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const body = await req.json()
     const key = String(body?.key || '')
@@ -98,13 +71,15 @@ export async function POST(req: Request) {
         const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null
         await tryInsertAdminAction({ actor: auth.actor, actor_type: auth.actor_type, action: 'unlock', target_key: key, reason: body?.reason || null, ip, meta: { source: 'admin_api' } })
       } catch (e) { void e }
+      try { await incrementAbuseMetric('admin_unlocks_total') } catch (e) { void e }
+      logRouteEvent('info', { route: 'api/admin/auth-locks', action: 'unlock', actor: auth.actor, actorType: auth.actor_type, resourceId: key, reason: body?.reason ? String(body.reason) : null })
       return NextResponse.json({ ok: true })
     } catch (e) {
-      void e
+      logRouteError('api/admin/auth-locks', e, { action: 'unlock', actor: auth.actor, actorType: auth.actor_type, resourceId: key, reason: 'reset_key_failed' })
       return NextResponse.json({ error: 'Failed to reset key' }, { status: 500 })
     }
   } catch (e) {
-    void e
+    logRouteError('api/admin/auth-locks', e, { action: 'unlock', actor: auth.actor, actorType: auth.actor_type, reason: 'invalid_request' })
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }

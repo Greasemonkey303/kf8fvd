@@ -42,6 +42,7 @@ Run SQL migrations with the helper script:
 ```powershell
 node scripts/apply_migration.js migrations/2026_03_10_add_auth_tables.sql
 node scripts/apply_migration.js migrations/2026_03_11_admin_actions.sql
+node scripts/apply_migration.js migrations/2026_03_20_create_onair.sql
 ```
 
 Admin utilities and monitoring scripts:
@@ -49,10 +50,29 @@ Admin utilities and monitoring scripts:
 - `node scripts/check_db_locks.js` — show recent `auth_locks`, `login_attempts`, and `two_factor_codes` rows.
 - `node scripts/cleanup_admin_actions.js <days>` — delete `admin_actions` older than `<days>` (defaults to 365).
 - `node scripts/monitor_auth_locks.js` — print counts for `auth_locks`, `login_attempts`, and Redis `rl:*` keys.
+- `npm run monitor:abuse` — summarize failed-login, contact abuse, password-reset, and suspicious admin-action spikes using recent DB windows.
+- `npm run monitor:abuse -- --json` — emit the same abuse report as JSON and exit non-zero on warning/critical thresholds.
+- `npm run attachments:migrate` — dry-run migration of legacy contact attachments from `data/uploads` into MinIO-backed `messages/` objects.
+- `npm run attachments:migrate -- --apply` — upload legacy message attachments to MinIO and rewrite `messages.attachments` metadata to use object keys.
+- `npm run media:migrate-site` — dry-run migration of bundled non-logo site images from `data/static-media-source/` into MinIO-backed `hero/`, `about/`, and `projects/hotspot/` objects.
+- `npm run media:migrate-site -- --apply` — upload the bundled site images to MinIO and rewrite legacy DB references away from old `/public` paths.
+- `npm run readiness:backend` — validate required backend env plus live MySQL, Redis, and MinIO connectivity.
+- `npm run readiness:backend -- --storage-write-test` — additionally write and delete a temporary object under `healthchecks/` to verify storage round-trip safety.
+- `npm run backup:snapshot` — create a fresh MySQL backup artifact and local MinIO mirror under `data/backups/`.
+- `npm run backup:drill` — run the full backup workflow plus a MySQL restore-count verification and sampled MinIO restore check.
+- `npm run storage:audit-orphans` — report DB references pointing to missing MinIO objects and scanned MinIO objects no longer referenced by DB rows.
+- `npm run storage:audit-orphans -- --apply` — delete only the unreferenced MinIO objects found by the audit.
+
+Storage orphan cleanup is manual by default. The recommended operating mode is manual cleanup before major content maintenance, with optional scheduled dry-run reporting if the bucket starts accumulating more media over time.
+
+Contact-form attachments now use MinIO under the `messages/` prefix so they are covered by the same object-storage backup and restore workflow as the rest of site media. Use `npm run attachments:migrate -- --apply` once per environment to rewrite older disk-backed message attachments.
+
+Content deletes now archive row snapshots plus object copies under the MinIO `trash/` prefix before removing the live record. Apply `migrations/2026_03_29_content_deletion_log.sql` to enable the deletion log table before using the safer delete flows.
 
 E2E testing:
 
 - A Playwright scaffold exists at `tests/playwright/placeholder.spec.ts`. Install Playwright and write tests in that folder for browser-driven flows (Turnstile requires a staging/test key).
+- Destructive backend delete coverage now lives in `tests/integration/destructiveFlows.spec.ts` and can be run with `npx vitest run tests/integration/destructiveFlows.spec.ts`.
 
 Playwright CI (staging)
 -----------------------
@@ -84,7 +104,9 @@ Start the Prometheus exporter which exposes metrics on `/metrics` (default port 
 npm run exporter:start
 ```
 
-Sample Prometheus alert rules are under `monitor/prometheus/auth_locks_alert.yml` (alert when `auth_locks_total > 0`).
+Sample Prometheus alert rules are under `monitor/prometheus/auth_locks_alert.yml` and now include failed-login, contact-abuse, password-reset, and suspicious admin-action spike thresholds.
+
+Abuse monitoring runbook: `docs/runbooks/abuse-monitoring.md`
 
 Admin actions shipper
 ---------------------
@@ -120,5 +142,21 @@ Apply the migration added for CSP reporting:
 ```powershell
 node scripts/apply_migration.js migrations/2026_03_12_csp_reports.sql
 ```
+
+Client error reporting
+----------------------
+
+The app now reports uncaught browser errors, unhandled promise rejections, and same-origin fetch failures with status `>= 500` to:
+
+```text
+POST /api/client-errors
+```
+
+Reports are deduped client-side for 30 seconds and emitted as structured server logs. In local development, watch the Next.js server output while exercising the UI.
+
+Structured backend logs
+-----------------------
+
+Backend routes now emit structured JSON logs for key operational paths such as contact submission, 2FA delivery, uploads, CSP reports, and admin utility actions. Debug-level entries are suppressed in production unless `DEBUG_OBSERVABILITY=1` is set.
 
 

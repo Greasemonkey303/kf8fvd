@@ -2,6 +2,7 @@
 
 import { SessionProvider } from 'next-auth/react'
 import React from 'react'
+import ClientErrorMonitor from '@/components/monitoring/ClientErrorMonitor'
 
 type Props = {
   children: React.ReactNode
@@ -9,6 +10,9 @@ type Props = {
 
 export default function SessionProviderClient({ children }: Props) {
   return (
-    <SessionProvider>{children}</SessionProvider>
+    <SessionProvider>
+      <ClientErrorMonitor />
+      {children}
+    </SessionProvider>
   )
 }

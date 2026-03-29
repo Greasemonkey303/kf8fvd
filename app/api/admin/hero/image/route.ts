@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { archiveDeletedContent } from '@/lib/deletionArchive'
 import { query, transaction } from '@/lib/db'
-import * as Minio from 'minio'
 import { deleteObjectStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { generateWebpVariantForObject } from '@/lib/webpVariants'
+import { parseJsonObject, readBoolean, readNumber, readString, validationErrorResponse } from '@/lib/validation'
 
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
-    const body = await req.json()
-    const { hero_id, url, alt, is_featured, sort_order } = body || {}
-    if (!hero_id || !url) return NextResponse.json({ error: 'hero_id and url required' }, { status: 400 })
+    const body = await parseJsonObject(req)
+    const hero_id = readNumber(body, 'hero_id', { required: true, integer: true, min: 1 })
+    const url = readString(body, 'url', { required: true, maxLength: 2048 })
+    const alt = readString(body, 'alt', { maxLength: 255, allowEmpty: true })
+    const is_featured = readBoolean(body, 'is_featured')
+    const sort_order = readNumber(body, 'sort_order', { integer: true })
     // insert and capture insertId if available
     const insertRes = await query('INSERT INTO hero_image (hero_id, url, alt, is_featured, sort_order) VALUES (?, ?, ?, ?, ?)', [hero_id, url, alt || '', is_featured ? 1 : 0, sort_order || 0])
     const insertedId = (insertRes as unknown as { insertId?: number })?.insertId ?? undefined
@@ -20,96 +25,33 @@ export async function POST(req: Request) {
       await query('UPDATE hero_image SET is_featured = 0 WHERE hero_id = ? AND url <> ?', [hero_id, url])
     }
 
-    // Attempt to generate a WebP variant for faster delivery when possible.
+    // Generate a WebP sibling variant for faster delivery when possible.
     try {
-      // Resolve object key from the stored URL
       const objectKey = resolveObjectKeyFromReference(url) || undefined
-
-      const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
-      if (bucket && objectKey) {
-        const minioClient = new Minio.Client({
-          endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
-          port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
-          useSSL: (process.env.MINIO_USE_SSL === 'true' || process.env.MINIO_USE_SSL === '1'),
-          accessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID,
-          secretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY,
-        })
-
-        // fetch object into a buffer
-              try {
-          const objStream = await minioClient.getObject(bucket, objectKey) as unknown
-          const chunks: Buffer[] = []
-          if (Buffer.isBuffer(objStream)) {
-            chunks.push(objStream)
-          } else {
-            for await (const chunk of objStream as AsyncIterable<unknown>) {
-              chunks.push(Buffer.from(chunk as ArrayBufferLike))
-            }
-          }
-          const sourceBuffer = Buffer.concat(chunks)
-
-          // dynamic import of sharp to avoid bundler issues if not installed
-          type SharpFunc = (input: Buffer) => { webp: (opts?: { quality?: number }) => { toBuffer: () => Promise<Buffer> } }
-          let sharpLib: SharpFunc | null = null
+      if (objectKey) {
+        const variant = await generateWebpVariantForObject(objectKey)
+        if (variant?.webpKey) {
           try {
-            const mod = await import('sharp')
-            sharpLib = (mod && (mod.default || mod)) as unknown as SharpFunc
-          } catch (e) {
-            void e
-            sharpLib = null
-          }
-
-          if (sharpLib) {
-            try {
-              const idx = objectKey.lastIndexOf('.')
-              const base = idx > -1 ? objectKey.slice(0, idx) : objectKey
-              const webpKey = `${base}.webp`
-
-              const webpBuf = await sharpLib(sourceBuffer).webp({ quality: 80 }).toBuffer()
-              // upload webp variant
-              await minioClient.putObject(bucket, webpKey, webpBuf)
-
-              // ensure `variants` column exists (best-effort, avoid ALTER syntax incompatible with older MySQL)
-              try {
-                const info = await query<Record<string, unknown>[]>('SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['hero_image', 'variants'])
-                const cnt = Array.isArray(info) && info.length ? Number((info[0] as Record<string, unknown>).cnt || 0) : 0
-                if (!cnt) {
-                  await query('ALTER TABLE hero_image ADD COLUMN variants JSON DEFAULT NULL')
-                }
-              } catch (e) {
-                void e /* ignore failures - schema migration may be handled separately */
-              }
-
-              // update row with variants JSON
-              try {
-                const potential = await query<Record<string, unknown>[]>('SELECT id FROM hero_image WHERE hero_id = ? AND url = ? ORDER BY created_at DESC LIMIT 1', [hero_id, url])
-                const potentialId = (potential && potential[0] && (potential[0] as Record<string, unknown>).id) || undefined
-                const targetId = insertedId || potentialId
-                if (targetId) {
-                  await query('UPDATE hero_image SET variants = ? WHERE id = ?', [JSON.stringify({ webp: webpKey }), targetId])
-                }
-              } catch (e) {
-                // non-fatal
-                console.error('failed to update hero_image variants', e)
-              }
-            } catch (e) {
-              // conversion/upload failed, continue
-              console.error('webp conversion/upload failed', e)
+            const potential = await query<Record<string, unknown>[]>('SELECT id FROM hero_image WHERE hero_id = ? AND url = ? ORDER BY created_at DESC LIMIT 1', [hero_id, url])
+            const potentialId = (potential && potential[0] && (potential[0] as Record<string, unknown>).id) || undefined
+            const targetId = insertedId || potentialId
+            if (targetId) {
+              await query('UPDATE hero_image SET variants = ? WHERE id = ?', [JSON.stringify({ webp: variant.webpKey }), targetId])
             }
+          } catch (e) {
+            console.error('failed to update hero_image variants', e)
           }
-        } catch (e) {
-          // fetching object failed; log and continue
-          console.error('minio getObject for variant generation failed', e)
         }
       }
     } catch (e) {
-      // non-blocking: log and continue
       console.error('variant generation error', e)
     }
 
     const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
     return NextResponse.json({ images: rows })
   } catch (err: unknown) {
+    const validationResponse = validationErrorResponse(err)
+    if (validationResponse) return validationResponse
     console.error('api/admin/hero/image POST error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
@@ -119,9 +61,12 @@ export async function PATCH(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
-    const body = await req.json()
-    const { id, set_featured, sort_order, alt, url } = body || {}
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    const body = await parseJsonObject(req)
+    const id = readNumber(body, 'id', { required: true, integer: true, min: 1 })
+    const set_featured = readBoolean(body, 'set_featured')
+    const sort_order = readNumber(body, 'sort_order', { integer: true })
+    const alt = readString(body, 'alt', { maxLength: 255, allowEmpty: true })
+    const url = readString(body, 'url', { maxLength: 2048, allowEmpty: true })
     const r = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE id = ?', [id])
     if (!r || r.length === 0) return NextResponse.json({ error: 'not found' }, { status: 404 })
     const row = r[0]
@@ -143,6 +88,8 @@ export async function PATCH(req: Request) {
     const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [row.hero_id])
     return NextResponse.json({ images })
   } catch (err: unknown) {
+    const validationResponse = validationErrorResponse(err)
+    if (validationResponse) return validationResponse
     console.error('api/admin/hero/image PATCH error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
@@ -163,10 +110,11 @@ export async function DELETE(req: Request) {
 
     try {
       const objectKey = resolveObjectKeyFromReference(urlVal)
-      if (objectKey) await deleteObjectStrict(objectKey)
       const variantsRaw = row.variants
       let variants: Record<string, unknown> | null = null
       try { variants = variantsRaw ? (typeof variantsRaw === 'string' ? JSON.parse(variantsRaw) : variantsRaw as Record<string, unknown>) : null } catch { variants = null }
+      await archiveDeletedContent({ contentType: 'hero_image', originalId: Number(id), slug: String(hero_id || id), snapshot: row, objectReferences: [objectKey, ...(variants ? Object.values(variants) : [])], deletedBy: admin.email })
+      if (objectKey) await deleteObjectStrict(objectKey)
       if (variants && typeof variants === 'object') {
         await Promise.all(Object.values(variants).map((value) => deleteObjectStrict(value)))
       }
