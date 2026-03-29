@@ -71,8 +71,8 @@ export default function ProjectEditor() {
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'project' | 'image' | 'main'; idx?: number } | null>(null)
   const didFetchPublicRef = useRef(false)
 
-  useEffect(()=>{
-    (async ()=>{
+  const loadProject = React.useCallback(async () => {
+      setLoading(true)
       setError(null)
       try { console.log('[admin] loading project editor id=', id) } catch{}
       const res = await fetch('/admin/api/projects?page=1&limit=1000')
@@ -154,11 +154,14 @@ export default function ProjectEditor() {
       setLoading(false)
       // mark initial load complete so autosave doesn't immediately send
       initialLoadRef.current = false
-    })().catch((err) => {
+    }, [id])
+
+  useEffect(()=>{
+    void loadProject().catch((err) => {
       setError(err instanceof Error ? err.message : 'Failed to load project editor')
       setLoading(false)
     })
-  }, [id])
+  }, [id, loadProject])
 
   // restore draft if present after initial load
   useEffect(()=>{
@@ -447,7 +450,7 @@ export default function ProjectEditor() {
 
   return (
     <div>
-      {error ? <AdminNotice message={error} variant="error" actionLabel={loading ? undefined : 'Retry'} onAction={loading ? undefined : loadRef.current} /> : null}
+      {error ? <AdminNotice message={error} variant="error" actionLabel={loading ? undefined : 'Retry'} onAction={loading ? undefined : (() => { void loadProject() })} /> : null}
       {confirmDelete ? (
         <div className={styles.modalOverlay} onClick={()=>setConfirmDelete(null)}>
           <div className={styles.modalContent} onClick={(e)=>e.stopPropagation()} role="dialog" aria-modal="true">

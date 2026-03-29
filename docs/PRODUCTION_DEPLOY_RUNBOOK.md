@@ -190,19 +190,22 @@ After the schema is in place, use [c:\Users\zachs\Documents\code\kf8fvd\deploy\F
 ## Deployment Order
 
 1. Apply the production schema SQL to `kf8fvd` in MySQL Workbench.
-2. Prepare production environment variables and secret mounts.
-3. Build the image with BuildKit secrets using the current Dockerfile.
-4. Start the app container as `kf8fvd` on the internal Docker network.
-5. Attach Nginx to the same network and proxy HTTPS traffic to `http://kf8fvd:3000`.
-6. Point the Cloudflare tunnel at Nginx.
-7. Create the first admin user.
-8. Run post-deploy smoke validation.
+2. Record the migration baseline with `node scripts/check_pending_migrations.js --bootstrap-existing` if the environment already matches the checked-in migration set.
+3. Prepare production environment variables and secret mounts.
+4. Run `npm run verify:release` from a release-capable environment. Use `-- --with-storage-write-test` when you want the MinIO round-trip check.
+5. Build the image with BuildKit secrets using the current Dockerfile.
+6. Start the app container as `kf8fvd` on the internal Docker network.
+7. Attach Nginx to the same network and proxy HTTPS traffic to `http://kf8fvd:3000`.
+8. Point the Cloudflare tunnel at Nginx.
+9. Create the first admin user.
+10. Run post-deploy smoke validation.
 
 ## Post-Deploy Smoke Validation
 
 Run these checks after the stack is up:
 
 0. Run `npm run readiness:backend` inside the app environment. Use `npm run readiness:backend -- --storage-write-test` only when you want a safe MinIO write/delete verification.
+0.5. Run `npm run migrations:check` and confirm it reports no pending files before the app starts serving write traffic.
 1. `GET /api/health` returns `200`.
 2. `GET /signin` loads and the Turnstile widget appears.
 3. `GET /admin` when signed out redirects to `/signin?callbackUrl=%2Fadmin`.

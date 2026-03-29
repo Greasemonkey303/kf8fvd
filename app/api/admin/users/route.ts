@@ -40,7 +40,8 @@ export async function POST(req: Request) {
     if (response) return response
     throw error
   }
-  const hashed = bcrypt.hashSync(password, 12)
+  const passwordValue = password || ''
+  const hashed = bcrypt.hashSync(passwordValue, 12)
   const insertRes = await query('INSERT INTO users (name, email, hashed_password, is_active) VALUES (?, ?, ?, 1)', [name || null, email, hashed])
   const userId = (insertRes as unknown as { insertId?: number })?.insertId ?? null
   // assign roles if provided

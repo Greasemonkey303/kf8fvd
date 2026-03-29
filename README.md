@@ -58,10 +58,16 @@ Admin utilities and monitoring scripts:
 - `npm run media:migrate-site -- --apply` — upload the bundled site images to MinIO and rewrite legacy DB references away from old `/public` paths.
 - `npm run readiness:backend` — validate required backend env plus live MySQL, Redis, and MinIO connectivity.
 - `npm run readiness:backend -- --storage-write-test` — additionally write and delete a temporary object under `healthchecks/` to verify storage round-trip safety.
+- `npm run verify:release` — run the repo’s main pre-release gate in order: migration status check, lint, tests, build, backend readiness, and storage orphan audit.
+- `npm run verify:release -- --with-storage-write-test` — include the readiness script’s temporary storage write/delete verification.
+- `npm run migrations:check` — report migration files not yet recorded in `schema_migrations`; exits non-zero when anything is pending.
+- `node scripts/check_pending_migrations.js --bootstrap-existing` — record the current migration files as already applied without executing SQL, for environments you have already validated manually.
 - `npm run backup:snapshot` — create a fresh MySQL backup artifact and local MinIO mirror under `data/backups/`.
 - `npm run backup:drill` — run the full backup workflow plus a MySQL restore-count verification and sampled MinIO restore check.
 - `npm run storage:audit-orphans` — report DB references pointing to missing MinIO objects and scanned MinIO objects no longer referenced by DB rows.
 - `npm run storage:audit-orphans -- --apply` — delete only the unreferenced MinIO objects found by the audit.
+- `npm run cleanup:artifacts` — dry-run cleanup of old generated backup drill folders, transient test-results files, and `tmp_*.txt|log` repo artifacts.
+- `npm run cleanup:artifacts -- --apply` — remove those generated artifacts using the current retention settings.
 
 Storage orphan cleanup is manual by default. The recommended operating mode is manual cleanup before major content maintenance, with optional scheduled dry-run reporting if the bucket starts accumulating more media over time.
 
@@ -152,7 +158,7 @@ The app now reports uncaught browser errors, unhandled promise rejections, and s
 POST /api/client-errors
 ```
 
-Reports are deduped client-side for 30 seconds and emitted as structured server logs. In local development, watch the Next.js server output while exercising the UI.
+Reports are deduped client-side for 30 seconds, size-limited server-side, rate-limited per source IP, and emitted as structured server logs. In local development, watch the Next.js server output while exercising the UI.
 
 Structured backend logs
 -----------------------

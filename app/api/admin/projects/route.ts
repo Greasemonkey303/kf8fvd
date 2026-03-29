@@ -116,6 +116,7 @@ export async function PUT(req: Request) {
   let image_path: string | null
   let description: string | null
   let external_link: string | null
+  let metadata: unknown
   let is_published: boolean | null
   let sort_order: number | null
   try {
@@ -127,6 +128,7 @@ export async function PUT(req: Request) {
     image_path = readString(body, 'image_path', { maxLength: 1024, allowEmpty: true })
     description = readString(body, 'description', { allowEmpty: true })
     external_link = readUrlString(body, 'external_link', { allowRelative: true, maxLength: 2048 })
+    metadata = body.metadata
     is_published = readBoolean(body, 'is_published')
     sort_order = readNumber(body, 'sort_order', { integer: true })
   } catch (error) {

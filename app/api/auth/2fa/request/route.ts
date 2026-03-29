@@ -49,6 +49,9 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     if (!user.is_active) return NextResponse.json({ error: 'Account inactive' }, { status: 403 })
 
+    const userEmail = typeof user.email === 'string' ? user.email : String(user.email || '')
+    const userId = typeof user.id === 'number' || typeof user.id === 'string' ? user.id : null
+
     const valid = user.hashed_password ? bcrypt.compareSync(password, String(user.hashed_password)) : false
     if (!valid) {
       // record failures for IP and email
@@ -66,9 +69,9 @@ export async function POST(req: Request) {
     const codeHash = await bcrypt.hash(code, 10)
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
-    await query('INSERT INTO two_factor_codes (user_id, email, code_hash, expires_at) VALUES (?, ?, ?, ?)', [user.id, user.email, codeHash, expiresAt])
+    await query('INSERT INTO two_factor_codes (user_id, email, code_hash, expires_at) VALUES (?, ?, ?, ?)', [userId, userEmail, codeHash, expiresAt])
     if (process.env.NODE_ENV !== 'production') {
-      logRouteEvent('debug', { route: 'api/auth/2fa/request', action: '2fa_code_generated', ip, actor: user.email, resourceId: user.id })
+      logRouteEvent('debug', { route: 'api/auth/2fa/request', action: '2fa_code_generated', ip, actor: userEmail, resourceId: userId })
     }
 
     // Send email via SendGrid if configured
@@ -87,7 +90,7 @@ export async function POST(req: Request) {
         </div>`
 
       const bodyReq = {
-        personalizations: [{ to: [{ email: user.email }], subject: 'Your sign-in code' }],
+        personalizations: [{ to: [{ email: userEmail }], subject: 'Your sign-in code' }],
         from: { email: FROM_EMAIL, name: 'kf8fvd.com' },
         content: [{ type: 'text/html', value: html }]
       }
@@ -99,11 +102,11 @@ export async function POST(req: Request) {
           body: JSON.stringify(bodyReq)
         }, 5000)
         if (!sendgridRes.ok) {
-          logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_email_send', ip, actor: user.email, resourceId: user.id, status: sendgridRes.status, reason: 'sendgrid_non_2xx' })
+          logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_email_send', ip, actor: userEmail, resourceId: userId, status: sendgridRes.status, reason: 'sendgrid_non_2xx' })
         }
       } catch (e) {
         // log but don't fail the request
-        logRouteError('api/auth/2fa/request', e, { action: '2fa_email_send', ip, actor: user.email, resourceId: user.id, reason: 'sendgrid_request_failed' })
+        logRouteError('api/auth/2fa/request', e, { action: '2fa_email_send', ip, actor: userEmail, resourceId: userId, reason: 'sendgrid_request_failed' })
       }
     }
 
@@ -112,7 +115,7 @@ export async function POST(req: Request) {
     if (process.env.NODE_ENV !== 'production' && (((process.env.DEBUG_2FA || '').toString() === '1') || String(body?._debug || '') === '1')) {
       return NextResponse.json({ ok: true, debugCode: code })
     }
-    logRouteEvent('info', { route: 'api/auth/2fa/request', action: '2fa_requested', ip, actor: user.email, resourceId: user.id })
+    logRouteEvent('info', { route: 'api/auth/2fa/request', action: '2fa_requested', ip, actor: userEmail, resourceId: userId })
     return NextResponse.json({ ok: true })
   } catch (e) {
     logRouteError('api/auth/2fa/request', e, { action: '2fa_request_failed', reason: 'invalid_request' })

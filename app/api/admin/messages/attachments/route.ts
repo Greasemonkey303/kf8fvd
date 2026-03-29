@@ -8,7 +8,7 @@ import { logRouteError } from '@/lib/observability'
 function getContentType(filename: string, fallback?: string | null) {
   if (fallback) return fallback
   const ext = path.extname(filename).toLowerCase()
-  const mimeMap = {
+  const mimeMap: Record<string, string> = {
     '.pdf': 'application/pdf',
     '.txt': 'text/plain',
     '.png': 'image/png',

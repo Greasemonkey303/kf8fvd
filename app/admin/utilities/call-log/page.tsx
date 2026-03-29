@@ -1,4 +1,4 @@
-import styles from '../../../admin.module.css'
+import styles from '../../admin.module.css'
 import React from 'react'
 import CalllogUploader from '../../../../components/admin/CalllogUploader'
 import { query } from '../../../../lib/db'

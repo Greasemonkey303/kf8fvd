@@ -3,8 +3,10 @@
 Quick, actionable checklist for deploying the kf8fvd app to production.
 
 ## 1) Pre-deploy (local verification)
+- **Migration gate:** Run `npm run migrations:check` and resolve or record any pending migrations before release.
 - **Build:** Run `npm run build` and fix any errors.
 - **Tests:** Run unit tests and linters: `npx vitest` and `npm run lint`.
+- **Release verification:** Prefer `npm run verify:release` so lint, tests, build, readiness, storage audit, and migration status run in one pass.
 - **Backend readiness:** Run `npm run readiness:backend` before deploy. Use `npm run readiness:backend -- --storage-write-test` when you want to verify MinIO write/delete behavior safely.
 - **Smoke:** Start local production-like server and exercise admin flows:
 
@@ -27,6 +29,7 @@ Store all sensitive values in your cloud provider's secret manager (Key Vault, S
 
 ## 3) Database & migrations
 - Apply migrations in `migrations/` before release. Ensure the following tables exist: `auth_locks`, `rate_limiter_counts`, `login_attempts`, and other admin tables used by the app.
+- Record applied migrations in `schema_migrations` by using `node scripts/apply_migration.js <file>` or, for already-aligned environments, `node scripts/check_pending_migrations.js --bootstrap-existing` after validation.
 - Take a DB backup/snapshot prior to running migrations.
 
 ## 4) Rate limiter & Redis

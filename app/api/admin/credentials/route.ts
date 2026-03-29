@@ -94,7 +94,8 @@ export async function POST(req: Request) {
   const normalizedImagePath = normalizeObjectReferenceToPublicUrl(image_path)
 
   // compute s3 prefix for uploads (store actual folder used)
-  const sectionSlug = slugify(section)
+  const sectionName = section || ''
+  const sectionSlug = slugify(sectionName)
   const s3Prefix = body.s3_prefix ? String(body.s3_prefix) : `credentials/${sectionSlug}/${slug}`
 
   let metadata = null

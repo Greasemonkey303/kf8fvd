@@ -43,7 +43,8 @@ export async function POST(req: Request) {
     if (response) return response
     throw error
   }
-  if (!slug) slug = slugify(name)
+  const sectionName = name || ''
+  if (!slug) slug = slugify(sectionName)
 
   // uniqueness
   try {
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
   if (typeof configuredPurifier.setConfig === 'function') configuredPurifier.setConfig({ FORBID_TAGS: ['script', 'style'] })
   const safeSubtitle = subtitle ? DOMPurify.sanitize(subtitle) : null
 
-  const res = await query('INSERT INTO credential_sections (slug, name, subtitle, image_path, sort_order) VALUES (?, ?, ?, ?, ?)', [slug, name, safeSubtitle, image_path || null, sort_order || 0])
+  const res = await query('INSERT INTO credential_sections (slug, name, subtitle, image_path, sort_order) VALUES (?, ?, ?, ?, ?)', [slug, sectionName, safeSubtitle, image_path || null, sort_order || 0])
   const id = (res as unknown as { insertId?: number })?.insertId ?? null
   return NextResponse.json({ ok: true, id })
 }
@@ -86,14 +87,15 @@ export async function PUT(req: Request) {
     if (response) return response
     throw error
   }
-  if (!slug) slug = slugify(name)
+  const sectionName = name || ''
+  if (!slug) slug = slugify(sectionName)
 
   // sanitize subtitle
   const { window } = new JSDOM('')
   const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
   const safeSubtitle = subtitle ? DOMPurify.sanitize(subtitle) : null
 
-  await query('UPDATE credential_sections SET slug = ?, name = ?, subtitle = ?, image_path = ?, sort_order = ? WHERE id = ?', [slug, name, safeSubtitle, image_path || null, sort_order || 0, id])
+  await query('UPDATE credential_sections SET slug = ?, name = ?, subtitle = ?, image_path = ?, sort_order = ? WHERE id = ?', [slug, sectionName, safeSubtitle, image_path || null, sort_order || 0, id])
   return NextResponse.json({ ok: true })
 }
 

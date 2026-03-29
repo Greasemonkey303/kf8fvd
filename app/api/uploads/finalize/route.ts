@@ -11,8 +11,9 @@ export async function POST(req: Request) {
   try {
     const body = await parseJsonObject(req)
     const key = readString(body, 'key', { required: true, maxLength: 2048 })
-    const variant = await generateWebpVariantForObject(key)
-    return NextResponse.json({ ok: true, key, publicUrl: buildPublicUrl(key), variants: variant && variant.webpKey ? { webp: variant.webpKey } : null })
+    const objectKey = key || ''
+    const variant = await generateWebpVariantForObject(objectKey)
+    return NextResponse.json({ ok: true, key: objectKey, publicUrl: buildPublicUrl(objectKey), variants: variant && variant.webpKey ? { webp: variant.webpKey } : null })
   } catch (error) {
     const response = validationErrorResponse(error)
     if (response) return response

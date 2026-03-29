@@ -192,11 +192,15 @@ export async function PUT(req: Request) {
   let sanitized = await sanitizePageContent(content, configuredPurifier)
   if (sanitized) sanitized = String(removeDebugBlockFromHtml(sanitized))
   // sanitize known metadata HTML fields
-  let safeMetadata = metadata ? { ...metadata } : {}
-    try {
-    if (safeMetadata?.summary?.text) safeMetadata.summary.text = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.summary.text)))
+  let safeMetadata: Record<string, unknown> = metadata ? { ...metadata } : {}
+  try {
+    const summary = safeMetadata.summary
+    if (summary && typeof summary === 'object' && 'text' in summary) {
+      const summaryRecord = summary as Record<string, unknown>
+      if (summaryRecord.text) summaryRecord.text = removeDebugBlockFromHtml(DOMPurify.sanitize(String(summaryRecord.text)))
+    }
     // If a cards array is provided, sanitize each card entry
-    if (Array.isArray(safeMetadata?.cards)) {
+    if (Array.isArray(safeMetadata.cards)) {
       safeMetadata.cards = (safeMetadata.cards as unknown[]).map((c: unknown) => {
         if (!c || typeof c !== 'object') return c
         const copy = { ...(c as Record<string, unknown>) } as Record<string, unknown>
@@ -206,9 +210,21 @@ export async function PUT(req: Request) {
         return copy
       })
     } else {
-      if (safeMetadata?.aboutCard?.content) safeMetadata.aboutCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.aboutCard.content)))
-      if (safeMetadata?.topologyCard?.content) safeMetadata.topologyCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.topologyCard.content)))
-      if (safeMetadata?.hamshackCard?.content) safeMetadata.hamshackCard.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(safeMetadata.hamshackCard.content)))
+      const aboutCard = safeMetadata.aboutCard
+      if (aboutCard && typeof aboutCard === 'object' && 'content' in aboutCard) {
+        const aboutCardRecord = aboutCard as Record<string, unknown>
+        if (aboutCardRecord.content) aboutCardRecord.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(aboutCardRecord.content)))
+      }
+      const topologyCard = safeMetadata.topologyCard
+      if (topologyCard && typeof topologyCard === 'object' && 'content' in topologyCard) {
+        const topologyCardRecord = topologyCard as Record<string, unknown>
+        if (topologyCardRecord.content) topologyCardRecord.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(topologyCardRecord.content)))
+      }
+      const hamshackCard = safeMetadata.hamshackCard
+      if (hamshackCard && typeof hamshackCard === 'object' && 'content' in hamshackCard) {
+        const hamshackCardRecord = hamshackCard as Record<string, unknown>
+        if (hamshackCardRecord.content) hamshackCardRecord.content = removeDebugBlockFromHtml(DOMPurify.sanitize(String(hamshackCardRecord.content)))
+      }
     }
   } catch (e) {
     void e
