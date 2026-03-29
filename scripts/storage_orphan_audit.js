@@ -3,6 +3,7 @@ const fs = require('fs')
 const path = require('path')
 const mysql = require('mysql2/promise')
 const Minio = require('minio')
+const { runWithMaintenanceRecord } = require('./lib/maintenance_run_logger')
 
 const DEFAULT_PREFIXES = ['projects/', 'pages/', 'about/', 'credentials/', 'hero/', 'messages/']
 const EXCLUDED_PREFIXES = ['healthchecks/', 'trash/']
@@ -426,12 +427,20 @@ async function main() {
 
     if (options.json) console.log(JSON.stringify(report, null, 2))
     else printHumanReport(report)
+
+    return {
+      status: report.summary.missingReferenceCount || report.summary.unreferencedObjectCount ? 'warning' : 'ok',
+      summary: `Storage audit scanned ${report.summary.bucketObjectCount} objects with ${report.summary.missingReferenceCount} missing refs and ${report.summary.unreferencedObjectCount} unreferenced objects.`,
+      meta: report.summary,
+    }
   } finally {
     if (connection) await connection.end()
   }
 }
 
-main().catch((error) => {
+runWithMaintenanceRecord('storage_orphan_audit', {
+  commandText: 'node scripts/storage_orphan_audit.js',
+}, () => main()).catch((error) => {
   console.error(error instanceof Error ? error.message : String(error))
   process.exit(1)
 })

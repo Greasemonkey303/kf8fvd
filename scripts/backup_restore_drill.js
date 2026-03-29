@@ -5,6 +5,7 @@ const path = require('path')
 const { spawn } = require('child_process')
 const mysql = require('mysql2/promise')
 const Minio = require('minio')
+const { runWithMaintenanceRecord } = require('./lib/maintenance_run_logger')
 
 function loadEnvFile() {
   const candidates = ['.env.local', 'env.local']
@@ -527,9 +528,25 @@ async function main() {
   await fsp.writeFile(paths.reportPath, JSON.stringify(report, null, 2), 'utf8')
   if (options.json) console.log(JSON.stringify(report, null, 2))
   else printHumanReport(report)
+
+  return {
+    status: options.snapshotOnly ? 'warning' : 'ok',
+    summary: options.snapshotOnly
+      ? `Backup snapshot completed at ${paths.rootDir}.`
+      : `Backup restore drill completed with ${report.database?.restore?.mismatches?.length || 0} DB mismatches and object restore verified=${report.objectStorage?.restore?.verified !== false}.`,
+    meta: {
+      snapshotOnly: options.snapshotOnly,
+      skipDb: options.skipDb,
+      skipMinio: options.skipMinio,
+      reportPath: paths.reportPath,
+      objectCount: report.objectStorage?.objectCount || 0,
+    },
+  }
 }
 
-main().catch((error) => {
+runWithMaintenanceRecord('backup_restore_drill', {
+  commandText: 'node scripts/backup_restore_drill.js',
+}, () => main()).catch((error) => {
   console.error(error instanceof Error ? error.message : String(error))
   process.exit(1)
 })

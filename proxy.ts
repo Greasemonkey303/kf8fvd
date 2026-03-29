@@ -1,7 +1,29 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import type { NextFetchEvent, NextRequest } from 'next/server'
 
-export async function proxy(req: NextRequest) {
+function getInternalMetricsToken() {
+  return process.env.NEXTAUTH_SECRET || ''
+}
+
+function recordObservedRequest(pathname: string, internalAppOrigin: string, event?: NextFetchEvent) {
+  const token = getInternalMetricsToken()
+  if (!token) return
+
+  const promise = fetch(new URL('/api/metrics/ingest', internalAppOrigin).toString(), {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-internal-metrics-token': token,
+    },
+    body: JSON.stringify({ pathname }),
+    cache: 'no-store',
+  }).catch(() => undefined)
+
+  if (event?.waitUntil) event.waitUntil(promise)
+  else void promise
+}
+
+export async function proxy(req: NextRequest, event: NextFetchEvent) {
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const internalAppOrigin = process.env.INTERNAL_APP_ORIGIN || `http://127.0.0.1:${process.env.PORT || '3000'}`
   const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
@@ -70,9 +92,11 @@ export async function proxy(req: NextRequest) {
   }
 
   // Skip proxy for internal assets and auth endpoints
-  if (pathname.startsWith('/_next') || pathname.startsWith('/static') || pathname.startsWith('/api/auth')) {
+  if (pathname.startsWith('/_next') || pathname.startsWith('/static') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/metrics/ingest')) {
     return res
   }
+
+  recordObservedRequest(pathname, internalAppOrigin, event)
 
   // Only run rate-limiter and admin checks for admin routes
   if (!pathname.startsWith('/admin')) {

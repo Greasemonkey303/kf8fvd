@@ -63,6 +63,16 @@ function rateLimitDisabled() {
 let _redis: RedisLike | null = null
 let redisDisabledUntil = 0
 
+export function getRateLimiterBackendStatus() {
+  return {
+    redisConfigured: Boolean(process.env.REDIS_URL),
+    redisConnected: Boolean(_redis),
+    redisTemporarilyDisabled: redisDisabledUntil > Date.now(),
+    redisDisabledUntil: redisDisabledUntil > Date.now() ? new Date(redisDisabledUntil).toISOString() : null,
+    memoryFallbackEntries: store.size,
+  }
+}
+
 function markRedisUnavailable(reason?: unknown) {
   redisDisabledUntil = Date.now() + 30_000
   try {

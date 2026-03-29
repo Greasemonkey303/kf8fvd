@@ -876,6 +876,16 @@
 .monitorStatusCritical { background: rgba(225,29,72,0.16); color:#ffd5de; border:1px solid rgba(225,29,72,0.24) }
 .monitorStatusUnknown { background: rgba(148,163,184,0.12); color:#dce6f3; border:1px solid rgba(148,163,184,0.2) }
 .monitorCallout { width:100%; padding:10px 12px; border-radius:10px; background: rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.2); color:#d9ecff }
+.monitorSection { margin-top: 24px; display:grid; gap:16px }
+.monitorChartWrap { width:100%; min-height:56px; padding:8px 0 }
+.monitorChartWrap svg { width:100%; height:56px; display:block }
+.monitorChartGrid { width:100%; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px }
+.monitorMiniChartCard { padding:10px 12px; border-radius:10px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); display:grid; gap:8px }
+.monitorMiniChartCard svg { width:100%; height:52px; display:block }
+.monitorRouteCard { width:100%; display:grid; gap:10px; padding:10px 12px; border-radius:10px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05) }
+.monitorRouteHeader { width:100%; display:flex; align-items:flex-start; justify-content:space-between; gap:12px }
+.monitorRouteCharts { width:100%; display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px }
+.monitorRouteCharts svg { width:100%; height:44px; display:block }
 .statNumber { font-size:20px; font-weight:700; color:var(--white-95) }
 .statLabel { font-size:13px; color:var(--white-66) }
 
@@ -984,6 +994,10 @@
   }
 
   .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .monitorRouteCharts {
     grid-template-columns: 1fr;
   }
 

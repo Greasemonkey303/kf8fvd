@@ -2,6 +2,7 @@
 // Delete admin_actions rows older than configured retention (days)
 const fs = require('fs')
 const path = require('path')
+const { runWithMaintenanceRecord } = require('./lib/maintenance_run_logger')
 
 // Inline, robust env loader (avoids collisions with other code)
 try {
@@ -23,25 +24,36 @@ try {
   // ignore
 }
 
-(async function main(){
-  try {
-    const mysql = require('mysql2/promise')
-    const host = process.env.DB_HOST || 'localhost'
-    const port = process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306
-    const user = process.env.DB_USER || 'root'
-    const password = process.env.DB_PASSWORD || ''
-    const database = process.env.DB_NAME || 'kf8fvd'
-    const days = Number(process.argv[2] || process.env.ADMIN_ACTIONS_RETENTION_DAYS || 365)
+async function main() {
+  const mysql = require('mysql2/promise')
+  const host = process.env.DB_HOST || 'localhost'
+  const port = process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306
+  const user = process.env.DB_USER || 'root'
+  const password = process.env.DB_PASSWORD || ''
+  const database = process.env.DB_NAME || 'kf8fvd'
+  const days = Number(process.argv[2] || process.env.ADMIN_ACTIONS_RETENTION_DAYS || 365)
 
-    console.log('Connecting to DB', { host, port, user, database })
-    const conn = await mysql.createConnection({ host, port, user, password, database })
+  console.log('Connecting to DB', { host, port, user, database })
+  const conn = await mysql.createConnection({ host, port, user, password, database })
+  try {
     const sql = 'DELETE FROM admin_actions WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)'
     const [res] = await conn.execute(sql, [days])
     console.log('Deleted rows:', res && res.affectedRows ? res.affectedRows : 0)
+    return {
+      summary: `Deleted ${res && res.affectedRows ? res.affectedRows : 0} admin_actions rows older than ${days} days.`,
+      meta: {
+        deletedRows: res && res.affectedRows ? res.affectedRows : 0,
+        retentionDays: days,
+      },
+    }
+  } finally {
     await conn.end()
-    process.exit(0)
-  } catch (err) {
-    console.error('cleanup_admin_actions failed:', err)
-    process.exit(2)
   }
-})()
+}
+
+runWithMaintenanceRecord('cleanup_admin_actions', {
+  commandText: 'node scripts/cleanup_admin_actions.js',
+}, () => main()).catch((err) => {
+  console.error('cleanup_admin_actions failed:', err)
+  process.exit(2)
+})

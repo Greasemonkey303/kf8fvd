@@ -1,5 +1,7 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
+import { recordObservedError } from './monitoringMetrics'
+
 type LogContext = {
   route?: string
   action?: string
@@ -49,6 +51,9 @@ function emit(level: LogLevel, payload: Record<string, unknown>) {
 
 export function logRouteEvent(level: LogLevel, context: LogContext) {
   emit(level, context)
+  if (level === 'error') {
+    void recordObservedError(context.route)
+  }
 }
 
 export function logRouteError(route: string, error: unknown, context?: LogContext) {
@@ -58,4 +63,5 @@ export function logRouteError(route: string, error: unknown, context?: LogContex
     ...context,
     error: normalizeError(error),
   })
+  void recordObservedError(route)
 }

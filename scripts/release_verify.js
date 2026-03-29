@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const { spawn } = require('child_process')
+const { runWithMaintenanceRecord } = require('./lib/maintenance_run_logger')
 
 function parseArgs(argv) {
   const args = new Set(argv.slice(2))
@@ -61,9 +62,18 @@ async function main() {
   }
 
   console.log('\nRelease verification completed successfully.')
+  return {
+    summary: 'Release verification completed successfully.',
+    meta: {
+      stepCount: steps.length,
+      options,
+    },
+  }
 }
 
-main().catch((error) => {
+runWithMaintenanceRecord('release_verify', {
+  commandText: 'node scripts/release_verify.js',
+}, () => main()).catch((error) => {
   console.error(error.message || error)
   process.exit(1)
 })

@@ -47,6 +47,102 @@ type MonitoringSnapshot = {
     }
     statuses: Record<string, 'ok' | 'warning' | 'critical'>
   }
+  storage: {
+    status: 'ok' | 'warning' | 'critical'
+    bucket: string
+    totals: {
+      objectCount: number
+      totalBytes: number
+      prefixesTracked: number
+    }
+    prefixes: Array<{
+      prefix: string
+      objectCount: number
+      totalBytes: number
+      newestObjectAt: string | null
+    }>
+    newestObjectAt: string | null
+    error?: string
+  }
+  server: {
+    status: 'ok' | 'warning' | 'critical'
+    runtime: {
+      nodeVersion: string
+      platform: string
+      hostname: string
+      pid: number
+    }
+    uptimeSeconds: number
+    startedAt: string
+    memory: {
+      rssBytes: number
+      heapUsedBytes: number
+      heapTotalBytes: number
+      externalBytes: number
+      arrayBuffersBytes: number
+      systemTotalBytes: number
+      systemFreeBytes: number
+    }
+    loadAverage: number[]
+  }
+  database: {
+    status: 'ok' | 'warning' | 'critical'
+    counts: {
+      projects: number
+      pages: number
+      aboutCards: number
+      credentials: number
+      credentialSections: number
+      messages: number
+      unreadMessages: number
+      users: number
+    }
+    totals: {
+      contentRows: number
+      accountRows: number
+    }
+    error?: string
+  }
+  redis: {
+    status: 'ok' | 'warning' | 'critical'
+    backend: {
+      redisConnected: boolean
+      redisTemporarilyDisabled: boolean
+      memoryFallbackEntries: number
+    }
+  }
+  endpoints: {
+    status: 'ok' | 'warning' | 'critical'
+    checks: Array<{
+      name: string
+      latencyMs: number
+      status: 'ok' | 'warning' | 'critical'
+      statusCode: number | null
+    }>
+  }
+  maintenance: {
+    status: 'ok' | 'warning' | 'critical'
+    tasks: Array<{
+      label: string
+      status: 'ok' | 'warning' | 'critical'
+      lastRunAt: string | null
+      summary: string | null
+    }>
+  }
+  routes: {
+    status: 'ok' | 'warning' | 'critical'
+    totals: {
+      requests: number
+      errors: number
+    }
+    topRoutes: Array<{
+      route: string
+      requests: number
+      errors: number
+      errorRate: number
+      status: 'ok' | 'warning' | 'critical'
+    }>
+  }
   storagePolicy: {
     target: string
     exception: string
@@ -58,6 +154,30 @@ function statusTone(status: 'ok' | 'warning' | 'critical' | 'unknown') {
   if (status === 'warning') return styles.monitorStatusWarning
   if (status === 'critical') return styles.monitorStatusCritical
   return styles.monitorStatusUnknown
+}
+
+function formatBytes(value?: number | null) {
+  if (value == null || !Number.isFinite(value)) return '--'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let size = value
+  let unitIndex = 0
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024
+    unitIndex += 1
+  }
+  const digits = size >= 10 || unitIndex === 0 ? 0 : 1
+  return `${size.toFixed(digits)} ${units[unitIndex]}`
+}
+
+function formatUptime(value?: number | null) {
+  if (value == null || !Number.isFinite(value)) return '--'
+  const totalSeconds = Math.max(0, Math.floor(value))
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 
 export default function AdminPage() {
@@ -75,6 +195,7 @@ export default function AdminPage() {
   const [monitoringRefreshing, setMonitoringRefreshing] = useState(false)
 
   const mountedRef = useRef(true)
+  const topStoragePrefixes = [...(monitoring?.storage?.prefixes || [])].sort((a, b) => b.totalBytes - a.totalBytes).slice(0, 3)
 
   const fetchDashboard = async () => {
     try {
@@ -365,6 +486,31 @@ export default function AdminPage() {
               <div className="card-action">
                 <div className={styles.cardMetric}>
                   <div>
+                    <div className={styles.statNumber}>{formatUptime(monitoring?.server?.uptimeSeconds)}</div>
+                    <div className={styles.statLabel}>Server uptime</div>
+                  </div>
+                </div>
+                <div className={styles.monitorMetricList}>
+                  {[
+                    ['Memory RSS', formatBytes(monitoring?.server?.memory?.rssBytes)],
+                    ['Heap used', formatBytes(monitoring?.server?.memory?.heapUsedBytes)],
+                    ['Node', monitoring?.server?.runtime?.nodeVersion || '--'],
+                    ['Host', monitoring?.server?.runtime?.hostname || '--'],
+                  ].map(([label, value]) => (
+                    <div key={String(label)} className={styles.monitorRow}>
+                      <div>
+                        <div className={styles.titleStrong}>{label}</div>
+                        <div className={styles.smallMuted}>{value}</div>
+                      </div>
+                      <span className={`${styles.monitorStatusBadge} ${statusTone(monitoring?.server?.status || 'unknown')}`}>{monitoring?.server?.status || 'unknown'}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.smallMuted}>Started {monitoring?.server?.startedAt ? new Date(monitoring.server.startedAt).toLocaleString() : '--'}</div>
+              </div>
+              <div className="card-action">
+                <div className={styles.cardMetric}>
+                  <div>
                     <div className={styles.statNumber}>{monitoring?.abuse?.overallStatus || '...'}</div>
                     <div className={styles.statLabel}>Abuse monitoring</div>
                   </div>
@@ -390,15 +536,92 @@ export default function AdminPage() {
               <div className="card-action">
                 <div className={styles.cardMetric}>
                   <div>
-                    <div className={styles.statNumber}>{monitoring?.abuse?.summary?.contactMessages10m ?? 0}</div>
-                    <div className={styles.statLabel}>Recent contact volume</div>
+                    <div className={styles.statNumber}>{formatBytes(monitoring?.storage?.totals?.totalBytes)}</div>
+                    <div className={styles.statLabel}>Managed media used</div>
                   </div>
                 </div>
                 <div className={styles.monitorPolicyList}>
+                  {topStoragePrefixes.map((entry) => (
+                    <div key={entry.prefix} className={styles.monitorRow}>
+                      <div>
+                        <div className={styles.titleStrong}>{entry.prefix}</div>
+                        <div className={styles.smallMuted}>{entry.objectCount} objects</div>
+                      </div>
+                      <span className={`${styles.monitorStatusBadge} ${statusTone(monitoring?.storage?.status || 'unknown')}`}>{formatBytes(entry.totalBytes)}</span>
+                    </div>
+                  ))}
+                  {monitoring?.storage?.error ? <div className={styles.monitorCallout}>{monitoring.storage.error}</div> : null}
+                  <div className={styles.smallMuted}>{monitoring?.storage?.totals?.objectCount ?? 0} objects across {monitoring?.storage?.totals?.prefixesTracked ?? 0} prefixes.</div>
                   <div className={styles.monitorCallout}>{monitoring?.storagePolicy?.target || 'Store all non-logo images in object storage (S3/MinIO).'}</div>
                   <div className={styles.smallMuted}>{monitoring?.storagePolicy?.exception || 'Brand/logo assets can remain in app files when they are static build assets.'}</div>
                   <Link prefetch={false} href="/admin/projects">Review media-backed content</Link>
                 </div>
+              </div>
+              <div className="card-action">
+                <div className={styles.cardMetric}>
+                  <div>
+                    <div className={styles.statNumber}>{monitoring?.database?.totals?.contentRows ?? 0}</div>
+                    <div className={styles.statLabel}>Content rows tracked</div>
+                  </div>
+                </div>
+                <div className={styles.monitorMetricList}>
+                  {[
+                    ['Projects', monitoring?.database?.counts?.projects ?? 0],
+                    ['Pages', monitoring?.database?.counts?.pages ?? 0],
+                    ['Credentials', monitoring?.database?.counts?.credentials ?? 0],
+                    ['Unread messages', monitoring?.database?.counts?.unreadMessages ?? 0],
+                  ].map(([label, value]) => (
+                    <div key={String(label)} className={styles.monitorRow}>
+                      <div>
+                        <div className={styles.titleStrong}>{label}</div>
+                        <div className={styles.smallMuted}>Current count: {value}</div>
+                      </div>
+                      <span className={`${styles.monitorStatusBadge} ${statusTone(monitoring?.database?.status || 'unknown')}`}>{monitoring?.database?.status || 'unknown'}</span>
+                    </div>
+                  ))}
+                </div>
+                {monitoring?.database?.error ? <div className={styles.monitorCallout}>{monitoring.database.error}</div> : null}
+              </div>
+              <div className="card-action">
+                <div className={styles.cardMetric}>
+                  <div>
+                    <div className={styles.statNumber}>{monitoring?.routes?.totals?.requests ?? 0}</div>
+                    <div className={styles.statLabel}>Observed route requests</div>
+                  </div>
+                </div>
+                <div className={styles.monitorMetricList}>
+                  {(monitoring?.routes?.topRoutes || []).slice(0, 3).map((route) => (
+                    <div key={route.route} className={styles.monitorRow}>
+                      <div>
+                        <div className={styles.titleStrong}>{route.route}</div>
+                        <div className={styles.smallMuted}>{route.requests} requests, {route.errors} errors</div>
+                      </div>
+                      <span className={`${styles.monitorStatusBadge} ${statusTone(route.status)}`}>{route.status}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link prefetch={false} href="/admin/utilities/monitoring">Open full route monitoring</Link>
+              </div>
+              <div className="card-action">
+                <div className={styles.cardMetric}>
+                  <div>
+                    <div className={styles.statNumber}>{monitoring?.maintenance?.status || '...'}</div>
+                    <div className={styles.statLabel}>Maintenance status</div>
+                  </div>
+                </div>
+                <div className={styles.monitorMetricList}>
+                  {(monitoring?.maintenance?.tasks || []).slice(0, 3).map((task) => (
+                    <div key={task.label} className={styles.monitorRow}>
+                      <div>
+                        <div className={styles.titleStrong}>{task.label}</div>
+                        <div className={styles.smallMuted}>{task.lastRunAt ? `Last run ${new Date(task.lastRunAt).toLocaleString()}` : 'Never recorded'}</div>
+                      </div>
+                      <span className={`${styles.monitorStatusBadge} ${statusTone(task.status)}`}>{task.status}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.smallMuted}>Redis {monitoring?.redis?.backend?.redisConnected ? 'connected' : 'fallback'}; public checks {monitoring?.endpoints?.status || 'unknown'}.</div>
+                <Link prefetch={false} href="/admin/utilities/monitoring">Open full maintenance view</Link>
               </div>
             </div>
           </div>

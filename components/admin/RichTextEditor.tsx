@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Extension, mergeAttributes, Node } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -194,39 +194,46 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write h
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [draftSourceValue, setDraftSourceValue] = useState('')
   const expandedHeight = Math.max(minHeight, expandedMinHeight ?? minHeight + 180)
+  const onChangeRef = useRef(onChange)
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  const extensions = useMemo(() => [
+    StarterKit.configure({
+      heading: { levels: [2, 3, 4] },
+    }),
+    TextStyle,
+    Color,
+    FontFamily,
+    FontSize,
+    Highlight.configure({ multicolor: true }),
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    Underline,
+    Image,
+    Embed,
+    Link.configure({
+      openOnClick: false,
+      autolink: true,
+      defaultProtocol: 'https',
+    }),
+    Placeholder.configure({ placeholder }),
+  ], [placeholder])
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3, 4] },
-      }),
-      TextStyle,
-      Color,
-      FontFamily,
-      FontSize,
-      Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Underline,
-      Image,
-      Embed,
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        defaultProtocol: 'https',
-      }),
-      Placeholder.configure({ placeholder }),
-    ],
+    extensions,
     content: normalizeHtml(value),
     onUpdate: ({ editor: currentEditor }) => {
-      onChange(normalizeHtml(currentEditor.getHTML()))
+      onChangeRef.current(normalizeHtml(currentEditor.getHTML()))
     },
     editorProps: {
       attributes: {
         class: styles.richTextSurface,
       },
     },
-  })
+  }, [extensions])
 
   useEffect(() => {
     const next = normalizeHtml(value)

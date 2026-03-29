@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require('fs')
 const path = require('path')
+const { runWithMaintenanceRecord } = require('./lib/maintenance_run_logger')
 
 function parseArgs(argv) {
   const args = argv.slice(2)
@@ -106,10 +107,25 @@ function main() {
 
   if (options.json) console.log(JSON.stringify(report, null, 2))
   else printReport(report)
+
+  return {
+    status: report.targets.length && !options.apply ? 'warning' : 'ok',
+    summary: options.apply ? `Deleted ${report.deleted.length} generated artifacts.` : `Found ${report.targets.length} generated artifacts.`,
+    meta: {
+      apply: options.apply,
+      targetCount: report.targets.length,
+      deletedCount: report.deleted.length,
+    },
+  }
 }
 
 try {
-  main()
+  runWithMaintenanceRecord('cleanup_generated_artifacts', {
+    commandText: 'node scripts/cleanup_generated_artifacts.js',
+  }, async () => main()).catch((error) => {
+    console.error('artifact cleanup failed', error)
+    process.exit(1)
+  })
 } catch (error) {
   console.error('artifact cleanup failed', error)
   process.exit(1)

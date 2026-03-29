@@ -2,6 +2,7 @@
 const fs = require('fs')
 const path = require('path')
 const mysql = require('mysql2/promise')
+const { runWithMaintenanceRecord } = require('./lib/maintenance_run_logger')
 
 const CONTACT_ABUSE_REASONS = [
   'honeypot',
@@ -141,12 +142,26 @@ async function main() {
 
     if (report.overallStatus === 'critical') process.exitCode = 2
     else if (report.overallStatus === 'warning') process.exitCode = 1
+
+    return {
+      status: report.overallStatus === 'critical' ? 'failed' : report.overallStatus === 'warning' ? 'warning' : 'ok',
+      summary: `Abuse monitor status ${report.overallStatus}. Failed logins=${report.failedLogins10m.count}, contact abuse=${report.contactAbuse10m.count}, password resets=${report.passwordResets10m.count}.`,
+      meta: {
+        overallStatus: report.overallStatus,
+        failedLogins10m: report.failedLogins10m.count,
+        contactAbuse10m: report.contactAbuse10m.count,
+        passwordResets10m: report.passwordResets10m.count,
+        adminUnlocks24h: report.adminUnlocks24h.count,
+      },
+    }
   } finally {
     await conn.end()
   }
 }
 
-main().catch((error) => {
+runWithMaintenanceRecord('abuse_monitor_report', {
+  commandText: 'node scripts/abuse_monitor_report.js',
+}, () => main()).catch((error) => {
   console.error('abuse monitor failed', error)
   process.exit(2)
 })
