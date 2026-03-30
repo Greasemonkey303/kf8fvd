@@ -152,7 +152,11 @@ export default async function Page({ params }: Props) {
 
   const summaryText = stripHtml(safeDescriptionHtml)
   const detailText = detailsHtml ? stripHtml(detailsHtml) : ''
-  const mediaCount = allImages.length + (mainImage ? 1 : 0)
+  const galleryImages = Array.from(new Set([
+    ...(mainImageSrc ? [String(mainImageSrc)] : []),
+    ...allImages.map((image) => String(image)),
+  ].filter(Boolean)))
+  const mediaCount = galleryImages.length
   const projectBullets = buildProjectBullets(project, mediaCount, Boolean(detailsHtml))
   const focusCards = [
     {
@@ -208,22 +212,7 @@ export default async function Page({ params }: Props) {
               {project.slug === 'hotspot' ? (
                 <HotspotGallery images={getHotspotGalleryUrls()} />
               ) : (
-                <>
-                  {mainImage ? (
-                    <div className={styles.mainPhotoWrap}>
-                      <Image
-                        src={String(mainImageSrc)}
-                        alt={String(project.title || '')}
-                        className={styles.mainPhoto}
-                        width={1200}
-                        height={700}
-                        sizes="(max-width: 899px) 100vw, 360px"
-                        unoptimized={typeof mainImageSrc === 'string' && (mainImageSrc.startsWith('data:') || mainImageSrc.startsWith('blob:') || mainImageSrc.includes('X-Amz-Algorithm') || mainImageSrc.includes('minio') || mainImageSrc.includes('127.0.0.1'))}
-                      />
-                    </div>
-                  ) : null}
-                  <ProjectMediaWrapper images={allImages.slice(0, 6)} title={String(project.title || '')} />
-                </>
+                <ProjectMediaWrapper images={galleryImages.slice(0, 8)} title={String(project.title || '')} />
               )}
 
               {typeof project.external_link === 'string' && project.external_link ? (

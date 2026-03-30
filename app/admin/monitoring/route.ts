@@ -1,3 +1,4 @@
+import net from 'node:net'
 import os from 'node:os'
 import tls from 'node:tls'
 import { NextResponse } from 'next/server'
@@ -38,6 +39,18 @@ type BucketPoint = {
   label: string
   startedAt: string
   value: number
+}
+
+type AnalyticsServiceStatus = {
+  name: string
+  label: string
+  kind: 'http' | 'tcp'
+  target: string
+  ok: boolean
+  status: MetricStatus
+  latencyMs: number
+  details: string
+  error?: string
 }
 
 const HEALTH_TIMEOUT_MS = 1500
@@ -118,6 +131,91 @@ async function probeDependency(label: string, operation: () => Promise<void>): P
   }
 }
 
+async function probeTcpSocket(host: string, port: number, label: string) {
+  await withTimeout(label, () => new Promise<void>((resolve, reject) => {
+    const socket = net.createConnection({ host, port })
+    socket.once('connect', () => {
+      socket.end()
+      resolve()
+    })
+    socket.once('error', (error) => {
+      socket.destroy()
+      reject(error)
+    })
+    socket.once('timeout', () => {
+      socket.destroy()
+      reject(new Error(`${label} socket timed out`))
+    })
+    socket.setTimeout(HEALTH_TIMEOUT_MS)
+  }), HEALTH_TIMEOUT_MS)
+}
+
+function statusFromCheck(ok: boolean, latencyMs: number, slowMs: number): MetricStatus {
+  if (!ok) return 'critical'
+  if (latencyMs > slowMs) return 'warning'
+  return 'ok'
+}
+
+async function probeHttpService(name: string, label: string, url: string): Promise<AnalyticsServiceStatus> {
+  const startedAt = Date.now()
+  try {
+    const response = await withTimeout(name, () => fetch(url, { cache: 'no-store' }), HEALTH_TIMEOUT_MS * 2)
+    const latencyMs = Date.now() - startedAt
+    return {
+      name,
+      label,
+      kind: 'http',
+      target: url,
+      ok: response.ok,
+      status: statusFromCheck(response.ok, latencyMs, 1200),
+      latencyMs,
+      details: `HTTP ${response.status}`,
+    }
+  } catch (error) {
+    return {
+      name,
+      label,
+      kind: 'http',
+      target: url,
+      ok: false,
+      status: 'critical',
+      latencyMs: Date.now() - startedAt,
+      details: 'Request failed',
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+async function probeTcpService(name: string, label: string, host: string, port: number): Promise<AnalyticsServiceStatus> {
+  const startedAt = Date.now()
+  try {
+    await probeTcpSocket(host, port, name)
+    const latencyMs = Date.now() - startedAt
+    return {
+      name,
+      label,
+      kind: 'tcp',
+      target: `${host}:${port}`,
+      ok: true,
+      status: statusFromCheck(true, latencyMs, 500),
+      latencyMs,
+      details: 'TCP connection accepted',
+    }
+  } catch (error) {
+    return {
+      name,
+      label,
+      kind: 'tcp',
+      target: `${host}:${port}`,
+      ok: false,
+      status: 'critical',
+      latencyMs: Date.now() - startedAt,
+      details: 'TCP connection failed',
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
 async function buildHealthSummary() {
   const missing = collectMissingConfig()
   const dependencies = {
@@ -137,6 +235,18 @@ async function buildHealthSummary() {
       const exists = await client.bucketExists(bucket)
       if (!exists) throw new Error(`Bucket not found: ${bucket}`)
     }),
+    umami: await probeDependency('umami', async () => {
+      const umamiUrl = (process.env.UMAMI_SERVER_URL || process.env.NEXT_PUBLIC_UMAMI_HOST_URL || '').trim()
+      if (!umamiUrl) throw new Error('Umami server URL not configured')
+      const response = await fetch(new URL('/', umamiUrl), { cache: 'no-store' })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    }),
+    umamiPostgres: await probeDependency('umamiPostgres', async () => {
+      const host = (process.env.UMAMI_POSTGRES_HOST || '').trim()
+      const port = Number(process.env.UMAMI_POSTGRES_PORT || 5432)
+      if (!host) throw new Error('Umami Postgres host not configured')
+      await probeTcpSocket(host, port, 'umamiPostgres')
+    }),
   }
 
   return {
@@ -144,6 +254,69 @@ async function buildHealthSummary() {
     missing,
     timeoutMs: HEALTH_TIMEOUT_MS,
     dependencies,
+  }
+}
+
+async function buildAnalyticsSummary() {
+  const umamiUrl = (process.env.UMAMI_SERVER_URL || process.env.NEXT_PUBLIC_UMAMI_HOST_URL || '').trim()
+  const trackerUrl = (process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL || (umamiUrl ? new URL('/script.js', umamiUrl).toString() : '')).trim()
+  const postgresHost = (process.env.UMAMI_POSTGRES_HOST || '').trim()
+  const postgresPort = Number(process.env.UMAMI_POSTGRES_PORT || 5432)
+  const websiteId = (process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID || '').trim()
+
+  const checks: AnalyticsServiceStatus[] = await Promise.all([
+    umamiUrl
+      ? probeHttpService('umami', 'Umami dashboard', umamiUrl)
+      : Promise.resolve({
+        name: 'umami',
+        label: 'Umami dashboard',
+        kind: 'http' as const,
+        target: 'Not configured',
+        ok: false,
+        status: 'critical' as MetricStatus,
+        latencyMs: 0,
+        details: 'UMAMI_SERVER_URL is missing',
+        error: 'UMAMI_SERVER_URL is missing',
+      }),
+    trackerUrl
+      ? probeHttpService('umamiTracker', 'Umami tracker script', trackerUrl)
+      : Promise.resolve({
+        name: 'umamiTracker',
+        label: 'Umami tracker script',
+        kind: 'http' as const,
+        target: 'Not configured',
+        ok: false,
+        status: 'critical' as MetricStatus,
+        latencyMs: 0,
+        details: 'NEXT_PUBLIC_UMAMI_SCRIPT_URL is missing',
+        error: 'NEXT_PUBLIC_UMAMI_SCRIPT_URL is missing',
+      }),
+    postgresHost
+      ? probeTcpService('umamiPostgres', 'Umami PostgreSQL', postgresHost, postgresPort)
+      : Promise.resolve({
+        name: 'umamiPostgres',
+        label: 'Umami PostgreSQL',
+        kind: 'tcp' as const,
+        target: 'Not configured',
+        ok: false,
+        status: 'critical' as MetricStatus,
+        latencyMs: 0,
+        details: 'UMAMI_POSTGRES_HOST is missing',
+        error: 'UMAMI_POSTGRES_HOST is missing',
+      }),
+  ])
+
+  const status = checks.some((entry) => entry.status === 'critical')
+    ? 'critical'
+    : checks.some((entry) => entry.status === 'warning')
+      ? 'warning'
+      : 'ok'
+
+  return {
+    status,
+    websiteIdConfigured: Boolean(websiteId),
+    websiteId,
+    checks,
   }
 }
 
@@ -700,10 +873,13 @@ async function probeEndpoint(name: string, url: string) {
 async function buildEndpointSummary() {
   const siteOrigin = (process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || '').trim()
   const internalAppOrigin = (process.env.INTERNAL_APP_ORIGIN || `http://127.0.0.1:${process.env.PORT || '3000'}`).trim()
+  const umamiPublicOrigin = (process.env.NEXT_PUBLIC_UMAMI_HOST_URL || process.env.UMAMI_SERVER_URL || '').trim()
   const candidates = [
     siteOrigin ? { name: 'Public home', url: new URL('/', siteOrigin).toString() } : null,
     siteOrigin ? { name: 'Public health', url: new URL('/api/health', siteOrigin).toString() } : null,
     internalAppOrigin ? { name: 'Internal health', url: new URL('/api/health', internalAppOrigin).toString() } : null,
+    umamiPublicOrigin ? { name: 'Umami dashboard', url: new URL('/', umamiPublicOrigin).toString() } : null,
+    umamiPublicOrigin ? { name: 'Umami tracker script', url: new URL('/script.js', umamiPublicOrigin).toString() } : null,
   ].filter((entry): entry is { name: string; url: string } => Boolean(entry))
 
   const uniqueCandidates = Array.from(new Map(candidates.map((entry) => [entry.url, entry])).values())
@@ -810,13 +986,14 @@ export async function GET() {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [health, abuse, storage, server, database, redis, endpoints, maintenance, routes] = await Promise.all([
+  const [health, abuse, storage, server, database, redis, analytics, endpoints, maintenance, routes] = await Promise.all([
     buildHealthSummary(),
     buildAbuseSummary(),
     buildStorageSummary(),
     Promise.resolve(buildServerSummary()),
     buildDatabaseSummary(),
     buildRedisSummary(),
+    buildAnalyticsSummary(),
     buildEndpointSummary(),
     buildMaintenanceSummary(),
     buildRouteSummary(),
@@ -830,6 +1007,7 @@ export async function GET() {
     server,
     database,
     redis,
+    analytics,
     endpoints,
     maintenance,
     routes,

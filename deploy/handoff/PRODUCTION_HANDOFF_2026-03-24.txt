@@ -5,7 +5,7 @@ What is done
 
 - Repo content from GitHub main was synced into /opt/kf8fvd without overwriting .env or the live data directory.
 - Previous docker-compose.yml and nginx.conf were backed up and moved to /opt/kf8fvd-backup/.deploy-backup-20260324-050921.
-- MySQL schema from deploy/kf8fvd-prduction-duildand-safe.sql was imported into the kf8fvd database.
+- MySQL schema from deploy/sql/kf8fvd-prduction-duildand-safe.sql was imported into the kf8fvd database.
 - First admin user was created:
   - email: zach@kf8fvd.com
   - name: Zachary

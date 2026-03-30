@@ -3,11 +3,31 @@ import type { NextConfig } from "next";
 const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
+function getAllowedOrigins(...values: Array<string | undefined>) {
+  return Array.from(new Set(values
+    .filter(Boolean)
+    .map((value) => {
+      try {
+        return new URL(value as string).origin
+      } catch {
+        return null
+      }
+    })
+    .filter((value): value is string => Boolean(value))))
+}
+
+const umamiOrigins = getAllowedOrigins(
+  process.env.NEXT_PUBLIC_UMAMI_HOST_URL,
+  process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL,
+)
+const extraScriptOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
+const extraConnectOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
+
 // Allow inline styles/scripts when running locally (developer convenience).
 // This keeps production CSP strict while making local prod-like runs usable.
 const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1';
 
-const scriptSrcBase = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com";
+const scriptSrcBase = `script-src 'self' https://unpkg.com https://challenges.cloudflare.com${extraScriptOrigins}`;
 // During local debugging we allow inline scripts so Next's client runtime
 // hydration and small injected scripts aren't blocked by CSP. Remove this
 // allowance in production when hardening for deployment.
@@ -25,8 +45,8 @@ const imgSrc = isProd
 // Ensure localhost:3000 is explicitly allowed for development and local testing
 const localDev3000 = "http://127.0.0.1:3000 http://localhost:3000";
 const connectSrc = isProd
-  ? `connect-src 'self' ${siteOrigin} ${localDev3000} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com`
-  : `connect-src 'self' ${siteOrigin} ${localDev3000} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com ws: wss:`;
+  ? `connect-src 'self' ${siteOrigin} ${localDev3000}${extraConnectOrigins} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com`
+  : `connect-src 'self' ${siteOrigin} ${localDev3000}${extraConnectOrigins} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com ws: wss:`;
 
 const reportUri = `${siteOrigin}/api/csp/report`
 

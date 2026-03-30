@@ -123,6 +123,22 @@ type MonitoringPayload = {
     explanations?: Record<string, string>
     error?: string
   }
+  analytics: {
+    status: 'ok' | 'warning' | 'critical'
+    websiteIdConfigured: boolean
+    websiteId: string
+    checks: Array<{
+      name: string
+      label: string
+      kind: 'http' | 'tcp'
+      target: string
+      ok: boolean
+      status: 'ok' | 'warning' | 'critical'
+      latencyMs: number
+      details: string
+      error?: string
+    }>
+  }
   endpoints: {
     status: 'ok' | 'warning' | 'critical'
     checks: Array<{
@@ -250,7 +266,7 @@ export default function MonitoringPage() {
     { label: 'Dependencies', value: data?.health?.ok ? 'OK' : 'Check', status: data?.health?.ok ? 'ok' : 'critical' },
     { label: 'Route activity', value: `${data?.routes?.totals?.requests ?? 0}`, status: data?.routes?.status || 'unknown' },
     { label: 'Maintenance', value: data?.maintenance?.status || '...', status: data?.maintenance?.status || 'unknown' },
-    { label: 'Public checks', value: data?.endpoints?.status || '...', status: data?.endpoints?.status || 'unknown' },
+    { label: 'Analytics', value: data?.analytics?.status || '...', status: data?.analytics?.status || 'unknown' },
   ]
 
   return (
@@ -358,6 +374,24 @@ export default function MonitoringPage() {
             {data?.redis?.error ? <div className={styles.monitorCallout}>{data.redis.error}</div> : null}
             <div className={styles.smallMuted}>{data?.redis?.explanations?.memory}</div>
             <div className={styles.smallMuted}>{data?.redis?.backend?.redisDisabledUntil ? `Disabled until ${new Date(data.redis.backend.redisDisabledUntil).toLocaleString()}` : data?.redis?.explanations?.fallback}</div>
+          </div>
+
+          <div className="card-action">
+            <div className={styles.cardMetric}><div><div className={styles.statNumber}>{data?.analytics?.status || '...'}</div><div className={styles.statLabel}>Self-hosted analytics services</div></div></div>
+            <div className={styles.monitorMetricList}>
+              {(data?.analytics?.checks || []).map((check) => (
+                <div key={check.name} className={styles.monitorRow}>
+                  <div>
+                    <div className={styles.titleStrong}>{check.label}</div>
+                    <div className={styles.smallMuted}>{check.target}</div>
+                    <div className={styles.smallMuted}>{check.details}{check.latencyMs ? `, ${check.latencyMs} ms` : ''}</div>
+                    {check.error ? <div className={styles.smallMuted}>{check.error}</div> : null}
+                  </div>
+                  <span className={`${styles.monitorStatusBadge} ${toneClass(check.status)}`}>{check.status}</span>
+                </div>
+              ))}
+            </div>
+            <div className={styles.smallMuted}>{data?.analytics?.websiteIdConfigured ? `Website ID configured: ${data.analytics.websiteId}` : 'Umami website ID is not configured.'}</div>
           </div>
 
           <div className="card-action">

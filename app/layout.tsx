@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from 'next/headers'
 import { Navbar, BackButton } from "@/components";
 import { Footer } from "@/containers";
+import UmamiAnalytics from '@/components/analytics/UmamiAnalytics'
+import UmamiPageTracker from '@/components/analytics/UmamiPageTracker'
 import '../styles/app.css'
 import '../styles/global.css'
 import SessionProviderClient from './providers/SessionProviderClient'
@@ -64,6 +66,8 @@ export default async function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <a href="#main" className="skip">Skip to content</a>
+        <UmamiAnalytics />
+        <UmamiPageTracker />
         <Navbar />
         <BackButton />
         <SessionProviderClient>

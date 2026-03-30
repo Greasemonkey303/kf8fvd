@@ -20,6 +20,43 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Docker with Umami
+
+The Docker Compose stack now runs three containers for the production-facing site:
+
+- `kf8fvd` for the Next.js app.
+- `umami` for self-hosted visitor analytics.
+- `umami-db` for Umami's required PostgreSQL backend.
+
+The site container is intentionally configured to keep using your existing MySQL, Redis, and MinIO services outside Compose. To make that work safely from inside Docker, Compose uses these optional override variables instead of the host-local values in `.env`:
+
+- `DOCKER_DB_HOST` and `DOCKER_DB_PORT`
+- `DOCKER_REDIS_HOST`, `DOCKER_REDIS_PORT`, and `DOCKER_REDIS_URL`
+- `DOCKER_MINIO_HOST` and `DOCKER_MINIO_PORT`
+
+If you do not set them, the app container defaults to `host.docker.internal` for those services.
+
+Umami-specific environment variables expected in `.env`:
+
+- `UMAMI_POSTGRES_DB`
+- `UMAMI_POSTGRES_USER`
+- `UMAMI_POSTGRES_PASSWORD`
+- `UMAMI_APP_SECRET`
+- `NEXT_PUBLIC_UMAMI_WEBSITE_ID`
+- `NEXT_PUBLIC_UMAMI_HOST_URL`
+- `NEXT_PUBLIC_UMAMI_SCRIPT_URL` (optional, defaults in the app to `${NEXT_PUBLIC_UMAMI_HOST_URL}/script.js`)
+- `NEXT_PUBLIC_UMAMI_DOMAINS` (optional comma-separated production domains)
+
+For a local Docker bring-up:
+
+```bash
+docker compose up -d --build
+```
+
+This exposes the site on `http://127.0.0.1:3030` and Umami on `http://127.0.0.1:3001`.
+
+The frontend tracker only loads when the Umami public variables are configured, respects Do Not Track, drops URL search parameters, and excludes admin/API/account-management routes before sending analytics events.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

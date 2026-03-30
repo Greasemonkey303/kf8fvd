@@ -1,6 +1,19 @@
 import { NextResponse } from 'next/server'
 import type { NextFetchEvent, NextRequest } from 'next/server'
 
+function getAllowedOrigins(...values: Array<string | undefined>) {
+  return Array.from(new Set(values
+    .filter(Boolean)
+    .map((value) => {
+      try {
+        return new URL(value as string).origin
+      } catch {
+        return null
+      }
+    })
+    .filter((value): value is string => Boolean(value))))
+}
+
 function getInternalMetricsToken() {
   return process.env.NEXTAUTH_SECRET || ''
 }
@@ -27,6 +40,9 @@ export async function proxy(req: NextRequest, event: NextFetchEvent) {
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const internalAppOrigin = process.env.INTERNAL_APP_ORIGIN || `http://127.0.0.1:${process.env.PORT || '3000'}`
   const isLocalhost = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
+  const umamiOrigins = getAllowedOrigins(process.env.NEXT_PUBLIC_UMAMI_HOST_URL, process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL)
+  const extraScriptOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
+  const extraConnectOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
   const pathname = req.nextUrl.pathname
   const allowAdminInlineStyles = false
 
@@ -47,13 +63,13 @@ export async function proxy(req: NextRequest, event: NextFetchEvent) {
   }
   const nonce = isLocalhost ? '' : makeNonce()
 
-  const scriptSrcBase = "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
+  const scriptSrcBase = `script-src 'self' https://unpkg.com https://challenges.cloudflare.com${extraScriptOrigins}`
   // In production prefer nonces; in local/dev keep 'unsafe-inline' for developer convenience
   const scriptSrc = isLocalhost ? `${scriptSrcBase} 'unsafe-inline' 'unsafe-eval'` : `${scriptSrcBase} 'nonce-${nonce}'`
   const styleSrcBase = "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
   const styleSrc = (isLocalhost || allowAdminInlineStyles) ? `${styleSrcBase} 'unsafe-inline'` : `${styleSrcBase} 'nonce-${nonce}'`
 
-  const connectSrc = `connect-src 'self' ${siteOrigin} http://127.0.0.1:3000 http://localhost:3000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com ws: wss:`
+  const connectSrc = `connect-src 'self' ${siteOrigin} http://127.0.0.1:3000 http://localhost:3000${extraConnectOrigins} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com ws: wss:`
 
   const CSP = [
     "default-src 'self'",

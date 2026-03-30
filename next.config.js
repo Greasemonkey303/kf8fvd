@@ -1,6 +1,19 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
 
+function getAllowedOrigins(...values) {
+  return Array.from(new Set(values
+    .filter(Boolean)
+    .map(value => {
+      try {
+        return new URL(value).origin
+      } catch {
+        return null
+      }
+    })
+    .filter(Boolean)))
+}
+
 const nextConfig = {
   experimental: {},
   images: {
@@ -19,20 +32,23 @@ const nextConfig = {
 
   async headers() {
     const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const umamiOrigins = getAllowedOrigins(process.env.NEXT_PUBLIC_UMAMI_HOST_URL, process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL)
+    const extraScriptOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
+    const extraConnectOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
 
     // For local debugging allow inline scripts/styles so Next's inline
     // hydration/runtime scripts and server-emitted style attributes aren't blocked.
     // Only include 'unsafe-inline' when running locally or when explicitly
     // allowed via `CSP_ALLOW_INLINE=1` to keep production CSP strict.
     const allowInline = /localhost|127\.0\.0\.1/.test(siteOrigin) || process.env.CSP_ALLOW_INLINE === '1'
-    const scriptSrc = allowInline ? "script-src 'self' https://unpkg.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' https://unpkg.com https://challenges.cloudflare.com"
+    const scriptSrc = allowInline ? `script-src 'self' https://unpkg.com https://challenges.cloudflare.com${extraScriptOrigins} 'unsafe-inline' 'unsafe-eval'` : `script-src 'self' https://unpkg.com https://challenges.cloudflare.com${extraScriptOrigins}`
     const styleSrc = allowInline ? "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com" : "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
     const imgSrc = isProd ? "img-src 'self' data: https: https://*.gravatar.com" : "img-src 'self' data: http: https: https://*.gravatar.com"
     // Ensure localhost:3000 is explicitly allowed for development and local testing
     const localDev3000 = "http://127.0.0.1:3000 http://localhost:3000"
     const connectSrc = isProd
-      ? `connect-src 'self' ${siteOrigin} ${localDev3000} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
-      : `connect-src 'self' ${siteOrigin} ${localDev3000} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`
+      ? `connect-src 'self' ${siteOrigin} ${localDev3000}${extraConnectOrigins} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov`
+      : `connect-src 'self' ${siteOrigin} ${localDev3000}${extraConnectOrigins} http://127.0.0.1:9000 https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`
     const fontSrc = "font-src 'self' https://fonts.gstatic.com data:"
     const reportUri = `${siteOrigin}/api/csp/report`
     // Explicitly allow Cloudflare Turnstile frames

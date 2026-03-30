@@ -13,6 +13,15 @@ Minimal steps to deploy to production:
 - Security: enable HTTPS, enforce CSP with nonces, use managed identity for resource access, enable RBAC, and scan images with Trivy before deploy.
 - Observability: ensure logs, traces, and metrics are collected centrally and retention policies are defined.
 
+Current repo rollout reminder:
+
+- Review `deploy/DEPLOY_UPDATE_2026-03-29_UMAMI_MONITORING.md` before deploying the current analytics and monitoring changes.
+- Apply the main site MySQL migration `migrations/2026_03_29_maintenance_runs.sql` when deploying the updated admin monitoring page.
+- Deploy and verify the added self-hosted analytics services:
+	- `umami`
+	- `umami-db`
+- Replace all dev-only Umami and PostgreSQL secrets before production rollout.
+
 Checklist verification steps:
 - Run deploy in a staging environment and execute full E2E smoke tests.
 - Validate that secrets are not present in logs or image metadata.
