@@ -1,0 +1,60 @@
+KF8FVD production handoff
+Date: 2026-03-30
+
+What is done
+
+- Pulled latest GitHub main onto the production server with a fast-forward update.
+- Applied production database migration coverage so schema_migrations is current and pending migration count is zero.
+- Applied the missing maintenance and content deletion tables required by the current release.
+- Added production DB_* environment values alongside the existing service configuration so runtime code and operational scripts resolve the same database settings.
+- Added production Umami configuration for container-to-container routing and public script loading.
+- Updated Nginx to serve the Umami admin panel on umami.kf8fvd.com using Docker DNS resolution.
+- Started and verified the Umami and Umami Postgres containers.
+- Rebuilt the app after NEXT_PUBLIC_UMAMI_WEBSITE_ID was added.
+- Fixed backend readiness Redis resolution so it accepts either REDIS_URL or REDIS_HOST and related parts.
+- Fixed Redis-backed integration tests so they use the same runtime Redis resolution and reset internal limiter state between runs.
+- Removed one unused import causing a lint warning in the project detail page.
+- Restored the tracked static site-media source assets from git and uploaded the 7 required site media objects into MinIO.
+
+Production verification completed
+
+- https://www.kf8fvd.com/api/health -> 200
+- https://umami.kf8fvd.com/ -> 200
+- Homepage includes the Umami script from https://umami.kf8fvd.com/script.js
+- migrations:check -> pendingCount=0
+- readiness:backend -> pass
+- test:unit -> pass
+- verify:release -> pass
+- storage_orphan_audit -> 0 missing references, 0 unreferenced objects
+
+Important runtime notes
+
+- Production app container: kf8fvd
+- Production proxy container: kf8fvd-proxy
+- Umami container: kf8fvd-umami
+- Umami Postgres container: kf8fvd-umami-db
+- Canonical public host remains www.kf8fvd.com
+- Public Umami host is umami.kf8fvd.com
+- Cloudflare tunnel remains routed to the proxy container
+
+Files changed locally for this rollout
+
+- app/projects/[slug]/page.tsx
+- nginx.conf
+- scripts/backend_readiness_check.js
+- tests/integration/adminLocks.spec.ts
+- tests/integration/clientErrors.spec.ts
+- tests/integration/rateLimiter.redis.spec.ts
+- deploy/handoff/PRODUCTION_HANDOFF_2026-03-30.txt
+
+Operational notes
+
+- The production checkout uses sparse-checkout rules for data/, so tracked files under data/ may need to be materialized from git when a maintenance script expects them on disk.
+- Host-level node_modules are not present on this server checkout. Validation and maintenance scripts that require package dependencies should be run in a disposable app container on the production Docker network.
+- MinIO console listing via mc from inside the container is access-restricted in the current setup, but object existence and audit checks succeeded through the application scripts.
+
+Recommended quick checks later
+
+1. Open the public site, signin, admin, and Umami dashboard in a browser after the next deploy or container recreate.
+2. Keep future operational validation on the containerized path so env and dependency resolution match production.
+3. Commit and push the local repo changes if they should become the new source-of-truth on GitHub.

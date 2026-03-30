@@ -5,6 +5,38 @@ const mysql = require('mysql2/promise')
 const Redis = require('ioredis')
 const Minio = require('minio')
 
+function buildRedisUrlFromParts() {
+  const host = (process.env.REDIS_HOST || '').trim()
+  const port = (process.env.REDIS_PORT || '6379').trim()
+  const password = process.env.REDIS_PASSWORD || ''
+  const username = process.env.REDIS_USERNAME || ''
+
+  if (!host) return ''
+
+  const auth = password || username
+    ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}@`
+    : ''
+
+  return `redis://${auth}${host}:${port}`
+}
+
+function normalizeRedisUrl(raw) {
+  const trimmed = String(raw || '').trim()
+  if (!trimmed) return ''
+
+  const authMatch = trimmed.match(/^(redis(?:s)?):\/\/:([^@]*)@(.+)$/i)
+  if (authMatch) {
+    const [, scheme, password, rest] = authMatch
+    return `${scheme}://:${encodeURIComponent(password)}@${rest}`
+  }
+
+  return trimmed
+}
+
+function getRedisUrl() {
+  return buildRedisUrlFromParts() || normalizeRedisUrl(process.env.REDIS_URL || '')
+}
+
 function loadEnvFile() {
   const candidates = ['.env.local', 'env.local']
   for (const name of candidates) {
@@ -39,14 +71,15 @@ function collectRequiredEnv() {
     'DB_PORT',
     'DB_USER',
     'DB_NAME',
-    'REDIS_URL',
     'MINIO_ACCESS_KEY',
     'MINIO_SECRET_KEY',
   ]
 }
 
 function getMissingEnv() {
-  return collectRequiredEnv().filter((key) => !process.env[key])
+  const missing = collectRequiredEnv().filter((key) => !process.env[key])
+  if (!getRedisUrl()) missing.push('REDIS_URL or REDIS_HOST/REDIS_PORT')
+  return missing
 }
 
 async function checkDatabase() {
@@ -69,7 +102,7 @@ async function checkDatabase() {
 
 async function checkRedis() {
   const startedAt = Date.now()
-  const client = new Redis(process.env.REDIS_URL, {
+  const client = new Redis(getRedisUrl(), {
     maxRetriesPerRequest: 1,
     connectTimeout: 1500,
     lazyConnect: true,

@@ -1,7 +1,6 @@
 import React from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Card } from '@/components'
 import ProjectMediaWrapper from '@/components/projects/ProjectMediaWrapper'
 import * as Minio from 'minio'

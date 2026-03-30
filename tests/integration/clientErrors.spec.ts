@@ -2,6 +2,11 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+function uniqueTestIp(prefix: string) {
+  const suffix = String(Date.now() % 100000)
+  return `${prefix}.${suffix}`
+}
+
 async function importRoute() {
   const routePath = path.resolve(process.cwd(), 'app', 'api', 'client-errors', 'route.ts')
   return import(pathToFileURL(routePath).href)
@@ -51,7 +56,7 @@ describe('client error intake hardening', () => {
 
   it('dedupes repeated reports within the dedupe window', async () => {
     const route = await importRoute()
-    const headers = { 'Content-Type': 'application/json', 'X-Forwarded-For': '203.0.113.10' }
+    const headers = { 'Content-Type': 'application/json', 'X-Forwarded-For': uniqueTestIp('203.0.113') }
     const body = JSON.stringify({ type: 'window-error', message: 'boom', route: '/admin' })
 
     const first = await route.POST(new Request('http://localhost/api/client-errors', { method: 'POST', headers, body }))
@@ -65,7 +70,7 @@ describe('client error intake hardening', () => {
   it('rate limits repeated client error posts from the same source', async () => {
     process.env.CLIENT_ERROR_RATE_MAX = '1'
     const route = await importRoute()
-    const headers = { 'Content-Type': 'application/json', 'X-Forwarded-For': '198.51.100.5' }
+    const headers = { 'Content-Type': 'application/json', 'X-Forwarded-For': uniqueTestIp('198.51.100') }
 
     const first = await route.POST(new Request('http://localhost/api/client-errors', {
       method: 'POST',

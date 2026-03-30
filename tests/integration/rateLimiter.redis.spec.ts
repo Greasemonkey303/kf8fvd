@@ -11,8 +11,13 @@ let rateLimiter: typeof import('../../lib/rateLimiter') | null = null
 let redisClient: { ping: () => Promise<unknown>; disconnect?: () => Promise<void> } | null = null
 const KEY = 'int:rate:1'
 
+async function getTestRedisUrl() {
+  const config = await import('../../lib/rateLimiterConfig')
+  return config.getRedisUrl() || 'redis://127.0.0.1:6379'
+}
+
 beforeAll(async () => {
-  process.env.REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379'
+  process.env.REDIS_URL = process.env.REDIS_URL || await getTestRedisUrl()
   try {
     const mod = await import('ioredis')
     const RedisCtor = (mod && (mod.default || mod)) as unknown as { new (url?: string): { ping: () => Promise<unknown>; disconnect: () => Promise<void> } }
@@ -20,6 +25,7 @@ beforeAll(async () => {
     await redisClient.ping()
     // Import rateLimiter after confirming Redis is reachable so getRedis uses Redis path
     rateLimiter = await import('../../lib/rateLimiter')
+    rateLimiter.__test_resetInternalState()
     await rateLimiter.resetKey(KEY)
   } catch (err: unknown) {
     // Redis not available — log and allow tests to skip

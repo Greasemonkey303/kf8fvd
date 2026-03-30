@@ -23,10 +23,15 @@ function getFreePort(): Promise<number> {
 
 async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)) }
 
+async function getConfiguredRedisUrl() {
+  const config = await import('../../lib/rateLimiterConfig')
+  return config.getRedisUrl()
+}
+
 describe('admin auth locks integration', () => {
   it('creates a lock via rateLimiter and unlocks via admin API', async () => {
     // Prefer an existing REDIS_URL (CI will set this). If not present, try to start a Docker redis.
-    let redisUrl = process.env.REDIS_URL || ''
+    let redisUrl = process.env.REDIS_URL || await getConfiguredRedisUrl() || ''
     const container = 'kf8fvd-redis-adminlocks-test'
     let startedContainer = false
 
@@ -62,6 +67,7 @@ describe('admin auth locks integration', () => {
 
     // Import rateLimiter and trigger a lock (max=1 causes immediate lock)
     const rl = await import('../../lib/rateLimiter')
+    rl.__test_resetInternalState()
     const { incrementFailure } = rl
     const KEY = 'admin:test:key'
     const res = await incrementFailure(KEY, { max: 1, windowMs: 60_000, lockMs: 60_000 })
