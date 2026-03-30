@@ -77,8 +77,7 @@ function Clock() {
   );
 }
 
-function OnAirBadge() {
-  // Read on-air state from the server; fallback to a local time heuristic
+function useOnAirState() {
   const [onAir, setOnAir] = useState<boolean | null>(null);
   useEffect(() => {
     let mounted = true
@@ -106,6 +105,11 @@ function OnAirBadge() {
     const id = setInterval(fetchState, 30_000)
     return () => { mounted = false; clearInterval(id) }
   }, [])
+
+  return onAir
+}
+
+function OnAirBadge({ onAir }: { onAir: boolean | null }) {
   const badgeRef = useRef<HTMLDivElement | null>(null);
 
   // Position the badge so its top aligns with the top of the `.time`
@@ -156,6 +160,7 @@ interface QsoEntry {
 }
 
 export default function Dashboard() {
+  const onAir = useOnAirState()
   const [space, setSpace] = useState<{kIndex:number; f107:number; source:string} | null>(null);
   const [qsos, setQsos] = useState<Array<string | QsoEntry> | null>(null);
   const [bandGrid, setBandGrid] = useState<Record<string, number[]> | null>(null);
@@ -315,8 +320,15 @@ export default function Dashboard() {
         <div className={styles.stationHeroGrid}>
           <div className={styles.stationLead}>
             <div className="eyebrow-row">
-              <span className="signal-dot" aria-hidden></span>
+              <span
+                className={[
+                  styles.signalDot,
+                  onAir === null ? styles.signalDotUnknown : onAir ? styles.signalDotOn : styles.signalDotOff,
+                ].join(' ')}
+                aria-hidden
+              ></span>
               <span className={styles.stationLeadLabel}>Station status</span>
+              <span className={styles.stationLeadState}>{onAir === null ? 'Loading' : onAir ? 'On Air' : 'Standby'}</span>
             </div>
             <h3 className={styles.stationHeadline}>{operatingHeadline}</h3>
             <p className={styles.stationDeck}>{operatingDeck}</p>
@@ -327,7 +339,7 @@ export default function Dashboard() {
           <div className={styles.stationMetrics}>
             <div className={styles.metricCard}>
               <span className={styles.metricLabel}>On-air state</span>
-              <strong className={styles.metricValue}>Live</strong>
+              <strong className={styles.metricValue}>{onAir === null ? 'Loading' : onAir ? 'On Air' : 'Standby'}</strong>
               <p className="surface-note">Realtime cues are pulled into the dashboard so visitors can tell whether the page reflects an active station.</p>
             </div>
             <div className={styles.metricCard}>
@@ -348,7 +360,7 @@ export default function Dashboard() {
         <Card className={`${styles.largeCard}`} title="Live" subtitle="Clock & Status">
           <div className={styles.liveInner}>
             <Clock />
-            <OnAirBadge />
+            <OnAirBadge onAir={onAir} />
           </div>
         </Card>
         {/* Featured hero card removed */}
