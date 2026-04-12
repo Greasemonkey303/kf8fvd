@@ -8,8 +8,8 @@ export default async function LocksPage({ searchParams }: { searchParams?: { pag
   const admin = await requireAdmin()
   if (!admin) return <main className={styles.pagePad20}>Unauthorized</main>
 
-  const page = Math.max(1, parseInt(searchParams?.page || '1'))
-  const pageSize = Math.min(200, Math.max(10, parseInt(searchParams?.pageSize || '50')))
+  const page = Math.max(1, parseInt(searchParams?.page || '1', 10))
+  const pageSize = Math.min(200, Math.max(10, parseInt(searchParams?.pageSize || '50', 10)))
   const q = (searchParams?.q || '').trim()
 
   let where = '1=1'

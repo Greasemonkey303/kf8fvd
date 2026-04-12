@@ -6,8 +6,8 @@ export async function GET(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const url = new URL(req.url)
-  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
-  const pageSize = Math.min(200, Math.max(10, parseInt(url.searchParams.get('pageSize') || '50')))
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10))
+  const pageSize = Math.min(200, Math.max(10, parseInt(url.searchParams.get('pageSize') || '50', 10)))
   const q = (url.searchParams.get('q') || '').trim()
 
   let where = '1=1'

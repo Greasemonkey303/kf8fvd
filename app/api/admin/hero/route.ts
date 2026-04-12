@@ -10,9 +10,11 @@ export async function GET(req: Request) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const url = new URL(req.url)
-    const id = url.searchParams.get('id')
-    if (id) {
-      const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero WHERE id = ?', [Number(id)])
+    const rawId = url.searchParams.get('id')
+    if (rawId) {
+      const id = Number(rawId)
+      if (!Number.isInteger(id) || id < 1) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+      const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero WHERE id = ?', [id])
       return NextResponse.json({ items: rows })
     }
     const rows = await query<Record<string, unknown>[]>('SELECT * FROM hero ORDER BY id ASC')

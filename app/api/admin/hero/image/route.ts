@@ -100,9 +100,11 @@ export async function DELETE(req: Request) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const url = new URL(req.url)
-    const id = url.searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-    const r = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE id = ?', [Number(id)])
+    const rawId = url.searchParams.get('id')
+    if (!rawId) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    const id = Number(rawId)
+    if (!Number.isInteger(id) || id < 1) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+    const r = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE id = ?', [id])
     if (!r || r.length === 0) return NextResponse.json({ error: 'not found' }, { status: 404 })
     const row = r[0]
     const hero_id = row.hero_id
@@ -113,7 +115,7 @@ export async function DELETE(req: Request) {
       const variantsRaw = row.variants
       let variants: Record<string, unknown> | null = null
       try { variants = variantsRaw ? (typeof variantsRaw === 'string' ? JSON.parse(variantsRaw) : variantsRaw as Record<string, unknown>) : null } catch { variants = null }
-      await archiveDeletedContent({ contentType: 'hero_image', originalId: Number(id), slug: String(hero_id || id), snapshot: row, objectReferences: [objectKey, ...(variants ? Object.values(variants) : [])], deletedBy: admin.email })
+      await archiveDeletedContent({ contentType: 'hero_image', originalId: id, slug: String(hero_id || id), snapshot: row, objectReferences: [objectKey, ...(variants ? Object.values(variants) : [])], deletedBy: admin.email })
       if (objectKey) await deleteObjectStrict(objectKey)
       if (variants && typeof variants === 'object') {
         await Promise.all(Object.values(variants).map((value) => deleteObjectStrict(value)))
@@ -122,7 +124,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
     }
 
-    await query('DELETE FROM hero_image WHERE id = ?', [Number(id)])
+    await query('DELETE FROM hero_image WHERE id = ?', [id])
     const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
     return NextResponse.json({ images })
   } catch (err: unknown) {

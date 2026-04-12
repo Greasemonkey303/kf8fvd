@@ -184,8 +184,10 @@ export async function DELETE(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const url = new URL(req.url)
-  const id = url.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const rawId = url.searchParams.get('id')
+  if (!rawId) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const id = Number(rawId)
+  if (!Number.isInteger(id) || id < 1) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   // find the credential to get its s3_prefix so we can delete related objects
   const rows = await query<Array<Record<string, unknown>>>('SELECT * FROM credentials WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -194,7 +196,7 @@ export async function DELETE(req: Request) {
   try {
     const prefixKeys = prefix ? await listObjectKeysByPrefix(`${prefix}/`) : []
     const imageKey = resolveObjectKeyFromReference(row.image_path)
-    await archiveDeletedContent({ contentType: 'credential', originalId: Number(id), slug: String(row.slug || prefix || id), snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
+    await archiveDeletedContent({ contentType: 'credential', originalId: id, slug: String(row.slug || prefix || id), snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
     if (prefix) await deletePrefixStrict(`${prefix}/`)
     if (imageKey) await deleteObjectStrict(imageKey)
   } catch (e: unknown) {

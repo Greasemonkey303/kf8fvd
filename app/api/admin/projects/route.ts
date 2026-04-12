@@ -167,8 +167,10 @@ export async function DELETE(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const url = new URL(req.url)
-  const id = url.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const rawId = url.searchParams.get('id')
+  if (!rawId) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const id = Number(rawId)
+  if (!Number.isInteger(id) || id < 1) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   // find the project to get its slug so we can delete related objects
   const rows = await query<Array<Record<string, unknown>>>('SELECT * FROM projects WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -178,7 +180,7 @@ export async function DELETE(req: Request) {
     const prefix = `${process.env.S3_UPLOAD_PREFIX || 'projects/'}${slug}/`
     const prefixKeys = await listObjectKeysByPrefix(prefix)
     const imageKey = resolveObjectKeyFromReference(row.image_path)
-    await archiveDeletedContent({ contentType: 'project', originalId: Number(id), slug, snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
+    await archiveDeletedContent({ contentType: 'project', originalId: id, slug, snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
     await deletePrefixStrict(prefix)
     if (imageKey) await deleteObjectStrict(imageKey)
   } catch (e: unknown) {

@@ -111,8 +111,10 @@ export async function DELETE(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const url = new URL(req.url)
-  const id = url.searchParams.get('id')
-  if (id) {
+  const rawId = url.searchParams.get('id')
+  if (rawId) {
+    const id = Number(rawId)
+    if (!Number.isInteger(id) || id < 1) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
     await query('UPDATE messages SET is_deleted = 1 WHERE id = ?', [id])
     return NextResponse.json({ ok: true })
   }

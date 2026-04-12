@@ -77,8 +77,6 @@ export default function AdminAboutEditor() {
     setError(null)
     try {
       if (!idParam) {
-        setCards([])
-        setError('About page route is missing an id.')
         return
       }
       const res = await fetch('/admin/api/pages?page=1&limit=1000')
@@ -165,7 +163,11 @@ export default function AdminAboutEditor() {
 
   const loadRef = useRef(load)
   loadRef.current = load
-  useEffect(()=>{ const t = setTimeout(() => { void loadRef.current() }, 0); return ()=>clearTimeout(t) }, [idParam])
+  useEffect(()=>{
+    if (!idParam) return
+    const t = setTimeout(() => { void loadRef.current() }, 0)
+    return ()=>clearTimeout(t)
+  }, [idParam])
 
   // autosave locally (debounced)
   const autosaveTimer = useRef<number | null>(null)
@@ -590,7 +592,7 @@ export default function AdminAboutEditor() {
     }
   }
 
-  if (loading) return <AdminLoadingState label="Loading about editor" />
+  if (!idParam || loading) return <AdminLoadingState label="Loading about editor" />
 
   // Precompute sanitized HTML snippets to avoid complex inline expressions in JSX
   const sanitizedSummaryHtml = ( (metadata.summary as Record<string, unknown>)?.['text_sanitized'] ?? (purify ? purify.sanitize(String(metadata.summary?.text || '')) : (metadata.summary?.text || '')) ) as string

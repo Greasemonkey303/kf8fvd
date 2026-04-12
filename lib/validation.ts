@@ -57,7 +57,8 @@ export function readString(body: Record<string, unknown>, field: string, options
   }
   if (typeof value !== 'string') issue(field, `${field} must be a string`)
   const normalized = options?.trim === false ? value : value.trim()
-  if (!options?.allowEmpty && normalized.length === 0) {
+  if (normalized.length === 0) {
+    if (options?.allowEmpty) return normalized
     if (options?.required) issue(field, `${field} is required`)
     return null
   }

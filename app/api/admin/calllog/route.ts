@@ -48,8 +48,8 @@ export async function GET(req: Request) {
 
   try {
     const url = new URL(req.url)
-    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
-    const pageSize = Math.min(1000, Math.max(10, parseInt(url.searchParams.get('pageSize') || '200')))
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10))
+    const pageSize = Math.min(1000, Math.max(10, parseInt(url.searchParams.get('pageSize') || '200', 10)))
     const offset = (page - 1) * pageSize
     const rows = await query<Array<Record<string, unknown>>>('SELECT * FROM call_logs ORDER BY COALESCE(qso_datetime, created_at) DESC LIMIT ? OFFSET ?', [pageSize, offset])
     const countRes = await query<Array<Record<string, unknown>>>('SELECT COUNT(*) as cnt FROM call_logs')

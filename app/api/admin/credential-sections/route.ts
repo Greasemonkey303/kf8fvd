@@ -103,8 +103,10 @@ export async function DELETE(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const url = new URL(req.url)
-  const id = url.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const rawId = url.searchParams.get('id')
+  if (!rawId) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const id = Number(rawId)
+  if (!Number.isInteger(id) || id < 1) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   const rows = await query<{ image_path?: string | null }[]>('SELECT image_path FROM credential_sections WHERE id = ?', [id])
   if (!rows || rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   try {

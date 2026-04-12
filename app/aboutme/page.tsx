@@ -114,9 +114,12 @@ export default async function Page() {
     summaryText = removeDebugBlock(summaryText)
     if (isJsonString(summaryText)) summaryText = ''
 
+    const primarySlug = String((primary as Record<string, unknown>)['slug'] || '')
+    const isPrimaryAboutRoot = primarySlug === 'about' || primarySlug === 'aboutme'
+
     const data = {
       summary: {
-        title: String(((primary as Record<string, unknown>)['title']) || ((primaryMeta?.summary as Record<string, unknown>)?.['title']) || "Hi - I\'m Zachary (KF8FVD)"),
+        title: String((isPrimaryAboutRoot ? (primary as Record<string, unknown>)['title'] : '') || ((primaryMeta?.summary as Record<string, unknown>)?.['title']) || "Hi - I\'m Zachary (KF8FVD)"),
         text: summaryText,
         cta: {
           label: String(((primaryMeta?.summary as Record<string, unknown>)?.['cta'] as Record<string, unknown>)?.['label'] || 'Contact Me'),

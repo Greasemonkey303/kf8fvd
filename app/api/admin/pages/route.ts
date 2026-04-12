@@ -239,8 +239,10 @@ export async function DELETE(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const url = new URL(req.url)
-  const id = url.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const rawId = url.searchParams.get('id')
+  if (!rawId) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const id = Number(rawId)
+  if (!Number.isInteger(id) || id < 1) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   const cardParam = url.searchParams.get('card')
   // Helper to extract an S3 object key from various URL forms stored in metadata
   // If a card param was provided, attempt to remove only that card from the page metadata
