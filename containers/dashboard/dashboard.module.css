@@ -6,7 +6,23 @@
   gap: 1.5rem;
   padding: 0 clamp(0.8rem, 1vw + 0.35rem, 1.25rem);
 }
-.row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; align-items: start; }
+.signalGrid,
+.featureGrid,
+.utilityGrid {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+.signalGrid {
+  grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.18fr);
+}
+.featureGrid {
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 1.28fr);
+}
+.utilityGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .stationHero {
   overflow: hidden;
 }
@@ -102,12 +118,27 @@
 }
 .smallCard { padding: .5rem; }
 .highlightCard { box-shadow: 0 8px 30px var(--shadow-45); border-radius: 12px; transform: translateY(-2px); }
+.propagationCard,
+.qsoCard,
+.stationNotesCard,
+.bandActivityCard,
+.utilityCard {
+  align-self: start;
+}
 .liveInner { display:flex; gap: 0.75rem; align-items:center; justify-content:space-between; }
 .clock { display:flex; flex-direction:column; align-items:flex-start; }
-.callsign { font-weight:900; font-size:1.05rem; color:var(--color-link); }
-.time { font-size:1.25rem; font-weight:700; }
-.utc { font-size:0.95rem; color: var(--white-85); margin-top:2px }
-.tz { font-size:0.9rem; color: var(--white-85); }
+.callsign { font-weight:900; font-size:1.05rem; color:var(--color-link); letter-spacing: 0.08em; }
+.time,
+.utc,
+.tz,
+.cityTime,
+.cityTz {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.time { font-size:1.25rem; font-weight:700; min-width: 8ch; }
+.utc { font-size:0.95rem; color: var(--white-85); margin-top:2px; min-width: 12ch; }
+.tz { font-size:0.9rem; color: var(--white-85); min-width: 14ch; }
 
 /* ensure clock lines don't overlap and scale down on small screens */
 .clock .time, .clock .utc, .clock .tz { line-height: 1.2 }
@@ -121,12 +152,12 @@
 }
 
 .citiesGrid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top:10px; width:100%; align-items:stretch }
-.cityItem { background: var(--surface-1); padding:10px 12px; border-radius:14px; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; min-height:44px }
-.cityName { font-size:0.8rem; font-weight:800; color: var(--white-95); }
-.cityHeader { display:flex; align-items:center; gap:8px }
+.cityItem { background: var(--surface-1); padding:10px 12px; border-radius:14px; display:grid; grid-template-columns:minmax(0, 1fr) 8ch; align-items:center; gap:10px; min-height:44px }
+.cityName { font-size:0.8rem; font-weight:800; color: var(--white-95); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cityHeader { display:flex; align-items:center; gap:8px; min-width: 0; overflow: hidden }
 .cityItem { border-left: 4px solid var(--city-color, var(--logo-green)); }
-.cityTime { font-size:1.02rem; font-weight:900; color: var(--color-link); }
-.cityTz { font-size:0.75rem; color: var(--white-66); margin-left:8px }
+.cityTime { font-size:1.02rem; font-weight:900; color: var(--color-link); min-width: 8ch; text-align:right; justify-self:end; }
+.cityTz { font-size:0.75rem; color: var(--white-66); margin-left:8px; flex: 0 0 auto; }
 
 @media (min-width: 720px) {
   .citiesGrid { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -146,7 +177,7 @@
 .cityItem { transition: transform 180ms ease, box-shadow 180ms ease; will-change: transform }
 .cityItem:hover { transform: translateY(-6px); box-shadow: 0 14px 36px var(--shadow-28); }
 .cityTime { transition: transform 220ms cubic-bezier(.2,.9,.2,1), color 180ms ease; display:inline-block }
-.cityItem:hover .cityTime { transform: translateX(8px) scale(1.02); color: var(--white-100); }
+.cityItem:hover .cityTime { transform: translateX(4px) scale(1.01); color: var(--white-100); }
 .cityName { transition: color 160ms ease }
 .cityItem:hover .cityName { color: var(--white-100) }
 .badge { padding:6px 10px; border-radius:10px; font-weight:700; }
@@ -208,12 +239,183 @@
 
 .qsoItem::before { content: ''; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:10px; background: linear-gradient(180deg,var(--color-accent-1),var(--color-accent-2)); opacity:0.95 }
 
-.heatmap { display:flex; flex-direction:column; gap:8px; }
-.heatHeader { display:flex; gap:8px; align-items:center; justify-content:center; color: var(--white-85) }
-.heatHeader div { width:60px; }
-.heatRow { display:flex; gap:8px; align-items:center; }
-.bandLabel { width:60px; text-align:left; font-weight:700 }
-.heatCell { width:60px; height:20px; border-radius:6px; background: var(--card-accent-top); opacity: var(--cell-opacity, 1); }
+.heatOverview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.95fr);
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+.heatOverviewCopy,
+.heatStatCard,
+.heatBandCard {
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  box-shadow: 0 16px 38px rgba(2,6,12,0.18);
+}
+.heatOverviewCopy {
+  padding: 1rem 1.1rem;
+}
+.heatEyebrow {
+  display: inline-flex;
+  margin-bottom: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #9ae6b4;
+}
+.heatHeadline {
+  margin: 0;
+  font-size: clamp(1.05rem, 0.9rem + 0.5vw, 1.45rem);
+  line-height: 1.05;
+  color: var(--white-100);
+}
+.heatDeck {
+  margin: 0.55rem 0 0;
+  color: var(--white-88);
+  line-height: 1.72;
+}
+.heatStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-content: start;
+  align-self: start;
+}
+.heatStatCard {
+  padding: 0.9rem 0.95rem;
+}
+.heatStatLabel {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--white-66);
+}
+.heatStatValue {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: var(--white-100);
+  line-height: 1.25;
+}
+.heatmapShell {
+  padding: 0.95rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background:
+    radial-gradient(circle at top right, rgba(45,212,191,0.08), transparent 38%),
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.018));
+}
+.heatmap { display:flex; flex-direction:column; gap:10px; }
+.heatHeader,
+.heatRow {
+  display:grid;
+  grid-template-columns: 90px repeat(4, minmax(0, 1fr));
+  gap:8px;
+  align-items:center;
+}
+.heatHeader {
+  color: var(--white-78);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.heatAxisLabel { text-align:left; }
+.heatHeaderCell {
+  text-align:center;
+  padding: 0.42rem 0.25rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.bandLabelBlock {
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.bandLabel { text-align:left; font-weight:800; color: var(--white-92); }
+.bandLabelMeta {
+  font-size: 0.64rem;
+  color: var(--white-66);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.heatCell {
+  min-height: 46px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  display:flex;
+  flex-direction: column;
+  align-items:center;
+  justify-content:center;
+  gap: 2px;
+  padding: 0.35rem 0.25rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 24px rgba(2,6,12,0.18);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+.heatCell:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 14px 30px rgba(2,6,12,0.24);
+}
+.heatCellValue {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.heatCellScore {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  opacity: 0.82;
+}
+.heatCellUnknown,
+.legendSwatchUnknown,
+.activityToneUnknown {
+  background: linear-gradient(135deg, rgba(71,85,105,0.95), rgba(51,65,85,0.9));
+  color: #f8fafc;
+}
+.heatCellLow,
+.legendSwatchLow,
+.activityToneLow {
+  background: linear-gradient(135deg, #4b5563, #64748b);
+  border-color: rgba(148,163,184,0.45);
+  color: #f8fafc;
+}
+.heatCellFair,
+.legendSwatchFair,
+.activityToneFair {
+  background: linear-gradient(135deg, #9a3412, #ea580c);
+  border-color: rgba(251,146,60,0.5);
+  color: #fff7ed;
+}
+.heatCellGood,
+.legendSwatchGood,
+.activityToneGood {
+  background: linear-gradient(135deg, #a16207, #facc15);
+  border-color: rgba(250,204,21,0.55);
+  color: #271703;
+}
+.heatCellStrong,
+.legendSwatchStrong,
+.activityToneStrong {
+  background: linear-gradient(135deg, #0f766e, #2dd4bf);
+  border-color: rgba(45,212,191,0.45);
+  color: #042f2e;
+}
+.heatCellPeak,
+.legendSwatchPeak,
+.activityTonePeak {
+  background: linear-gradient(135deg, #166534, #4ade80);
+  border-color: rgba(74,222,128,0.48);
+  color: #052e16;
+}
 
 /* subtle card polish */
 .dashboard :global(.card) { background: var(--card-bg); border-radius:12px; box-shadow: var(--card-shadow); }
@@ -236,10 +438,8 @@
   line-height: 1.7;
 }
 
-@media (max-width: 920px) {
-  .row { grid-template-columns: 1fr; }
-  .heatHeader div, .bandLabel, .heatCell { width:48px }
-  .stationHeroGrid { grid-template-columns: 1fr; }
+@media (min-width: 760px) {
+  .stationCardGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* polish card titles and dashboard-specific header styles */
@@ -265,8 +465,15 @@
 .qsoList::-webkit-scrollbar-thumb { background: linear-gradient(180deg,var(--color-accent-2),var(--color-accent-1)); border-radius:8px }
 
 @media (max-width: 920px) {
-  .row { grid-template-columns: 1fr; }
-  .heatHeader div, .bandLabel, .heatCell { width:48px }
+  .row,
+  .signalGrid,
+  .featureGrid,
+  .utilityGrid { grid-template-columns: 1fr; }
+  .stationHeroGrid { grid-template-columns: 1fr; }
+  .heatOverview { grid-template-columns: 1fr; }
+  .heatStats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .heatHeader,
+  .heatRow { grid-template-columns: 72px repeat(4, minmax(0, 1fr)); }
   .qsoItem { padding:10px; }
   .dashboard { padding: 0 .75rem; }
   .largeCard { padding: 18px; }
@@ -279,12 +486,96 @@
 .cardSource { display:block }
 
 /* heatmap legend */
-.heatLegend { display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-top:8px }
+.heatLegend { display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-top:10px; flex-wrap:wrap }
 .legendItem { display:flex; gap:8px; align-items:center; }
-.legendSwatch { width:28px; height:14px; border-radius:6px; background: linear-gradient(90deg,var(--color-accent-1),var(--color-accent-2)); border: 1px solid var(--border-06); opacity: var(--legend-opacity, 1) }
+.legendSwatch { width:28px; height:14px; border-radius:999px; border: 1px solid rgba(255,255,255,0.12); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08) }
 .legendLabel { font-size:0.85rem; color: var(--white-78) }
+.heatMeta { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px; flex-wrap:wrap }
+.heatBandStrip {
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.heatBandCard {
+  padding: 0.95rem 1rem;
+}
+.heatBandCardTop {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+}
+.heatBandCardLabel {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--white-100);
+}
+.heatBandCardFocus {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--white-66);
+}
+.heatBandCardBadge {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 0.32rem 0.55rem;
+  min-width: 64px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.heatBandCardText {
+  margin: 0.6rem 0 0;
+  color: var(--white-88);
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+.heatBandCardFooter {
+  margin-top: 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--white-66);
+}
+.sourceBadge {
+  display:inline-flex;
+  align-items:center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sourceBadgeLive {
+  background: rgba(22,163,74,0.16);
+  border: 1px solid rgba(74,222,128,0.28);
+  color: #86efac;
+}
+.sourceBadgeFallback {
+  background: rgba(234,88,12,0.14);
+  border: 1px solid rgba(251,146,60,0.28);
+  color: #fdba74;
+}
 
-@media (min-width: 960px) {
+@media (min-width: 1280px) {
   .stationCardGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .heatStats { grid-template-columns: 1fr; }
+  .heatBandStrip { grid-template-columns: 1fr; }
+  .heatCell { min-height: 40px; }
+  .heatCellValue { font-size: 0.62rem; letter-spacing: 0.05em; }
+  .heatCellScore { font-size: 0.54rem; }
+  .legendLabel { font-size: 0.8rem; }
 }
 

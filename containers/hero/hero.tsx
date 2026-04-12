@@ -16,6 +16,12 @@ type HeroImageRecord = Record<string, unknown> & {
   url?: string
   alt?: string
   is_featured?: number | boolean
+  variants?: string | HeroVariants | null
+}
+
+type HeroVariants = {
+  avif?: string
+  webp?: string
 }
 
 async function fetchHero() {
@@ -73,13 +79,35 @@ export default async function Hero() {
   const rawAlt = featured?.alt ? String(featured.alt) : ''
   const altText = rawAlt ? rawAlt.replace(/\.[^.\/\\]+$/, '') : 'Hero image'
   const fallbackSrc = imageSrc
-  const heroBackgroundStyle = {
-    backgroundImage: `url("${fallbackSrc.replace(/"/g, '\\"')}")`,
+  let avifUrl: string | null = null
+  let webpUrl: string | null = null
+  try {
+    let variants: HeroVariants | string | null | undefined = featured?.variants
+    if (variants && typeof variants === 'string') {
+      try { variants = JSON.parse(variants) as HeroVariants } catch { variants = null }
+    }
+    if (variants && typeof variants === 'object') {
+      if (variants.avif) {
+        const value = String(variants.avif)
+        avifUrl = value.startsWith('/') || /^https?:\/\//i.test(value) ? value : buildPublicUrl(value)
+      }
+      if (variants.webp) {
+        const value = String(variants.webp)
+        webpUrl = value.startsWith('/') || /^https?:\/\//i.test(value) ? value : buildPublicUrl(value)
+      }
+    }
+  } catch {
+    avifUrl = null
+    webpUrl = null
   }
 
   return (
     <section className={styles.hero} aria-labelledby="hero-title" role="region">
-      <div className={styles.bg} role="img" aria-label={altText} style={heroBackgroundStyle} />
+      <picture className={styles.bg}>
+        {avifUrl && <source srcSet={avifUrl} type="image/avif" />}
+        {webpUrl && <source srcSet={webpUrl} type="image/webp" />}
+        <img src={fallbackSrc} alt={altText} className={styles.bgImg} />
+      </picture>
       <div className={styles.inner}>
         <h1 id="hero-title">{String(hero?.title || 'KF8FVD - Amateur Radio')}</h1>
         {hero && hero.content && String(hero.content).trim() ? (
