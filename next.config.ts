@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+const experimentalConfig: NonNullable<NextConfig['experimental']> = {
+  proxyClientMaxBodySize: '60mb',
+}
+
 const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
@@ -71,6 +75,7 @@ const CSP = [
 const cspHeaderKey = (process.env.CSP_REPORT_ONLY === '1' || process.env.CSP_REPORT_ONLY === 'true') ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'
 
 const nextConfig: NextConfig = {
+  experimental: experimentalConfig,
   async headers() {
     // Set CSP header here for now (includes 'unsafe-inline' for local debugging).
     const headersList = [

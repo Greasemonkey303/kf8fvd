@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useState, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import styles from '../../admin.module.css'
 import projectStyles from '../../../projects/hotspot/hotspot.module.css'
 import Card from '../../../../components/card/card'
@@ -26,10 +26,10 @@ type AboutMetadata = {
   cards?: CardData[]
 }
 
-export default function AdminAboutEditor({ params }: { params?: unknown }) {
-  // `params` may be a Promise in the App Router — treat as unknown and access via indexer
-  const resolvedParams = params as Record<string, unknown> | undefined
-  const idParam = resolvedParams ? (resolvedParams['id'] ?? resolvedParams['slug']) : undefined
+export default function AdminAboutEditor() {
+  const routeParams = useParams()
+  const routeIdParam = routeParams?.id ?? routeParams?.slug
+  const idParam = Array.isArray(routeIdParam) ? routeIdParam[0] : routeIdParam
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -40,6 +40,8 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
   const [metadata, setMetadata] = useState<AboutMetadata>({})
 
   const [cards, setCards] = useState<CardData[]>([])
+  const [cardStorageMode, setCardStorageMode] = useState<'cards' | 'named'>('cards')
+  const [namedCardKeys, setNamedCardKeys] = useState<string[]>([])
 
   const searchParams = useSearchParams()
   const [activeIdx, setActiveIdx] = useState<number>(0)
@@ -74,6 +76,11 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     setLoading(true)
     setError(null)
     try {
+      if (!idParam) {
+        setCards([])
+        setError('About page route is missing an id.')
+        return
+      }
       const res = await fetch('/admin/api/pages?page=1&limit=1000')
       const json = await res.json()
       const items = (json?.items || []) as Array<Record<string, unknown>>
@@ -85,8 +92,9 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
         setIsPublished(Boolean(found['is_published']))
         try {
           const md = found.metadata ? (typeof found.metadata === 'string' ? JSON.parse(found.metadata) : found.metadata) : {}
-          // If cards array exists, prefer it. Otherwise convert legacy named cards to a cards array so editor works consistently.
           let loadedCards: CardData[] = []
+          let nextStorageMode: 'cards' | 'named' = 'cards'
+          let nextNamedCardKeys: string[] = []
           if (Array.isArray(md.cards) && md.cards.length) {
             loadedCards = (md.cards as unknown[]).map((c: unknown) => {
               const card = c as Record<string, unknown>
@@ -94,31 +102,41 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                 title: String(card['title'] ?? ''),
                 subtitle: String(card['subtitle'] ?? ''),
                 content: String(card['content'] ?? ''),
-                image: resolveManagedImageUrl(card['image'], 'aboutHeadshot'),
+                image: resolveManagedImageUrl(card['image']),
                 images: Array.isArray(card['images']) ? (card['images'] as string[]) : (card['image'] ? [String(card['image'])] : []),
                 templateLarge: String(card['templateLarge'] ?? ''),
                 templateSmall: String(card['templateSmall'] ?? ''),
               } as CardData
             })
           } else {
-            const about = md.aboutCard || {}
-            const topo = md.topologyCard || {}
-            const shack = md.hamshackCard || {}
-            loadedCards = [
-              { title: about.title || found.title || 'About Me', subtitle: about.subtitle || '', content: about.content || found.content || '', image: resolveManagedImageUrl(about.image, 'aboutHeadshot'), images: about.image ? [resolveManagedImageUrl(about.image)] : [], templateLarge: about.templateLarge || '', templateSmall: about.templateSmall || '' },
-              { title: topo.title || 'Home Topology', subtitle: topo.subtitle || 'Hidden Lakes Apartments, Kentwood', content: topo.content || '', image: resolveManagedImageUrl(topo.image, 'aboutTopology'), images: topo.image ? [resolveManagedImageUrl(topo.image)] : [], templateLarge: topo.templateLarge || '', templateSmall: topo.templateSmall || '' },
-              { title: shack.title || 'Ham Shack', subtitle: shack.subtitle || 'Home Radio & Workshop', content: shack.content || '', image: resolveManagedImageUrl(shack.image, 'aboutHamshack'), images: shack.image ? [resolveManagedImageUrl(shack.image)] : [], templateLarge: shack.templateLarge || '', templateSmall: shack.templateSmall || '' }
-            ]
+            const namedEntries = [
+              { key: 'about', card: md.aboutCard, fallbackTitle: String(found.title || 'About Me'), fallbackSubtitle: '', fallbackContent: String(found.content || '') },
+              { key: 'topology', card: md.topologyCard, fallbackTitle: 'Home Topology', fallbackSubtitle: 'Hidden Lakes Apartments, Kentwood', fallbackContent: '' },
+              { key: 'hamshack', card: md.hamshackCard, fallbackTitle: 'Ham Shack', fallbackSubtitle: 'Home Radio & Workshop', fallbackContent: '' },
+            ].filter((entry) => entry.card && typeof entry.card === 'object') as Array<{ key: string; card: Record<string, unknown>; fallbackTitle: string; fallbackSubtitle: string; fallbackContent: string }>
+
+            if (namedEntries.length > 0) {
+              nextStorageMode = 'named'
+              nextNamedCardKeys = namedEntries.map((entry) => entry.key)
+              loadedCards = namedEntries.map((entry) => ({
+                title: String(entry.card.title ?? entry.fallbackTitle),
+                subtitle: String(entry.card.subtitle ?? entry.fallbackSubtitle),
+                content: String(entry.card.content ?? entry.fallbackContent),
+                image: resolveManagedImageUrl(entry.card.image),
+                images: entry.card.image ? [resolveManagedImageUrl(entry.card.image)] : [],
+                templateLarge: String(entry.card.templateLarge ?? ''),
+                templateSmall: String(entry.card.templateSmall ?? ''),
+              }))
+            }
           }
           // determine which card index to open (from search param `card`)
           let requestedIndex = 0
           try {
             const cp = searchParams?.get('card')
             if (cp !== null && cp !== undefined) {
-              if (cp === 'about') requestedIndex = 0
-              else if (cp === 'topology') requestedIndex = 1
-              else if (cp === 'hamshack') requestedIndex = 2
-                else {
+              const namedIndex = nextNamedCardKeys.indexOf(String(cp))
+              if (namedIndex >= 0) requestedIndex = namedIndex
+              else {
                 const parsed = parseInt(String(cp), 10)
                 if (!Number.isNaN(parsed)) requestedIndex = parsed
               }
@@ -126,14 +144,19 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
           } catch {}
           if (requestedIndex < 0) requestedIndex = 0
           if (requestedIndex >= loadedCards.length) requestedIndex = Math.max(0, loadedCards.length - 1)
+          setCardStorageMode(nextStorageMode)
+          setNamedCardKeys(nextNamedCardKeys)
           setCards(loadedCards)
           setActiveIdx(requestedIndex)
           // populate gallery images from the active card's images (prefer card-local gallery), fall back to metadata.images or the card's image
           const activeCard = loadedCards[requestedIndex] || ({} as CardData)
           const cardImgs: string[] = (Array.isArray(activeCard.images) && activeCard.images.length) ? activeCard.images : (Array.isArray(md.images) ? md.images : (activeCard.image ? [activeCard.image] : []))
           setImages(cardImgs.slice(0,6))
-          setMetadata((prev) => ({ ...prev, ...md }))
+          setMetadata(md as AboutMetadata)
         } catch {}
+      } else {
+        setCards([])
+        setError(`About page ${String(idParam)} was not found.`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load about editor')
@@ -150,13 +173,13 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current)
     autosaveTimer.current = window.setTimeout(()=>{
       try {
-        const payload = { slug, title, metadata: { ...metadata, cards }, id, updated: Date.now() }
+        const payload = { slug, title, metadata, cards, cardStorageMode, namedCardKeys, id, updated: Date.now() }
         localStorage.setItem(currentDraftKey, JSON.stringify(payload))
         // autosave: store locally but avoid noisy toasts on every autosave
       } catch {}
     }, 800)
     return ()=>{ if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current) }
-  }, [cards, currentDraftKey, id, metadata, slug, title])
+  }, [cardStorageMode, cards, currentDraftKey, id, metadata, namedCardKeys, slug, title])
 
   // restore any draft available (try slug/id-specific, then generic)
   useEffect(()=>{
@@ -172,6 +195,9 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
             if (p.id) setId(p.id)
             if (p.slug) setSlug(p.slug)
             if (p.metadata) setMetadata(p.metadata)
+            if (Array.isArray(p.cards)) setCards(p.cards)
+            if (p.cardStorageMode === 'named' || p.cardStorageMode === 'cards') setCardStorageMode(p.cardStorageMode)
+            if (Array.isArray(p.namedCardKeys)) setNamedCardKeys(p.namedCardKeys.map((key: unknown) => String(key)))
             showToast('Restored unsaved draft', 'info')
             break
           }
@@ -186,7 +212,15 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
       const raw = localStorage.getItem(key) || localStorage.getItem('admin_about_draft:about')
       if (!raw) return
       const p = JSON.parse(raw)
-      if (p) { setTitle(p.title || title); if (p.id) setId(p.id); if (p.slug) setSlug(p.slug); if (p.metadata) setMetadata(p.metadata); }
+      if (p) {
+        setTitle(p.title || title)
+        if (p.id) setId(p.id)
+        if (p.slug) setSlug(p.slug)
+        if (p.metadata) setMetadata(p.metadata)
+        if (Array.isArray(p.cards)) setCards(p.cards)
+        if (p.cardStorageMode === 'named' || p.cardStorageMode === 'cards') setCardStorageMode(p.cardStorageMode)
+        if (Array.isArray(p.namedCardKeys)) setNamedCardKeys(p.namedCardKeys.map((key: unknown) => String(key)))
+      }
     } catch {}
   }
 
@@ -423,13 +457,46 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
     setSaving(true)
     setError(null)
     try{
-      const safeMetadata = { ...metadata, cards }
+      const normalizedCards = cards.map((card) => ({
+        title: String(card.title ?? ''),
+        subtitle: String(card.subtitle ?? ''),
+        content: String(card.content ?? ''),
+        image: String(card.image ?? ''),
+        images: Array.isArray(card.images) ? card.images.filter(Boolean).map((image) => String(image)) : [],
+        templateLarge: String(card.templateLarge ?? ''),
+        templateSmall: String(card.templateSmall ?? ''),
+      }))
+      const safeMetadata: Record<string, unknown> = { ...metadata }
+      delete safeMetadata.cards
+      delete safeMetadata.aboutCard
+      delete safeMetadata.topologyCard
+      delete safeMetadata.hamshackCard
+      if (cardStorageMode === 'named' && namedCardKeys.length > 0) {
+        namedCardKeys.forEach((key, index) => {
+          const card = normalizedCards[index]
+          if (!card) return
+          safeMetadata[`${key}Card`] = card
+        })
+      } else {
+        safeMetadata.cards = normalizedCards
+      }
       const payload: Record<string, unknown> = { id, slug: slug || undefined, title, content: '', metadata: safeMetadata, is_published: isPublished ? 1 : 0 }
       const method = id ? 'PUT' : 'POST'
       const res = await fetch('/admin/api/pages', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!res.ok) {
         const err = await res.json().catch(()=>({}))
-        const message = `Save failed: ${err?.error || res.status}`
+        const detailText = Array.isArray(err?.details)
+          ? err.details
+              .map((detail: { field?: unknown; message?: unknown }) => {
+                const field = typeof detail?.field === 'string' ? detail.field : ''
+                const message = typeof detail?.message === 'string' ? detail.message : ''
+                if (field && message && message !== field) return `${field}: ${message}`
+                return message || field
+              })
+              .filter(Boolean)
+              .join('; ')
+          : ''
+        const message = detailText ? `Save failed: ${detailText}` : `Save failed: ${err?.error || res.status}`
         setError(message)
         showToast(message, 'error')
         return
@@ -631,15 +698,14 @@ export default function AdminAboutEditor({ params }: { params?: unknown }) {
                         deleteImage={deleteImage}
                         onRemove={() => {
                           if (!id) return
-                          const hasCardsArray = Array.isArray(metadata?.cards) && metadata?.cards.length > 0
-                          const hasNamed = !!(metadata?.aboutCard || metadata?.topologyCard || metadata?.hamshackCard)
+                          const hasCardsArray = cardStorageMode === 'cards' && cards.length > 0
+                          const hasNamed = cardStorageMode === 'named' && namedCardKeys.length > 0
                           if (hasCardsArray && cards.length > 1) {
                             setDeleteModal({ open: true, mode: 'card', idx: activeIdx, message: 'Delete this card?' })
                             return
                           }
                           if (hasNamed) {
-                            const map = ['about','topology','hamshack']
-                            const key = map[activeIdx] || 'about'
+                            const key = namedCardKeys[activeIdx] || 'about'
                             setDeleteModal({ open: true, mode: 'named', namedKey: key, message: 'Delete this card?' })
                             return
                           }

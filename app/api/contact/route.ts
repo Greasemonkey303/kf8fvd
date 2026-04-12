@@ -5,6 +5,7 @@ import { verifyTurnstileToken } from '@/lib/turnstile'
 import { query } from '@/lib/db'
 import { createObjectStorageClient, getObjectStorageBucket } from '@/lib/objectStorage'
 import { logRouteError, logRouteEvent } from '@/lib/observability'
+import { generateWebpVariantForObject } from '@/lib/webpVariants'
 
 type SGAttachment = {
   content: string
@@ -12,6 +13,15 @@ type SGAttachment = {
   type: string
   disposition: string
   content_id?: string
+}
+
+type SavedAttachmentMeta = {
+  filename: string
+  type: string
+  dir?: string
+  key?: string
+  storage?: string
+  variants?: { webp?: string } | null
 }
 
 import fs from 'fs/promises'
@@ -147,7 +157,7 @@ export async function POST(req: Request) {
       }
     }
 
-    let savedAttachmentsMeta: Array<{ filename: string; type: string; dir?: string; key?: string; storage?: string }> = []
+    let savedAttachmentsMeta: SavedAttachmentMeta[] = []
     if (attachments.length) {
       logRouteEvent('debug', { route: 'api/contact', action: 'attachments_received', ip, resourceId: attachments.length, filenames: attachments.map((attachment) => attachment.filename) })
       // store contact attachments in MinIO so backup and restore discipline matches other site media.
@@ -162,7 +172,16 @@ export async function POST(req: Request) {
             const key = `messages/${uploadDir}/${safeName}`
             const buffer = Buffer.from(a.content || '', 'base64')
             await minioClient.putObject(bucket, key, buffer, buffer.length, { 'Content-Type': a.type || 'application/octet-stream' })
-            savedAttachmentsMeta.push({ filename: safeName, type: a.type || 'application/octet-stream', key, storage: 'minio' })
+            let variants: SavedAttachmentMeta['variants'] = null
+            if ((a.type || '').startsWith('image/')) {
+              try {
+                const variant = await generateWebpVariantForObject(key)
+                if (variant?.webpKey) variants = { webp: variant.webpKey }
+              } catch (variantError) {
+                logRouteError('api/contact', variantError, { action: 'generate_attachment_webp_variant', ip, resourceId: key, reason: 'webp_variant_failed' })
+              }
+            }
+            savedAttachmentsMeta.push({ filename: safeName, type: a.type || 'application/octet-stream', key, storage: 'minio', variants })
           } catch (e) {
             logRouteError('api/contact', e, { action: 'persist_attachment', ip, resourceId: a.filename || null, reason: 'object_storage_write_failed' })
             savedAttachmentsMeta.push({ filename: a.filename || 'file', type: a.type || 'application/octet-stream' })

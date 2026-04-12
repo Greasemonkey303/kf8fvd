@@ -44,7 +44,7 @@ export async function proxy(req: NextRequest, event: NextFetchEvent) {
   const extraScriptOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
   const extraConnectOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
   const pathname = req.nextUrl.pathname
-  const allowAdminInlineStyles = false
+  const allowAdminInlineStyles = pathname.startsWith('/admin')
 
   // Generate a per-request CSP nonce for production. Keep this lightweight
   // to avoid adding heavy crypto dependencies in the proxy runtime.
@@ -198,5 +198,7 @@ export async function proxy(req: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: '/:path*',
+  matcher: [
+    '/((?!api/uploads(?:/|$)|api/contact(?:/|$)|api/admin/calllog(?:/|$)|admin/api/calllog(?:/|$)).*)',
+  ],
 }

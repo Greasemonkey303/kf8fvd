@@ -9,7 +9,6 @@ import createDOMPurify from 'dompurify'
 import modalStyles from '@/components/modal/imageModal.module.css'
 import { createPortal } from 'react-dom'
 import { useEffect } from 'react'
-import { getSiteMediaUrl } from '@/lib/siteMedia'
 
 type AboutCard = {
   title?: string
@@ -87,7 +86,7 @@ export default function About({ data }: { data?: AboutData }) {
         subtitle: String(c?.subtitle ?? ''),
         content: String(c?.content ?? ''),
         content_sanitized: c?.content_sanitized ?? c?.contentSanitized ?? null,
-        image: String(c?.image ?? getSiteMediaUrl('aboutHeadshot')),
+        image: String(c?.image ?? ''),
         templateSmall: String(c?.templateSmall ?? ''),
         templateLarge: String(c?.templateLarge ?? '')
       }))
@@ -125,11 +124,15 @@ export default function About({ data }: { data?: AboutData }) {
             {idx === 0 ? (
               (() => {
                 const tp = getThumbProps(card)
-                const contentClass = (card?.templateSmall === 'badge') ? `${styles.content} ${styles.contentNarrow}` : ((card?.templateSmall === 'thumb') ? `${styles.content} ${styles.contentMedium}` : styles.content)
+                const hasImage = Boolean(String(card.image || '').trim())
+                const contentClass = !hasImage
+                  ? `${styles.content} ${styles.contentNoMedia}`
+                  : (card?.templateSmall === 'badge') ? `${styles.content} ${styles.contentNarrow}` : ((card?.templateSmall === 'thumb') ? `${styles.content} ${styles.contentMedium}` : styles.content)
                 return (
                   <div className={contentClass}>
-                    {/* Use Next.js Image for optimization; fallback to unoptimized for data/blob URLs */}
-                    <Image src={String(card.image || getSiteMediaUrl('aboutHeadshot'))} alt={card.title || 'About'} width={tp.width} height={tp.height} sizes="(max-width: 899px) 140px, 180px" className={tp.className} style={{objectFit:'cover', display:'block'}} unoptimized={String(card.image || '').startsWith('data:') || String(card.image || '').startsWith('blob:')} />
+                    {hasImage ? (
+                      <Image src={String(card.image)} alt={card.title || 'About'} width={tp.width} height={tp.height} sizes="(max-width: 899px) 140px, 180px" className={tp.className} style={{objectFit:'cover', display:'block'}} unoptimized={String(card.image || '').startsWith('data:') || String(card.image || '').startsWith('blob:')} />
+                    ) : null}
                     <div className={styles.copy}>
                       <div dangerouslySetInnerHTML={{ __html: (card.content_sanitized ?? (purify ? purify.sanitize(String(card.content || '')) : String(card.content || ''))) }} />
                     </div>
@@ -137,11 +140,13 @@ export default function About({ data }: { data?: AboutData }) {
                 )
               })()
             ) : (
-              <div className={styles.topo}>
-                <div className={styles.topoImage} onClick={() => setOpen(card.image || getSiteMediaUrl('aboutTopology'))} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen(card.image || getSiteMediaUrl('aboutTopology')) }}>
-                  <Image src={card.image || getSiteMediaUrl('aboutTopology')} alt={card.title || ''} width={1200} height={700} sizes="(max-width: 899px) 100vw, 420px" className={styles.topoImg} loading="lazy" />
-                  <div className={styles.imgHint} aria-hidden>Click image to view full screen</div>
-                </div>
+              <div className={`${styles.topo} ${card.image ? '' : styles.topoNoMedia}`}>
+                {card.image ? (
+                  <div className={styles.topoImage} onClick={() => setOpen(card.image || '')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen(card.image || '') }}>
+                    <Image src={card.image} alt={card.title || ''} width={1200} height={700} sizes="(max-width: 899px) 100vw, 420px" className={styles.topoImg} loading="lazy" />
+                    <div className={styles.imgHint} aria-hidden>Click image to view full screen</div>
+                  </div>
+                ) : null}
                 <div className={styles.topoCopy}>
                   <div dangerouslySetInnerHTML={{ __html: (card.content_sanitized ?? (purify ? purify.sanitize(String(card.content || '')) : String(card.content || ''))) }} />
                 </div>

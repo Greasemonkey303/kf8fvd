@@ -7,6 +7,9 @@
   gap: 1rem;
   align-items: start;
 }
+.contentNoMedia {
+  grid-template-columns: 1fr;
+}
 .avatar {
   width: 140px;
   height: 140px;
@@ -102,11 +105,13 @@
 
 @media (min-width: 900px) {
   .content { grid-template-columns: 180px 1fr; gap: 1.25rem; }
+  .contentNoMedia { grid-template-columns: 1fr; }
   .avatar { width: 180px; height: 180px; position: sticky; top: calc(var(--header-offset,72px) + 8px); margin: 0 }
 }
 
 @media (min-width: 720px) and (max-width: 899px) {
   .content { grid-template-columns: 140px 1fr; }
+  .contentNoMedia { grid-template-columns: 1fr; }
   .avatar { width: 140px; height: 140px; position: static; margin: 0 }
 }
 
@@ -118,6 +123,7 @@
 
 /* Home topology section */
 .topo { display: grid; grid-template-columns: 1fr; gap: 1.1rem; align-items: start; margin-top: 0.3rem; }
+.topoNoMedia { grid-template-columns: 1fr; }
 .topoImage { border-radius: 18px; overflow: hidden; box-shadow: 0 8px 28px var(--shadow-45); }
 .topoImg { width: 100%; height: auto; display: block; object-fit: cover; }
 .topoCopy { color: var(--white-95); font-family: var(--font-serif), var(--font-sans); line-height: 1.7; max-width: var(--content-measure); }
@@ -143,12 +149,14 @@
 
 @media (min-width: 900px) {
   .topo { grid-template-columns: 420px 1fr; gap: 1.5rem; }
+  .topoNoMedia { grid-template-columns: 1fr; }
   .topoImage { height: 300px; }
   .topoImg { height: 100%; width: 100%; object-fit: cover; }
 }
 
 @media (min-width: 720px) and (max-width: 899px) {
   .topo { grid-template-columns: 320px 1fr; }
+  .topoNoMedia { grid-template-columns: 1fr; }
   .topoImage { height: 220px; }
 }
 

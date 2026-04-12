@@ -5,6 +5,7 @@ import { JSDOM } from 'jsdom'
 import { buildPublicUrl } from '@/lib/s3'
 import { getSiteMediaUrl, replaceLegacyBundledImagePath } from '@/lib/siteMedia'
 import createDOMPurify from 'dompurify'
+import { buildPublicAboutCards, pickPrimaryAboutRow } from '@/lib/aboutSections'
 
 type DomPurifyWithConfig = ReturnType<typeof createDOMPurify> & {
   setConfig?: (config: { FORBID_TAGS: string[] }) => void
@@ -18,12 +19,7 @@ export const metadata = {
 
 export default async function Page() {
   try {
-    // Load all pages whose slug starts with "about" so we can merge any
-    // standalone about-* pages into the main About page's cards (helps when
-    // admins create sub-pages like `about-me-server`). This mirrors how the
-    // Projects list loads multiple records.
-    // Only include published pages so toggling "Published" in admin hides sections from the public site.
-    // Include all published pages (do not restrict by slug) so sections aren't filtered out
+    // Load published pages and reduce them to the canonical public About sections.
     const rows = await query<Record<string, unknown>[]>(`SELECT id, slug, title, content, metadata, is_published, updated_at FROM pages WHERE is_published = 1 ORDER BY updated_at DESC`)
     if (!rows || rows.length === 0) {
       const data = {
@@ -37,8 +33,8 @@ export default async function Page() {
       return <About data={data} />
     }
 
-    // prefer the canonical `about` page as the primary source
-    const primary = rows.find(r => String(r.slug) === 'about') || rows[0]
+    const primary = pickPrimaryAboutRow(rows)
+    if (!primary) return <About />
 
     const dom = new JSDOM('')
     const DOMPurify = createDOMPurify(dom.window as unknown as Window & typeof globalThis)
@@ -71,7 +67,7 @@ export default async function Page() {
 
     // helper: convert presigned S3/MinIO URLs to proxied API GET (same-origin)
     const toPublicUrl = (p: unknown) => {
-      if (!p) return getSiteMediaUrl('aboutHeadshot')
+      if (!p) return ''
       const s = String(p)
       const mapped = replaceLegacyBundledImagePath(s)
       if (mapped !== s) return mapped
@@ -90,46 +86,19 @@ export default async function Page() {
       return s
     }
 
-    // Start with any cards defined on the primary page (preferred)
-    let mergedCards: AboutCard[] = []
-    if (Array.isArray(primaryMeta?.cards) && (primaryMeta.cards as unknown[]).length) {
-      mergedCards = (primaryMeta.cards as unknown[]).map((c: unknown) => {
-        const card = c as Record<string, unknown>
-        const content = sanitize(card['content'] ?? '')
-        const cleaned = removeDebugBlock(content)
-        const pos = typeof card['position'] === 'number' ? (card['position'] as number) : undefined
-        return { title: String(card['title'] ?? ''), subtitle: String(card['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(card['image'] ?? getSiteMediaUrl('aboutHeadshot')), templateLarge: String(card['templateLarge'] ?? ''), templateSmall: String(card['templateSmall'] ?? ''), position: pos }
-      })
-    } else if (primaryMeta?.aboutCard) {
-      // Backwards-compatible: if primary page uses legacy aboutCard, include it
-      const c = primaryMeta.aboutCard as Record<string, unknown>
-      const content = sanitize(c['content'] ?? '')
+    const mergedCards: AboutCard[] = buildPublicAboutCards(rows).map((card) => {
+      const content = sanitize(card.content ?? '')
       const cleaned = removeDebugBlock(content)
-      const pos = typeof c['position'] === 'number' ? (c['position'] as number) : undefined
-      mergedCards.push({ title: String(c['title'] ?? primary.title ?? ''), subtitle: String(c['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(c['image'] ?? getSiteMediaUrl('aboutHeadshot')), templateLarge: String(c['templateLarge'] ?? ''), templateSmall: String(c['templateSmall'] ?? ''), position: pos })
-    }
-
-    // Merge in any additional about-* pages (append their aboutCard or cards)
-    for (const row of rows) {
-      if (!row || String(row.slug) === String(primary.slug)) continue
-      let otherMeta: Record<string, unknown> = {}
-      try { otherMeta = row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : {} } catch { otherMeta = {} }
-      if (Array.isArray(otherMeta['cards']) && (otherMeta['cards'] as unknown[]).length) {
-        for (const c of otherMeta['cards'] as unknown[]) {
-          const card = c as Record<string, unknown>
-          const content = sanitize(card['content'] ?? '')
-          const cleaned = removeDebugBlock(content)
-          const pos = typeof card['position'] === 'number' ? (card['position'] as number) : undefined
-          mergedCards.push({ title: String(card['title'] ?? ''), subtitle: String(card['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(card['image'] ?? getSiteMediaUrl('aboutHeadshot')), templateLarge: String(card['templateLarge'] ?? ''), templateSmall: String(card['templateSmall'] ?? ''), position: pos })
-        }
-      } else if (otherMeta['aboutCard']) {
-        const c = otherMeta['aboutCard'] as Record<string, unknown>
-        const content = sanitize(c['content'] ?? '')
-        const cleaned = removeDebugBlock(content)
-        const pos = typeof c['position'] === 'number' ? (c['position'] as number) : undefined
-        mergedCards.push({ title: String(c['title'] ?? row.title ?? ''), subtitle: String(c['subtitle'] ?? ''), content: cleaned, image: toPublicUrl(c['image'] ?? getSiteMediaUrl('aboutHeadshot')), templateLarge: String(c['templateLarge'] ?? ''), templateSmall: String(c['templateSmall'] ?? ''), position: pos })
+      return {
+        title: String(card.title ?? ''),
+        subtitle: String(card.subtitle ?? ''),
+        content: cleaned,
+        image: toPublicUrl(card.image ?? ''),
+        templateLarge: '',
+        templateSmall: '',
+        position: card.position,
       }
-    }
+    })
 
     // If any cards have explicit positions, sort by them; otherwise preserve current merge order
     mergedCards.sort((a, b) => {

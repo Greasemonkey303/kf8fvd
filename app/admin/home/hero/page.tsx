@@ -72,6 +72,22 @@ export default function AdminHeroPage() {
     }
   }, [hero])
 
+  async function createHeroRecord(payload?: Partial<Hero>) {
+    const body = {
+      title: payload?.title ?? 'Home Hero',
+      subtitle: payload?.subtitle ?? '',
+      content: payload?.content ?? '',
+    }
+    const res = await fetch('/admin/api/hero', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json().catch(() => ({})) as { item?: Hero; error?: string }
+    if (!res.ok || !data?.item) throw new Error(data?.error || 'Failed to create hero')
+    return data.item
+  }
+
   async function save(e?: React.FormEvent) {
     if (e) e.preventDefault()
     if (!hero) return
@@ -87,10 +103,8 @@ export default function AdminHeroPage() {
   async function createHero() {
     setSaving(true)
     try {
-      const payload = { title: 'New Hero', subtitle: '', content: '' }
-      const res = await fetch('/admin/api/hero', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      const j = await res.json()
-      setHero(j.item)
+      const item = await createHeroRecord({ title: 'New Hero', subtitle: '', content: '' })
+      setHero(item)
       await load()
     } catch (e) { console.error('create hero error', e) }
     setSaving(false)
@@ -98,47 +112,88 @@ export default function AdminHeroPage() {
 
   async function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
     const file = ev.target.files?.[0]
-    if (!file || !hero) return
+    if (!file) return
     setError(null)
-    // generate deterministic key under hero/<hero.id>/ to ensure correct folder
-    const sanitize = (n = '') => String(n).replace(/[^a-zA-Z0-9._-]/g, '_')
-    const ts = Date.now()
-    const clean = sanitize(file.name)
-    const key = `hero/${hero.id}/${ts}-${clean}`
+    let storedKey: string | null = null
+    let directUploadError: string | null = null
     try {
+      let activeHero = hero
+      if (!activeHero?.id) {
+        activeHero = await createHeroRecord({
+          title: hero?.title ?? 'Home Hero',
+          subtitle: hero?.subtitle ?? '',
+          content: hero?.content ?? '',
+        })
+        setHero(activeHero)
+      }
+
       setUploading(true)
       setUploadProgress(0)
       setUploadSuccess(false)
-      // include file size and contentType for server-side validation
-      const pres = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, contentType: file.type, size: file.size }) })
-      const pd = await pres.json()
-      if (pd?.error) throw new Error(String(pd.error))
-      if (!pd?.url) throw new Error('Presign failed: no url returned')
+      try {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('slug', String(activeHero.id))
+        fd.append('prefix', 'hero/')
+        fd.append('filename', file.name)
+        const direct = await fetch('/api/uploads/direct', { method: 'POST', body: fd })
+        const directBody = await direct.json().catch(() => ({})) as { key?: string; publicUrl?: string; error?: string }
+        if (direct.ok && directBody.key) {
+          storedKey = directBody.key
+          setUploadProgress(100)
+        } else {
+          directUploadError = directBody.error || `Direct upload failed with status ${direct.status}`
+          console.error('direct hero upload failed', direct.status, directBody)
+        }
+      } catch (directErr) {
+        directUploadError = directErr instanceof Error ? directErr.message : String(directErr)
+        console.error('direct hero upload error', directErr)
+      }
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open('PUT', pd.url)
-        try { xhr.setRequestHeader('Content-Type', file.type) } catch {}
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) {
-            const pct = Math.round((ev.loaded / ev.total) * 100)
-            setUploadProgress(pct)
+      if (!storedKey) {
+        const sanitize = (n = '') => String(n).replace(/[^a-zA-Z0-9._-]/g, '_')
+        const ts = Date.now()
+        const clean = sanitize(file.name)
+        const key = `hero/${activeHero.id}/${ts}-${clean}`
+        const pres = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, contentType: file.type, size: file.size }) })
+        const pd = await pres.json()
+        if (pd?.error) throw new Error(String(pd.error))
+        if (!pd?.url) throw new Error('Presign failed: no url returned')
+        try {
+          const uploadHost = new URL(String(pd.url)).hostname.toLowerCase()
+          if (uploadHost === 'minio' || uploadHost === 'host.docker.internal' || uploadHost === 'localhost' || uploadHost === '127.0.0.1' || uploadHost.endsWith('.local')) {
+            throw new Error(directUploadError || 'Direct upload failed and browser fallback is unavailable in this environment')
           }
+        } catch (hostErr) {
+          if (hostErr instanceof Error && hostErr.message) throw hostErr
         }
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve()
-          else reject(new Error('Upload failed: ' + xhr.status))
-        }
-        xhr.onerror = () => reject(new Error('Network error'))
-        xhr.send(file)
-      })
 
-      const storedKey = pd.key || key
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest()
+          xhr.open('PUT', pd.url)
+          try { xhr.setRequestHeader('Content-Type', file.type) } catch {}
+          xhr.upload.onprogress = (progressEvent) => {
+            if (progressEvent.lengthComputable) {
+              const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100)
+              setUploadProgress(pct)
+            }
+          }
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve()
+            else reject(new Error('Upload failed: ' + xhr.status))
+          }
+          xhr.onerror = () => reject(new Error('Network error'))
+          xhr.send(file)
+        })
+
+        storedKey = pd.key || key
+      }
+
       // record in DB (store the object key, not a presigned URL)
       // auto-feature if no featured exists
       const currentlyHasFeatured = images.find(i => Number(i.is_featured) === 1)
       const shouldFeature = !currentlyHasFeatured
-      await fetch('/admin/api/hero/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hero_id: hero.id, url: storedKey, alt: file.name, is_featured: shouldFeature ? 1 : 0 }) })
+      await fetch('/admin/api/hero/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hero_id: activeHero.id, url: storedKey, alt: file.name, is_featured: shouldFeature ? 1 : 0 }) })
       setUploadSuccess(true)
       setTimeout(()=> setUploadSuccess(false), 2500)
       setUploadProgress(100)
@@ -149,6 +204,7 @@ export default function AdminHeroPage() {
     } finally {
       setUploading(false)
       setUploadProgress(null)
+      ev.target.value = ''
     }
   }
 

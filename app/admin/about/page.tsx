@@ -9,9 +9,9 @@ import AdminObjectImage from '@/components/admin/AdminObjectImage'
 import createDOMPurify from 'dompurify'
 import Card from '../../../components/card/card'
 import { useToast } from '../../../components/toast/ToastProvider'
+import { buildAboutAdminSections, extractPageIdsFromAboutSelections, parseAboutSectionId, shouldDeleteWholeAboutPage, type AboutAdminSection } from '@/lib/aboutSections'
 
-type AboutItem = { id: number | string; slug: string; title: string; subtitle?: string; image_path?: string; description?: string; is_published: number }
-type AdminCard = AboutItem & { editLink?: string; position?: number }
+type AboutItem = AboutAdminSection
 
 const EMPTY_FORM = { slug: '', title: '', subtitle: '', image_path: '', description: '', is_published: true }
 
@@ -19,7 +19,6 @@ export default function AdminAboutList() {
   const [items, setItems] = useState<AboutItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<(string|number)[]>([])
-  const [deletedUndoBuffer, setDeletedUndoBuffer] = useState<{ items: Record<string, unknown>[] } | null>(null)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState(query)
   const [slugEdited, setSlugEdited] = useState(false)
@@ -27,6 +26,7 @@ export default function AdminAboutList() {
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pageRowsById, setPageRowsById] = useState<Record<number, Record<string, unknown>>>({})
   const toast = useToast()
   const [creating, setCreating] = useState(false)
   const draftId = useId()
@@ -52,59 +52,15 @@ export default function AdminAboutList() {
       const res = await fetch('/admin/api/pages?page=1&limit=1000')
       const data = await res.json()
       const rows: Record<string, unknown>[] = data.items || []
-      const cards: AdminCard[] = []
-          // Do not filter by slug here — include all pages so admins can manage any created section
-          rows.forEach(rawRow => {
-            try {
-              const row = rawRow as Record<string, unknown>
-              const rawMeta = row['metadata']
-              const md = rawMeta ? (typeof rawMeta === 'string' ? JSON.parse(rawMeta as string) : rawMeta) : null
-              if (md && typeof md === 'object') {
-                const meta = md as Record<string, unknown>
-                if (Array.isArray(meta.cards) && meta.cards.length > 0) {
-                  const cardsArray = meta.cards as unknown[]
-                  cardsArray.forEach((c, idx: number) => {
-                    const cardObj = c as Record<string, unknown>
-                    const title = (cardObj['title'] as string) || (row['title'] as string) || ''
-                    const subtitle = (cardObj['subtitle'] as string) || ''
-                    const image_path = (cardObj['image'] as string) || ''
-                    const description = (cardObj['content'] as string) || ''
-                    const position = typeof cardObj['position'] === 'number' ? (cardObj['position'] as number) : undefined
-                    const is_published = typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0)
-                    const idVal = row['id'] ?? `${idx}`
-                    const slugVal = row['slug'] ?? ''
-                    cards.push({ id: `${idVal}-c-${idx}`, slug: `${slugVal}#${idx}`, title, subtitle, image_path, description, is_published, editLink: `/admin/about/${row['id']}?card=${idx}`, position })
-                  })
-                } else {
-                  // fallback to legacy named cards
-                  const aboutCard = meta['aboutCard'] as Record<string, unknown> | undefined
-                  const topologyCard = meta['topologyCard'] as Record<string, unknown> | undefined
-                  const hamshackCard = meta['hamshackCard'] as Record<string, unknown> | undefined
-                  if (aboutCard) cards.push({ id: `${row['id']}-about`, slug: `${row['slug']}#about`, title: (aboutCard['title'] as string) || (row['title'] as string) || '', subtitle: (aboutCard['subtitle'] as string) || '', image_path: (aboutCard['image'] as string) || '', description: (aboutCard['content'] as string) || '', is_published: typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0), editLink: `/admin/about/${row['id']}?card=0`, position: (typeof aboutCard['position'] === 'number') ? (aboutCard['position'] as number) : undefined })
-                  if (topologyCard) cards.push({ id: `${row['id']}-topology`, slug: `${row['slug']}#topology`, title: (topologyCard['title'] as string) || '', subtitle: (topologyCard['subtitle'] as string) || '', image_path: (topologyCard['image'] as string) || '', description: (topologyCard['content'] as string) || '', is_published: typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0), editLink: `/admin/about/${row['id']}?card=1`, position: (typeof topologyCard['position'] === 'number') ? (topologyCard['position'] as number) : undefined })
-                  if (hamshackCard) cards.push({ id: `${row['id']}-hamshack`, slug: `${row['slug']}#hamshack`, title: (hamshackCard['title'] as string) || '', subtitle: (hamshackCard['subtitle'] as string) || '', image_path: (hamshackCard['image'] as string) || '', description: (hamshackCard['content'] as string) || '', is_published: typeof row['is_published'] === 'number' ? (row['is_published'] as number) : (row['is_published'] ? 1 : 0), editLink: `/admin/about/${row['id']}?card=2`, position: (typeof hamshackCard['position'] === 'number') ? (hamshackCard['position'] as number) : undefined })
-                }
-              }
-            } catch {
-              // ignore malformed metadata
-            }
-          })
-      // If any cards include a saved `position`, sort globally by it so admin list reflects saved order
-      const anyPosition = cards.some(c => typeof c.position === 'number')
-      if (anyPosition) {
-        cards.sort((a, b) => {
-          const pa = (typeof a.position === 'number') ? a.position as number : Number.POSITIVE_INFINITY
-          const pb = (typeof b.position === 'number') ? b.position as number : Number.POSITIVE_INFINITY
-          if (pa === pb) return 0
-          return pa - pb
-        })
-      }
-      // When there are no DB-driven sections, show an empty list so admin controls content.
-      if (cards.length === 0) {
-        setItems([])
-      } else {
-        setItems(cards)
-      }
+      const rowMap = rows.reduce<Record<number, Record<string, unknown>>>((acc, row) => {
+        const pageId = Number(row['id'] ?? 0)
+        if (Number.isInteger(pageId) && pageId > 0) acc[pageId] = row
+        return acc
+      }, {})
+      const cards = buildAboutAdminSections(rows)
+      setPageRowsById(rowMap)
+      setItems(cards)
+      setSelectedIds((prev) => prev.filter((id) => cards.some((card) => String(card.id) === String(id))))
     } catch (error) {
       console.error(error)
       setError(error instanceof Error ? error.message : 'Failed to load about sections')
@@ -267,24 +223,39 @@ export default function AdminAboutList() {
     if (!selectedIds || selectedIds.length === 0) return
     setError(null)
     try {
-      const res = await fetch('/admin/api/pages/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds, action }) })
+      if (action === 'delete') {
+        for (const rawId of selectedIds) {
+          const parsed = parseAboutSectionId(rawId)
+          if (!parsed) continue
+          const params = new URLSearchParams({ id: String(parsed.pageId) })
+          if (!shouldDeleteWholeAboutPage(pageRowsById[parsed.pageId], parsed)) {
+            if (parsed.kind === 'card') params.set('card', String(parsed.index))
+            if (parsed.kind === 'named') params.set('card', parsed.name)
+          }
+          const res = await fetch(`/admin/api/pages?${params.toString()}`, { method: 'DELETE' })
+          const j = await res.json().catch(() => ({}))
+          if (!res.ok) throw new Error(j?.error || `Delete failed for ${String(rawId)}`)
+        }
+        setSelectedIds([])
+        await load()
+        showToast('Bulk delete complete', 'success')
+        return
+      }
+
+      const pageIds = extractPageIdsFromAboutSelections(selectedIds)
+      if (pageIds.length === 0) {
+        const message = 'Bulk action failed: no valid About items were selected.'
+        setError(message)
+        showToast(message, 'error')
+        return
+      }
+
+      const res = await fetch('/admin/api/pages/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: pageIds, action }) })
       const j = await res.json().catch(()=>({}))
       if (!res.ok) {
         const message = `Bulk action failed: ${j?.error || res.status}`
         setError(message)
         showToast(message, 'error')
-        return
-      }
-      if (action === 'delete') {
-        // server returns deleted rows for undo
-        const deleted = j?.deleted || []
-        setDeletedUndoBuffer({ items: deleted })
-        // clear selection and refresh
-        setSelectedIds([])
-        await load()
-        showToast(`Deleted ${deleted.length} item(s) — Undo available`, 'success')
-        // auto-clear undo buffer after 10s
-        setTimeout(()=> setDeletedUndoBuffer(null), 10000)
         return
       }
       await load()
@@ -295,20 +266,6 @@ export default function AdminAboutList() {
       setError(`Bulk action failed: ${message}`)
       showToast(`Bulk action failed: ${message}`, 'error')
     }
-  }
-
-  const undoDelete = async () => {
-    if (!deletedUndoBuffer || !deletedUndoBuffer.items) return
-    const itemsToRestore = deletedUndoBuffer.items
-    for (const it of itemsToRestore) {
-      try {
-        const payload = { slug: String((it as Record<string, unknown>)['slug'] || ''), title: String((it as Record<string, unknown>)['title'] || ''), content: String((it as Record<string, unknown>)['content'] || ''), metadata: (it as Record<string, unknown>)['metadata'] || {}, is_published: (it as Record<string, unknown>)['is_published'] ? 1 : 0 }
-        await fetch('/admin/api/pages', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
-      } catch (e) { console.error('undo create failed', e) }
-    }
-    setDeletedUndoBuffer(null)
-    await load()
-    showToast('Undo complete', 'success')
   }
 
   const getErrMsg = (err: unknown) => { if (err instanceof Error) return err.message; try { return String(err) } catch { return 'Unknown error' } }
@@ -496,12 +453,6 @@ export default function AdminAboutList() {
                 selectedIds={selectedIds}
                 onSelectionChange={(ids: (string|number)[]) => setSelectedIds(ids)}
               />
-              {deletedUndoBuffer ? (
-                <div className={`${styles.actionsRow} ${styles.sectionPanel}`}>
-                  <div className={styles.smallMuted}>Deleted {deletedUndoBuffer.items?.length || 0} item(s)</div>
-                  <button className={styles.btnGhost} onClick={undoDelete}>Undo</button>
-                </div>
-              ) : null}
             </div>
 
             {previewOpen && (

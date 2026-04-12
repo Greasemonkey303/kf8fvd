@@ -15,7 +15,9 @@ function getAllowedOrigins(...values) {
 }
 
 const nextConfig = {
-  experimental: {},
+  experimental: {
+    proxyClientMaxBodySize: '60mb',
+  },
   images: {
     // Allow Next.js to serve modern image formats when possible
     formats: ['image/avif', 'image/webp'],

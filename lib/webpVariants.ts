@@ -59,5 +59,14 @@ export async function preferWebpVariantKey(reference: unknown, acceptHeader?: st
 
   const webpKey = deriveWebpVariantKey(key)
   if (!webpKey) return key
-  return (await objectExists(webpKey)) ? webpKey : key
+  if (await objectExists(webpKey)) return webpKey
+
+  try {
+    const generated = await generateWebpVariantForObject(key)
+    if (generated?.webpKey) return generated.webpKey
+  } catch {
+    return key
+  }
+
+  return key
 }

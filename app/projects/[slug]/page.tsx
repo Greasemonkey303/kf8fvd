@@ -157,20 +157,9 @@ export default async function Page({ params }: Props) {
   ].filter(Boolean)))
   const mediaCount = galleryImages.length
   const projectBullets = buildProjectBullets(project, mediaCount, Boolean(detailsHtml))
-  const focusCards = [
-    {
-      title: 'Build Summary',
-      text: summaryText || 'A project summary will appear here when description content is added in the admin console.',
-    },
-    {
-      title: 'Station Relevance',
-      text: `This project sits inside the station workflow for KF8FVD, tying together hardware, operating notes, and the kind of practical work that supports day-to-day radio activity${project.external_link ? ' while linking out to the most useful reference material.' : '.'}`,
-    },
-    {
-      title: 'Follow-up Notes',
-      text: detailText || 'Long-form notes, tuning details, lessons learned, and future revisions can live in the details section for this project.',
-    },
-  ]
+  const summaryIntro = detailText
+    ? 'This page collects the main project summary, attached media, and longer follow-up notes in one place.'
+    : 'This page collects the main project summary, attached media, and the working context for this build in one place.'
 
   return (
     <main className={styles.container}>
@@ -189,20 +178,12 @@ export default async function Page({ params }: Props) {
                 <span className={styles.sectionEyebrow}>Field notes</span>
               </div>
               <h2 className={styles.sectionHeading}>Built for real station use, not just display</h2>
-              <p className={styles.sectionText}>{summaryText || 'This page is ready for a longer narrative once more project summary content is added.'}</p>
+              <p className={styles.sectionText}>{summaryIntro}</p>
               <ul className={styles.quickList}>
                 {projectBullets.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-            </div>
-            <div className={styles.focusGrid}>
-              {focusCards.map((card) => (
-                <article key={card.title} className={styles.focusCard}>
-                  <h3 className={styles.focusTitle}>{card.title}</h3>
-                  <p className={styles.focusText}>{card.text}</p>
-                </article>
-              ))}
             </div>
           </section>
 
@@ -233,10 +214,6 @@ export default async function Page({ params }: Props) {
                   <div dangerouslySetInnerHTML={{ __html: detailsHtml }} />
                 </section>
               ) : null}
-              <section className={styles.storySection}>
-                <h3 className={styles.storyTitle}>Project Context</h3>
-                <p>This detail page is meant to read like a build log tied to a real ham radio station, with room for media, lessons learned, and future revisions instead of just a single block of text.</p>
-              </section>
               <div className={styles.backLinkRow}>
                 <Link href="/projects">Back to Projects</Link>
               </div>
