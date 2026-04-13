@@ -15,7 +15,7 @@ Minimal steps to deploy to production:
 
 Current repo rollout reminder:
 
-- Review `deploy/DEPLOY_UPDATE_2026-03-29_UMAMI_MONITORING.md` before deploying the current analytics and monitoring changes.
+- Review `deploy/current/DEPLOY_UPDATE_2026-03-29_UMAMI_MONITORING.md` before deploying the current analytics and monitoring changes.
 - Apply the main site MySQL migration `migrations/2026_03_29_maintenance_runs.sql` when deploying the updated admin monitoring page.
 - Deploy and verify the added self-hosted analytics services:
 	- `umami`

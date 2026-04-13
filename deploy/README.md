@@ -1,14 +1,14 @@
 Deploy Folder Guide
 ===================
 
-This folder is organized by current rollout docs at the top level and supporting material in subfolders.
+This folder is organized by active rollout docs, dated change notes, and supporting material.
 
-Top-level files
+Primary folders
 
-- `PRODUCTION_CHECKLIST.md`
-  - current concise production rollout checklist
-- `DEPLOY_UPDATE_2026-03-29_UMAMI_MONITORING.md`
-  - latest dated deployment update for Umami analytics, monitoring, privacy, and the `maintenance_runs` MySQL migration
+- `current/`
+  - active rollout docs that used to live loose at the top level
+- `changes/`
+  - dated notes for one-off environment changes, rollback notes, and cleanup history
 
 Subfolders
 
@@ -25,10 +25,11 @@ Subfolders
 
 Suggested reading order
 
-1. Start with `PRODUCTION_CHECKLIST.md`.
-2. Read `DEPLOY_UPDATE_2026-03-29_UMAMI_MONITORING.md` for the latest analytics and monitoring changes.
+1. Start with `current/PRODUCTION_CHECKLIST.md`.
+2. Read `current/DEPLOY_UPDATE_2026-03-29_UMAMI_MONITORING.md` for the latest analytics and monitoring changes.
 3. Use `handoff/PRODUCTION_HANDOFF_2026-03-24.txt` for historical production context.
-4. Open subfolder documents only as needed for the specific rollout task.
+4. Use `changes/2026-04-12/DEV_LOCAL_SETUP_NOTES.md` for the current localhost dev rollback guidance.
+5. Open subfolder documents only as needed for the specific rollout task.
 
 Important current rollout note
 
