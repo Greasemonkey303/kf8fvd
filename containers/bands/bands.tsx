@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react';
-import Modal from '@/components/modal/Modal'
+import { HandheldRadioScene, Modal } from '@/components'
 import styles from './bands.module.css';
 
 type ModeKey = 'fm' | 'dstar' | 'dmr' | null;
@@ -40,6 +40,24 @@ const Bands: React.FC = () => {
               <div className={styles.modeName}>DMR</div>
               <div className={styles.modeDesc}>Digital mode (user-listed)</div>
             </button>
+          </div>
+        </div>
+
+        <div className={`${styles.card} ${styles.showcaseCard}`}>
+          <div className={styles.showcaseCopy}>
+            <p className={styles.showcaseKicker}>Handheld spotlight</p>
+            <h2>ID-52A-Inspired HT</h2>
+            <p className={styles.lead}>
+              A stylized handheld scene gives the VHF and D-STAR side of the site its own visual anchor without relying on a copied product asset.
+            </p>
+            <ul className={styles.showcasePoints} aria-label="Handheld showcase highlights">
+              <li className={styles.showcasePoint}>Dual-band field radio feel</li>
+              <li className={styles.showcasePoint}>Live screen and signal activity</li>
+              <li className={styles.showcasePoint}>Fits the repeater and digital mode section</li>
+            </ul>
+          </div>
+          <div className={styles.showcaseScene}>
+            <HandheldRadioScene />
           </div>
         </div>
       </div>

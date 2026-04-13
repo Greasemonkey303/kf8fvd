@@ -1,0 +1,69 @@
+.shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(var(--logo-blue-rgb), 0.24), transparent 30%),
+    radial-gradient(circle at 76% 62%, rgba(var(--logo-green-rgb), 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(5, 12, 24, 0.96), rgba(7, 18, 30, 0.9));
+}
+
+.shell:active {
+  cursor: grabbing;
+}
+
+.shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 20%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 26px 26px, 26px 26px;
+  opacity: 0.14;
+  pointer-events: none;
+}
+
+.shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(var(--logo-blue-rgb), 0.08), transparent 44%),
+    linear-gradient(140deg, rgba(255, 255, 255, 0.08), transparent 38%);
+  pointer-events: none;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+:global(.theme-light) .shell {
+  background:
+    radial-gradient(circle at 24% 18%, rgba(var(--logo-blue-rgb), 0.16), transparent 32%),
+    radial-gradient(circle at 76% 62%, rgba(var(--logo-green-rgb), 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(241, 247, 252, 0.98), rgba(224, 234, 244, 0.96));
+}
+
+:global(.theme-light) .shell::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 18%),
+    linear-gradient(90deg, rgba(7, 18, 24, 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(7, 18, 24, 0.03) 1px, transparent 1px);
+  opacity: 0.16;
+}
+
+:global(.theme-light) .shell::after {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(var(--logo-blue-rgb), 0.06), transparent 42%),
+    linear-gradient(140deg, rgba(255, 255, 255, 0.28), transparent 38%);
+}
