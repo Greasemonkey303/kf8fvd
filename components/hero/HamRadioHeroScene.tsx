@@ -16,6 +16,15 @@ type DisplayState = {
   fineOffsetKhz: number
 }
 
+function getDisplayKey(state: DisplayState) {
+  return [
+    state.frequencyMHz.toFixed(3),
+    String(state.volume),
+    state.signalLevel.toFixed(2),
+    state.fineOffsetKhz.toFixed(2),
+  ].join('|')
+}
+
 function createDisplaySurface(): DisplaySurface {
   const canvas = document.createElement('canvas')
   canvas.width = 1024
@@ -143,21 +152,91 @@ export default function HamRadioHeroScene() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.06
 
-    const resize = () => {
-      const width = Math.max(shell.clientWidth, 300)
-      const height = Math.max(shell.clientHeight, 220)
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
-      renderer.setSize(width, height, false)
-    }
-    resize()
-
     const root = new THREE.Group()
     root.position.set(0, -0.34, -0.08)
     root.rotation.set(-0.08, -0.2, 0)
     root.scale.setScalar(0.92)
     scene.add(root)
+
+    const layout = {
+      cameraFov: 38,
+      cameraBaseY: 1.56,
+      cameraBaseZ: 7.65,
+      cameraOffsetX: 0.42,
+      cameraOffsetY: -0.18,
+      lookAtY: 0.42,
+      lookAtZ: 0.18,
+      rootBasePitch: -0.08,
+      rootBaseYaw: -0.2,
+      rootY: -0.34,
+      rootScale: 0.92,
+      floatAmplitude: 0.06,
+      rootYawRange: 0.22,
+      rootPitchRange: -0.1,
+    }
+
+    const resize = () => {
+      const width = Math.max(shell.clientWidth, 300)
+      const height = Math.max(shell.clientHeight, 220)
+      const isPhone = width < 680
+      const isTablet = width < 1100
+
+      if (isPhone) {
+        Object.assign(layout, {
+          cameraFov: 48,
+          cameraBaseY: 1.28,
+          cameraBaseZ: 9.35,
+          cameraOffsetX: 0.18,
+          cameraOffsetY: -0.08,
+          lookAtY: 0.24,
+          lookAtZ: 0.14,
+          rootY: -0.14,
+          rootScale: 0.76,
+          floatAmplitude: 0.03,
+          rootYawRange: 0.12,
+          rootPitchRange: -0.05,
+        })
+      } else if (isTablet) {
+        Object.assign(layout, {
+          cameraFov: 42,
+          cameraBaseY: 1.42,
+          cameraBaseZ: 8.4,
+          cameraOffsetX: 0.3,
+          cameraOffsetY: -0.12,
+          lookAtY: 0.32,
+          lookAtZ: 0.16,
+          rootY: -0.22,
+          rootScale: 0.84,
+          floatAmplitude: 0.045,
+          rootYawRange: 0.16,
+          rootPitchRange: -0.07,
+        })
+      } else {
+        Object.assign(layout, {
+          cameraFov: 38,
+          cameraBaseY: 1.56,
+          cameraBaseZ: 7.65,
+          cameraOffsetX: 0.42,
+          cameraOffsetY: -0.18,
+          lookAtY: 0.42,
+          lookAtZ: 0.18,
+          rootY: -0.34,
+          rootScale: 0.92,
+          floatAmplitude: 0.06,
+          rootYawRange: 0.22,
+          rootPitchRange: -0.1,
+        })
+      }
+
+      camera.fov = layout.cameraFov
+      camera.aspect = width / height
+      camera.updateProjectionMatrix()
+      root.position.set(0, layout.rootY, -0.08)
+      root.scale.setScalar(layout.rootScale)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isPhone ? 1.5 : 2))
+      renderer.setSize(width, height, false)
+    }
+    resize()
 
     const ambient = new THREE.HemisphereLight(0x8fe7ff, 0x02060e, 1.45)
     scene.add(ambient)
@@ -175,28 +254,55 @@ export default function HamRadioHeroScene() {
     scene.add(greenFill)
 
     const floorPlate = new THREE.Mesh(
-      track(new THREE.CylinderGeometry(3.85, 4.45, 0.2, 56)),
+      track(new THREE.CylinderGeometry(3.95, 4.38, 0.18, 64)),
       track(new THREE.MeshStandardMaterial({
         color: 0x071321,
         emissive: 0x031d33,
-        emissiveIntensity: 0.65,
-        metalness: 0.55,
-        roughness: 0.3,
+        emissiveIntensity: 0.52,
+        metalness: 0.58,
+        roughness: 0.34,
       }))
     )
     floorPlate.position.set(0, -1.38, 0)
     root.add(floorPlate)
 
-    const grid = new THREE.GridHelper(11, 16, 0x00a4ff, 0x0a2c46)
-    grid.position.set(0, -1.25, 0)
+    const floorInset = new THREE.Mesh(
+      track(new THREE.CylinderGeometry(3.18, 3.42, 0.04, 56)),
+      track(new THREE.MeshStandardMaterial({
+        color: 0x0a1624,
+        emissive: 0x07253d,
+        emissiveIntensity: 0.24,
+        metalness: 0.42,
+        roughness: 0.4,
+      }))
+    )
+    floorInset.position.set(0, -1.255, 0)
+    root.add(floorInset)
+
+    const grid = new THREE.PolarGridHelper(3.7, 12, 5, 48, 0x1674b3, 0x10344b)
+    grid.position.set(0, -1.232, 0)
     const gridMaterials = Array.isArray(grid.material) ? grid.material : [grid.material]
-    gridMaterials.forEach((material) => {
+    gridMaterials.forEach((material, index) => {
       material.transparent = true
-      material.opacity = 0.16
+      material.opacity = index === 0 ? 0.18 : 0.11
+      material.depthWrite = false
       track(material)
     })
     track(grid.geometry)
     root.add(grid)
+
+    const floorRing = new THREE.Mesh(
+      track(new THREE.RingGeometry(3.48, 3.66, 72)),
+      track(new THREE.MeshBasicMaterial({
+        color: 0x67c8ff,
+        transparent: true,
+        opacity: 0.16,
+        side: THREE.DoubleSide,
+      }))
+    )
+    floorRing.rotation.x = -Math.PI / 2
+    floorRing.position.set(0, -1.228, 0)
+    root.add(floorRing)
 
     const chassisMaterial = track(new THREE.MeshStandardMaterial({
       color: 0x07101c,
@@ -269,44 +375,47 @@ export default function HamRadioHeroScene() {
     rig.add(faceTrim)
 
     const displaySurface = createDisplaySurface()
-    renderDisplay(displaySurface, {
+    const initialDisplayState: DisplayState = {
       frequencyMHz: 14.074,
       volume: 42,
       signalLevel: 0.58,
       fineOffsetKhz: 0.14,
-    })
+    }
+    renderDisplay(displaySurface, initialDisplayState)
+    let lastDisplayKey = getDisplayKey(initialDisplayState)
 
     const displayTexture = track(new THREE.CanvasTexture(displaySurface.canvas))
     displayTexture.colorSpace = THREE.SRGBColorSpace
     displayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy()
+    displayTexture.needsUpdate = true
 
-      const displayPanel = new THREE.Mesh(
-        track(new THREE.PlaneGeometry(1.82, 0.74)),
-        track(new THREE.MeshBasicMaterial({
+    const displayPanel = new THREE.Mesh(
+      track(new THREE.PlaneGeometry(1.82, 0.74)),
+      track(new THREE.MeshBasicMaterial({
         map: displayTexture,
-          color: 0xffffff,
-          toneMapped: false,
+        color: 0xffffff,
+        toneMapped: false,
       }))
     )
-      displayPanel.position.set(-0.74, 0.22, 1.54)
+    displayPanel.position.set(-0.74, 0.22, 1.54)
     rig.add(displayPanel)
 
     const displayGlass = new THREE.Mesh(
-        track(new THREE.PlaneGeometry(1.93, 0.84)),
+      track(new THREE.PlaneGeometry(1.93, 0.84)),
       track(new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
         metalness: 0.08,
-          roughness: 0.03,
+        roughness: 0.03,
         transparent: true,
-          opacity: 0.14,
+        opacity: 0.14,
         transmission: 0.16,
       }))
     )
-      displayGlass.position.set(-0.74, 0.22, 1.57)
+    displayGlass.position.set(-0.74, 0.22, 1.57)
     rig.add(displayGlass)
 
     const meterGroup = new THREE.Group()
-      meterGroup.position.set(-1.76, 0.64, 1.52)
+    meterGroup.position.set(-1.76, 0.64, 1.52)
     rig.add(meterGroup)
 
     const meterBars: THREE.Mesh[] = []
@@ -538,13 +647,14 @@ export default function HamRadioHeroScene() {
       pointer.currentX = THREE.MathUtils.lerp(pointer.currentX, pointer.targetX, easing)
       pointer.currentY = THREE.MathUtils.lerp(pointer.currentY, pointer.targetY, easing)
 
-      root.rotation.y = -0.2 + pointer.currentX * 0.22
-      root.rotation.x = -0.08 + pointer.currentY * -0.1
-      root.position.y = reducedMotion ? -0.34 : -0.34 + Math.sin(elapsed * 0.8) * 0.06
+      root.rotation.y = layout.rootBaseYaw + pointer.currentX * layout.rootYawRange
+      root.rotation.x = layout.rootBasePitch + pointer.currentY * layout.rootPitchRange
+      root.position.y = reducedMotion ? layout.rootY : layout.rootY + Math.sin(elapsed * 0.8) * layout.floatAmplitude
 
-      camera.position.x = pointer.currentX * 0.42
-      camera.position.y = 1.56 + pointer.currentY * -0.18
-      camera.lookAt(0, 0.42, 0.18)
+      camera.position.x = pointer.currentX * layout.cameraOffsetX
+      camera.position.y = layout.cameraBaseY + pointer.currentY * layout.cameraOffsetY
+      camera.position.z = layout.cameraBaseZ
+      camera.lookAt(0, layout.lookAtY, layout.lookAtZ)
 
       knobState.main = THREE.MathUtils.lerp(knobState.main, 0.14 + pointer.currentX * 0.5 + Math.sin(elapsed * 0.42) * 0.05, 0.045)
       knobState.fine = THREE.MathUtils.lerp(knobState.fine, -0.1 + pointer.currentX * 0.18 + Math.sin(elapsed * 0.78) * 0.04, 0.06)
@@ -556,13 +666,18 @@ export default function HamRadioHeroScene() {
       const fineOffsetKhz = knobState.fine * 2.8
       const signalLevel = THREE.MathUtils.clamp(0.32 + volumeLevel * 0.46 + Math.abs(knobState.sub) * 0.52, 0, 1)
 
-      renderDisplay(displaySurface, {
-        frequencyMHz: frequencyValue,
+      const displayState: DisplayState = {
+        frequencyMHz: Number(frequencyValue.toFixed(3)),
         volume: volumeValue,
-        signalLevel,
-        fineOffsetKhz,
-      })
-      displayTexture.needsUpdate = true
+        signalLevel: Number(signalLevel.toFixed(2)),
+        fineOffsetKhz: Number(fineOffsetKhz.toFixed(2)),
+      }
+      const nextDisplayKey = getDisplayKey(displayState)
+      if (nextDisplayKey !== lastDisplayKey) {
+        renderDisplay(displaySurface, displayState)
+        displayTexture.needsUpdate = true
+        lastDisplayKey = nextDisplayKey
+      }
 
       mainKnobGroup.rotation.z = knobState.main
       fineKnobGroup.rotation.z = knobState.fine
@@ -614,16 +729,6 @@ export default function HamRadioHeroScene() {
       aria-label="Three-dimensional ham radio transceiver, mast, and signal field illustration"
     >
       <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
-      <div className={styles.overlay}>
-        <div className={styles.bands}>
-          <span className={styles.band}>HF</span>
-          <span className={styles.band}>VHF</span>
-          <span className={styles.band}>Station builds</span>
-        </div>
-        <div className={styles.footer}>
-          <strong className={styles.callSign}>KF8FVD</strong>
-        </div>
-      </div>
     </div>
   )
 }

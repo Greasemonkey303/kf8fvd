@@ -2,8 +2,10 @@
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: inherit;
+  min-height: 100%;
   overflow: hidden;
+  border-radius: inherit;
+  touch-action: pan-y;
   background:
     radial-gradient(circle at 18% 18%, rgba(var(--logo-blue-rgb), 0.28), transparent 34%),
     radial-gradient(circle at 82% 24%, rgba(var(--logo-green-rgb), 0.18), transparent 30%),
@@ -39,62 +41,23 @@
   display: block;
 }
 
-.overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 1rem;
-  pointer-events: none;
+:global(.theme-light) .shell {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(var(--logo-blue-rgb), 0.18), transparent 36%),
+    radial-gradient(circle at 82% 24%, rgba(var(--logo-green-rgb), 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(237, 244, 250, 0.98), rgba(216, 228, 238, 0.94));
 }
 
-.band {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2rem;
-  border-radius: 999px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-  font-weight: 800;
+:global(.theme-light) .shell::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), transparent 20%),
+    linear-gradient(transparent 0, transparent 48%, rgba(7, 18, 24, 0.05) 50%, transparent 52%, transparent 100%);
+  opacity: 0.2;
+  mix-blend-mode: normal;
 }
 
-.bands {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-  align-self: flex-start;
-}
-
-.band {
-  padding: 0 0.72rem;
-  color: var(--white-85);
-  background: rgba(4, 16, 34, 0.72);
-  border: 1px solid rgba(var(--logo-blue-rgb), 0.22);
-}
-
-.footer {
-  max-width: 18rem;
-}
-
-.callSign {
-  display: block;
-  margin: 0;
-  color: var(--white-95);
-  font-family: var(--font-heading);
-  font-size: clamp(1.3rem, 1rem + 1vw, 1.85rem);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-@media (max-width: 640px) {
-  .overlay {
-    padding: 0.8rem;
-  }
-
-  .footer {
-    max-width: none;
-  }
+:global(.theme-light) .shell::after {
+  background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.42), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(var(--logo-blue-rgb), 0.1), transparent 46%);
 }

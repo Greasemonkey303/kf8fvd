@@ -1,4 +1,4 @@
-import HamRadioHeroScene from '@/components/hero/HamRadioHeroScene'
+import { HamRadioHeroScene } from '@/components'
 import styles from './signaldeck.module.css'
 
 export default function SignalDeck() {
@@ -8,10 +8,6 @@ export default function SignalDeck() {
         <div className={styles.header}>
           <p className={styles.kicker}>Three-dimensional station visual</p>
           <h2 id="signal-deck-title" className={styles.title}>Signal Deck</h2>
-          <p className={styles.deck}>
-            A live-rendered Three.js station scene built around the same shack themes as the site:
-            HF operating, antenna work, handheld and mobile gear, and the constant chase for a cleaner signal.
-          </p>
         </div>
 
         <div className={styles.stage}>
