@@ -19,8 +19,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteOrigin = (process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/$/, '')
+const siteUrl = `${siteOrigin}/`
+const personId = `${siteUrl}#person`
+const websiteId = `${siteUrl}#website`
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://kf8fvd.com'),
+  metadataBase: new URL(siteUrl),
   title: "KF8FVD Info Page",
   description: "KF8FVD Zach Amateur Radio Operator Page",
 };
@@ -47,19 +52,19 @@ export default async function RootLayout({
           "@graph": [
             {
               "@type": "Person",
-              "@id": "https://kf8fvd.com/#person",
+              "@id": personId,
               "name": "Zachary (KF8FVD)",
               "alternateName": "KF8FVD",
-              "url": "https://kf8fvd.com/",
+              "url": siteUrl,
               "jobTitle": "CNC & EDM Specialist",
               "description": "Amateur radio operator and maker based in Kentwood, MI."
             },
             {
               "@type": "WebSite",
-              "@id": "https://kf8fvd.com/#website",
-              "url": "https://kf8fvd.com/",
+              "@id": websiteId,
+              "url": siteUrl,
               "name": "KF8FVD",
-              "publisher": { "@id": "https://kf8fvd.com/#person" }
+              "publisher": { "@id": personId }
             }
           ]
         }) }} />

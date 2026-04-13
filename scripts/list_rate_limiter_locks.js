@@ -2,7 +2,7 @@
 (async function main(){
   try {
     const Redis = require('ioredis')
-    const redisUrl = process.env.REDIS_URL || (process.env.REDIS_HOST ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}` : 'redis://host.docker.internal:6379')
+    const redisUrl = process.env.REDIS_URL || (process.env.REDIS_HOST ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}` : 'redis://127.0.0.1:6379')
     const client = new Redis(redisUrl)
     try {
       const keys = (typeof client.keys === 'function') ? await client.keys('rl:lock:*') : []

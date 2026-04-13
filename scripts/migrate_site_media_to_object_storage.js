@@ -100,6 +100,7 @@ function replaceLegacyValues(node) {
 
 async function migrate() {
   loadEnv('.env.local')
+  loadEnv('.env')
   const options = parseArgs(process.argv.slice(2))
   const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
   if (!bucket) throw new Error('NEXT_PUBLIC_S3_BUCKET is required')

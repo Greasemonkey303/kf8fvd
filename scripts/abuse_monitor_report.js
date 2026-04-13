@@ -49,6 +49,7 @@ function statusFor(value, warnAt, criticalAt) {
 
 async function main() {
   loadEnv('.env.local')
+  loadEnv('.env')
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,

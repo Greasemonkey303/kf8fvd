@@ -38,7 +38,7 @@ function getRedisUrl() {
 }
 
 function loadEnvFile() {
-  const candidates = ['.env.local', 'env.local']
+  const candidates = ['.env.local', 'env.local', '.env']
   for (const name of candidates) {
     const filePath = path.resolve(process.cwd(), name)
     if (!fs.existsSync(filePath)) continue

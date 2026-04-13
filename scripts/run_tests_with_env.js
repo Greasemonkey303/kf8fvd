@@ -3,14 +3,14 @@ const path = require('path');
 const cp = require('child_process');
 
 const base = process.cwd();
-const candidates = ['.env.local', 'env.local'];
+const candidates = ['.env.local', 'env.local', '.env'];
 let p = null;
 for (const fname of candidates) {
   const cpPath = path.resolve(base, fname);
   if (fs.existsSync(cpPath)) { p = cpPath; break; }
 }
 if (!p) {
-  console.error('No env file found (env.local or .env.local) in', base);
+  console.error('No env file found (.env.local, env.local, or .env) in', base);
   process.exit(2);
 }
 const content = fs.readFileSync(p, 'utf8');

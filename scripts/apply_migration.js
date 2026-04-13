@@ -4,23 +4,27 @@ const path = require('path')
 const mysql = require('mysql2/promise')
 
 function loadEnvFile() {
-  const envPath = path.join(process.cwd(), '.env.local')
   const env = {}
-  if (!fs.existsSync(envPath)) return env
+  for (const name of ['.env.local', 'env.local', '.env']) {
+    const envPath = path.join(process.cwd(), name)
+    if (!fs.existsSync(envPath)) continue
 
-  const txt = fs.readFileSync(envPath, 'utf8')
-  txt.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) return
-    const idx = trimmed.indexOf('=')
-    if (idx === -1) return
-    const key = trimmed.slice(0, idx).trim()
-    let val = trimmed.slice(idx + 1)
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-      val = val.slice(1, -1)
-    }
-    env[key] = val
-  })
+    const txt = fs.readFileSync(envPath, 'utf8')
+    txt.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) return
+      const idx = trimmed.indexOf('=')
+      if (idx === -1) return
+      const key = trimmed.slice(0, idx).trim()
+      let val = trimmed.slice(idx + 1)
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1)
+      }
+      env[key] = val
+    })
+
+    return env
+  }
 
   return env
 }
@@ -63,7 +67,7 @@ async function main(){
     const database = env.DB_NAME || process.env.DB_NAME
 
     if (!user || !database) {
-      console.error('DB_USER or DB_NAME not set in .env.local or environment')
+      console.error('DB_USER or DB_NAME not set in .env.local, env.local, .env, or environment')
       process.exit(2)
     }
 

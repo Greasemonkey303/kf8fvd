@@ -8,7 +8,7 @@ const Minio = require('minio')
 const { runWithMaintenanceRecord } = require('./lib/maintenance_run_logger')
 
 function loadEnvFile() {
-  const candidates = ['.env.local', 'env.local']
+  const candidates = ['.env.local', 'env.local', '.env']
   for (const name of candidates) {
     const filePath = path.resolve(process.cwd(), name)
     if (!fs.existsSync(filePath)) continue

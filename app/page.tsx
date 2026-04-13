@@ -1,6 +1,6 @@
 import Dashboard from '@/containers/dashboard/dashboard';
 import styles from "./home.module.css";
-import { Hero, Bands, MainLogo } from "@/containers";
+import { Hero, Bands, MainLogo, SignalDeck } from "@/containers";
 import { getSiteMediaUrl } from '@/lib/siteMedia';
 
 export const metadata = {
@@ -20,6 +20,7 @@ export default function Home() {
       <main id="main" className={styles.main}>
         <Hero />
         <MainLogo />
+        <SignalDeck />
         <Dashboard />
         <Bands />
       </main>

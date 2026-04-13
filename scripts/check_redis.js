@@ -22,6 +22,7 @@ function loadEnv(file = '.env.local') {
 }
 
 loadEnv('.env.local');
+loadEnv('.env');
 
 (async () => {
   try {

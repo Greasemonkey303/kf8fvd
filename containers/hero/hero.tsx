@@ -109,15 +109,23 @@ export default async function Hero() {
         <img src={fallbackSrc} alt={altText} className={styles.bgImg} />
       </picture>
       <div className={styles.inner}>
-        <h1 id="hero-title">{String(hero?.title || 'KF8FVD - Amateur Radio')}</h1>
-        {hero && hero.content && String(hero.content).trim() ? (
-          <div className={styles.content} dangerouslySetInnerHTML={{ __html: sanitizeHtmlServer(String(hero.content)) }} />
-        ) : (
-          <p className={styles.lead}>{String(hero?.subtitle || 'Welcome to my ham radio site. Explore HF bands, equipment, and more.')}</p>
-        )}
-        <div className={styles.heroCtaWrap}>
-          <a href="/contactme" className={styles.heroBtn} aria-label="Contact Me">Contact Me</a>
-          <div className={styles.heroNote}>Click to get in touch or schedule a QSO</div>
+        <div className={styles.copy}>
+          <div className={styles.kicker}>Kentwood, MI // HF signals // station builds</div>
+          <h1 id="hero-title">{String(hero?.title || 'KF8FVD - Amateur Radio')}</h1>
+          {hero && hero.content && String(hero.content).trim() ? (
+            <div className={styles.content} dangerouslySetInnerHTML={{ __html: sanitizeHtmlServer(String(hero.content)) }} />
+          ) : (
+            <p className={styles.lead}>{String(hero?.subtitle || 'Welcome to my ham radio site. Explore HF bands, equipment, and more.')}</p>
+          )}
+          <div className={styles.heroMeta} aria-label="Site focus areas">
+            <span className={styles.heroPill}>20m to 70cm</span>
+            <span className={styles.heroPill}>Antenna work</span>
+            <span className={styles.heroPill}>Shack projects</span>
+          </div>
+          <div className={styles.heroCtaWrap}>
+            <a href="/contactme" className={styles.heroBtn} aria-label="Contact Me">Contact Me</a>
+            <div className={styles.heroNote}>Get in touch, trade station notes, or schedule a QSO</div>
+          </div>
         </div>
       </div>
     </section>
