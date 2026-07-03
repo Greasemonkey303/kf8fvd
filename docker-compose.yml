@@ -33,6 +33,10 @@ services:
     restart: always
     mem_limit: 1g
     mem_reservation: 256m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: json-file
       options:
@@ -105,7 +109,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - ./data/mysql:/var/lib/mysql
     healthcheck:
@@ -137,7 +141,7 @@ services:
       - --requirepass
       - ${REDIS_PASSWORD}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - ./data/redis:/data
     healthcheck:
@@ -171,8 +175,8 @@ services:
       - --console-address
       - ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - ./data/minio:/data
     networks:
@@ -191,9 +195,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/cloudflare/certs:/etc/nginx/certs:ro
@@ -207,7 +208,7 @@ services:
           - proxy
 
   tunnel:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2026.6.1
     container_name: kf8fvd-tunnel
     restart: always
     mem_limit: 128m

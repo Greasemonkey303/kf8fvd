@@ -21,7 +21,9 @@ This runbook is for deploying the current app without changing how it runs today
 - Local production-like Docker build passes.
 - HTTPS smoke checks pass locally behind the reverse proxy.
 - `/api/health` returns `200` only when required production configuration is present and MySQL, Redis, and MinIO are reachable.
-- Unauthenticated `/admin` redirects to `/signin?callbackUrl=%2Fadmin`.
+- The public HTTPS origin does not serve `/admin` or `/api/admin/*`.
+- Admin access is local-only through the localhost app bind, for example `http://127.0.0.1:3000/admin`.
+- Unauthenticated local admin access redirects to `/signin?callbackUrl=%2Fadmin`.
 - The root request handler is already migrated to `proxy.ts`.
 
 ## What Must Exist Before First Production Start
@@ -156,6 +158,10 @@ location / {
 }
 ```
 
+Origin HTTP should only redirect to HTTPS for public hosts. Do not serve the app, S3 proxy, or MinIO admin over plain HTTP.
+
+The public Nginx origin should not expose `/admin`, `/api/admin/*`, `/api/whoami-admin`, or the admin-only upload helpers under `/api/uploads`.
+
 Important:
 
 - `INTERNAL_APP_ORIGIN` must stay on the internal Docker network and must not point to the public HTTPS URL.
@@ -186,6 +192,8 @@ After the schema is in place, use [c:\Users\zachs\Documents\code\kf8fvd\deploy\F
 - The app expects `NEXT_PUBLIC_S3_BUCKET=kf8fvd`.
 - Object operations use the MinIO S3-compatible API from the app container.
 - If browser-direct presigned upload flows are used in production, configure bucket CORS before go-live. The repo already contains `scripts/set-minio-cors.js` for that purpose.
+- Keep the MinIO browser console local-only. In the current Compose stack it stays reachable through the localhost bind on `127.0.0.1:9001`, not through the public Nginx origin.
+- The public `/s3/` proxy still needs to remain available while browser-direct presigned upload flows are in use.
 
 ## Deployment Order
 
@@ -208,16 +216,17 @@ Run these checks after the stack is up:
 0.5. Run `npm run migrations:check` and confirm it reports no pending files before the app starts serving write traffic.
 1. `GET /api/health` returns `200`.
 2. `GET /signin` loads and the Turnstile widget appears.
-3. `GET /admin` when signed out redirects to `/signin?callbackUrl=%2Fadmin`.
+3. Public `GET /admin` returns `404` at the reverse proxy.
 4. A valid login with email, password, and 2FA succeeds.
-5. After login, `GET /api/admin/whoami` returns `admin: true` for the admin account.
-6. The admin dashboard loads.
-7. At least one upload path works against MinIO.
-8. Contact form submission stores a row in `messages` and delivers mail through SendGrid.
-9. Admin message attachments download successfully through `/admin/api/messages/attachments` for both new MinIO-backed and migrated legacy messages.
-10. Forgot-password email flow works.
-11. Failed admin requests increment the admin rate limiter and do not break normal authenticated admin navigation.
-12. `content_deletion_log` migration is applied before using admin delete actions in environments where safer delete recovery is required.
+5. Local `GET http://127.0.0.1:3000/admin` when signed out redirects to `/signin?callbackUrl=%2Fadmin`.
+6. After login, local `GET http://127.0.0.1:3000/api/admin/whoami` returns `admin: true` for the admin account.
+7. The local admin dashboard loads.
+8. At least one local admin upload path works against MinIO.
+9. Contact form submission stores a row in `messages` and delivers mail through SendGrid.
+10. Local admin message attachments download successfully through `/admin/api/messages/attachments` for both new MinIO-backed and migrated legacy messages.
+11. Forgot-password email flow works.
+12. Failed local admin requests increment the admin rate limiter and do not break normal authenticated admin navigation.
+13. `content_deletion_log` migration is applied before using admin delete actions in environments where safer delete recovery is required.
 
 ## Health Check Expectations
 

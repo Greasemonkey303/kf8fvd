@@ -72,7 +72,8 @@ redis-cli -h <host> -p <port> DEL "rl:count:ip%3A1.2.3.4" "rl:lock:ip%3A1.2.3.4"
 
 ## 11) Post-deploy smoke checks
 - Visit `/` and `/signin` to confirm pages render.
-- Verify `/admin` redirects if unauthenticated and allows admins.
+- Verify the public origin returns `404` for `/admin` and `/api/admin/*`.
+- Verify local admin access through `http://127.0.0.1:3000/admin` still redirects when unauthenticated and allows admins after sign-in.
 - Run `npm run readiness:backend` from the deployed environment or container shell when verifying infra drift.
 - Call `POST /api/mw/rate` to confirm rate limiter behavior is expected.
 
