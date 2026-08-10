@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '../../../../../lib/auth'
-import { archiveDeletedContent } from '@/lib/deletionArchive'
+import { archiveDeletedContent, commitDeletionWithCleanup } from '@/lib/deletionArchive'
 import { query } from '../../../../../lib/db'
-import { deletePrefixStrict, listObjectKeysByPrefix } from '@/lib/objectStorage'
+import { deleteObjectsStrict, listObjectKeysByPrefix } from '@/lib/objectStorage'
 import { parseJsonObject, readEnumString, readNumberArray, validationErrorResponse } from '@/lib/validation'
 
 const getErrMsg = (err: unknown) => {
@@ -46,10 +46,11 @@ export async function POST(req: Request) {
       candidates.push('pages/')
 
       const normalize = (p: string) => String(p || '').replace(/^\/+/, '').replace(/\/+$/, '')
-      const seen = new Set<string>()
+      let pendingCleanupCount = 0
       for (const r of rows) {
         const slug = String(r.slug || '')
         const archiveKeys: string[] = []
+        const seen = new Set<string>()
         for (const rawPrefix of candidates) {
           const np = normalize(rawPrefix)
           if (!np) continue
@@ -58,19 +59,17 @@ export async function POST(req: Request) {
           seen.add(candidate)
           archiveKeys.push(...await listObjectKeysByPrefix(candidate))
         }
-        await archiveDeletedContent({ contentType: 'page', originalId: Number(r.id || 0), slug, snapshot: r, objectReferences: archiveKeys, deletedBy: admin.email })
-        for (const rawPrefix of candidates) {
-          const np = normalize(rawPrefix)
-          if (!np) continue
-          const candidate = np.endsWith('/') ? `${np}${slug}/` : `${np}/${slug}/`
-          if (!seen.has(candidate)) continue
-          await deletePrefixStrict(candidate)
-        }
+        const rowId = Number(r.id || 0)
+        const archive = await archiveDeletedContent({ contentType: 'page', originalId: rowId, slug, snapshot: r, objectReferences: archiveKeys, deletedBy: admin.email })
+        const cleanup = await commitDeletionWithCleanup(
+          archive,
+          () => query('DELETE FROM pages WHERE id = ?', [rowId]),
+          () => deleteObjectsStrict(archive.originalObjectKeys),
+        )
+        if (cleanup.cleanupPending) pendingCleanupCount += 1
       }
 
-      // delete rows
-      await query(`DELETE FROM pages WHERE id IN (${placeholders})`, ids)
-      return NextResponse.json({ ok: true, deleted: rows })
+      return NextResponse.json({ ok: true, deleted: rows, pendingCleanupCount })
     }
 
     return NextResponse.json({ error: 'Validation failed', details: [{ field: 'action', message: 'action contains an invalid value' }] }, { status: 400 })

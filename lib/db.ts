@@ -37,6 +37,7 @@ function toDbExecuteValue(value: unknown): DbExecuteValue {
 }
 
 // Load environment variables
+const connectionLimit = parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10)
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -44,9 +45,14 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
-  queueLimit: 0,
-  ssl: process.env.NODE_ENV === 'production' ? {
+  connectionLimit,
+  maxIdle: parseInt(process.env.DB_MAX_IDLE || String(connectionLimit), 10),
+  idleTimeout: parseInt(process.env.DB_IDLE_TIMEOUT_MS || '60000', 10),
+  queueLimit: parseInt(process.env.DB_QUEUE_LIMIT || '100', 10),
+  connectTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '5000', 10),
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  ssl: process.env.DB_SSL === '1' || process.env.DB_SSL === 'true' ? {
     rejectUnauthorized: false,
   } : undefined
 };

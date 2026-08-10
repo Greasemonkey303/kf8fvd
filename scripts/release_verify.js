@@ -10,6 +10,7 @@ function parseArgs(argv) {
     skipBuild: args.has('--skip-build'),
     withStorageWriteTest: args.has('--with-storage-write-test'),
     withE2E: args.has('--with-e2e'),
+    withPublicSmoke: args.has('--with-public-smoke'),
   }
 }
 
@@ -36,7 +37,7 @@ async function main() {
   const steps = [
     { label: 'Check recorded migrations', command: 'node', args: ['scripts/check_pending_migrations.js'] },
     { label: 'Lint', command: 'npm', args: ['run', 'lint'] },
-    { label: 'Unit and integration tests', command: 'npm', args: ['run', 'test:unit'] },
+    { label: 'Unit and integration tests', command: 'npm', args: ['run', 'test:all'] },
   ]
 
   if (!options.skipBuild) {
@@ -55,6 +56,10 @@ async function main() {
 
   if (options.withE2E) {
     steps.push({ label: 'Playwright E2E', command: 'npm', args: ['run', 'e2e'] })
+  }
+
+  if (options.withPublicSmoke) {
+    steps.push({ label: 'Public production smoke', command: 'npm', args: ['run', 'smoke:production'] })
   }
 
   for (const step of steps) {

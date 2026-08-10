@@ -1,25 +1,84 @@
-name: Security Checks
+name: Security
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main]
   pull_request:
-    branches: [ main, master ]
+    branches: [main]
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  security:
+  source:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Install
-        run: npm ci
-      - name: Run npm audit
-        run: npm run audit
-      - name: Run secret scan
-        run: node tools/scan-secrets.js
-      - name: Run linter
-        run: npm run lint
+          node-version: '20.20.2'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit complete dependency graph
+        run: npm audit --audit-level=high
+
+      - name: Scan tracked files for secrets
+        run: npm run scan:secrets
+
+      - name: Scan repository filesystem
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+  container:
+    runs-on: ubuntu-latest
+    needs: source
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build audit image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: runner
+          load: true
+          push: false
+          tags: kf8fvd:audit
+          build-args: |
+            NODE_ENV=production
+            NEXT_PUBLIC_SITE_URL=https://www.example.invalid
+            NEXTAUTH_URL=https://www.example.invalid
+            NEXT_PUBLIC_CF_TURNSTILE_SITEKEY=1x00000000000000000000AA
+            NEXT_PUBLIC_MINIO_BASE_URL=https://www.example.invalid/s3
+
+      - name: Scan audit image
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: kf8fvd:audit
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'

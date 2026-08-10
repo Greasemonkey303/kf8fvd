@@ -15,6 +15,8 @@ const HEALTH_TIMEOUT_MS = 1500
 function collectMissingConfig() {
   const required = [
     'NEXTAUTH_SECRET',
+    'CF_TURNSTILE_SECRET',
+    'NEXT_PUBLIC_CF_TURNSTILE_SITEKEY',
     'NEXT_PUBLIC_S3_BUCKET',
     'DB_HOST',
     'DB_USER',
@@ -62,7 +64,7 @@ async function probeDependency(label: string, operation: () => Promise<void>): P
   }
 }
 
-async function buildHealthPayload() {
+export async function buildHealthPayload() {
   const missing = collectMissingConfig()
 
   const dependencies = {
@@ -96,7 +98,7 @@ async function buildHealthPayload() {
 
 export async function GET() {
   const payload = await buildHealthPayload()
-  return NextResponse.json(payload, { status: payload.ok ? 200 : 503 })
+  return NextResponse.json({ ok: payload.ok }, { status: payload.ok ? 200 : 503 })
 }
 
 export async function HEAD() {

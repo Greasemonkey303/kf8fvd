@@ -38,7 +38,7 @@ function getRedisUrl() {
 }
 
 function loadEnvFile() {
-  const candidates = ['.env.local', 'env.local']
+  const candidates = ['.env.local', 'env.local', '.env']
   for (const name of candidates) {
     const filePath = path.resolve(process.cwd(), name)
     if (!fs.existsSync(filePath)) continue
@@ -66,6 +66,8 @@ function printStep(status, label, details) {
 function collectRequiredEnv() {
   return [
     'NEXTAUTH_SECRET',
+    'CF_TURNSTILE_SECRET',
+    'NEXT_PUBLIC_CF_TURNSTILE_SITEKEY',
     'NEXT_PUBLIC_S3_BUCKET',
     'DB_HOST',
     'DB_PORT',

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { archiveDeletedContent } from '@/lib/deletionArchive'
+import { archiveDeletedContent, commitDeletionWithCleanup } from '@/lib/deletionArchive'
 import { query } from '@/lib/db'
-import { deleteObjectStrict, deletePrefixStrict, listObjectKeysByPrefix, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { deleteObjectsStrict, listObjectKeysByPrefix, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 import { parseJsonObject, readEnumString, readNumberArray, validationErrorResponse } from '@/lib/validation'
 
 const getErrMsg = (err: unknown) => {
@@ -37,17 +37,22 @@ export async function POST(req: Request) {
     // delete
     if (action === 'delete') {
       const rows = await query<Array<Record<string, unknown>>>(`SELECT * FROM credentials WHERE id IN (${placeholders})`, ids)
+      let pendingCleanupCount = 0
       for (const row of rows || []) {
         const prefix = String(row.s3_prefix || '')
         const prefixKeys = prefix ? await listObjectKeysByPrefix(`${prefix}/`) : []
         const imageKey = resolveObjectKeyFromReference(row.image_path)
-        await archiveDeletedContent({ contentType: 'credential', originalId: Number(row.id || 0), slug: String(row.slug || prefix || row.id || ''), snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
-        if (prefix) await deletePrefixStrict(`${prefix}/`)
-        if (imageKey) await deleteObjectStrict(imageKey)
+        const rowId = Number(row.id || 0)
+        const archive = await archiveDeletedContent({ contentType: 'credential', originalId: rowId, slug: String(row.slug || prefix || row.id || ''), snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
+        const cleanup = await commitDeletionWithCleanup(
+          archive,
+          () => query('DELETE FROM credentials WHERE id = ?', [rowId]),
+          () => deleteObjectsStrict(archive.originalObjectKeys),
+        )
+        if (cleanup.cleanupPending) pendingCleanupCount += 1
       }
 
-      await query(`DELETE FROM credentials WHERE id IN (${placeholders})`, ids)
-      return NextResponse.json({ ok: true })
+      return NextResponse.json({ ok: true, pendingCleanupCount })
     }
 
     return NextResponse.json({ error: 'Unhandled action' }, { status: 400 })

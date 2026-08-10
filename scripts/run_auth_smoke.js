@@ -14,48 +14,33 @@ async function waitForServer(base){
 
 async function main(){
   const base = process.env.SITE_URL || 'http://localhost:3000'
-  const email = process.env.TEST_EMAIL || 'zach@kf8fvd.com'
-  const password = process.env.TEST_PASSWORD || 'Zachjcke052/'
-  process.env.CF_TURNSTILE_BYPASS = 'true'
-  process.env.DEBUG_2FA = '1'
+  const email = process.env.TEST_EMAIL || ''
+  const password = process.env.TEST_PASSWORD || ''
+  const turnstileToken = process.env.TEST_TURNSTILE_TOKEN || ''
+
+  if (!email || !password || !turnstileToken) {
+    console.error('TEST_EMAIL, TEST_PASSWORD, and TEST_TURNSTILE_TOKEN are required')
+    process.exit(2)
+  }
 
   if (!(await waitForServer(base))) {
     console.error('Server did not respond at', base)
     process.exit(2)
   }
 
-  console.log('Requesting 2FA code for', email)
+  console.log('Requesting a 2FA code')
   try{
     const r = await fetch(base + '/api/auth/2fa/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, cf_turnstile_response: turnstileToken })
     })
     const j = await r.json()
     console.log('2FA response:', JSON.stringify(j))
-    const code = j?.debugCode || null
-    if (!code) {
-      console.error('No debugCode received; cannot complete OTP sign-in')
+    if (!r.ok || !j?.ok) {
+      console.error('2FA request failed')
       process.exit(1)
     }
-
-    console.log('Submitting credentials with OTP...')
-    const params = new URLSearchParams()
-    params.append('email', email)
-    params.append('password', password)
-    params.append('otp', code)
-
-    const r2 = await fetch(base + '/api/auth/callback/credentials', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params,
-      redirect: 'manual'
-    })
-    console.log('Sign-in status:', r2.status)
-    try{
-      const txt = await r2.text()
-      console.log('Sign-in body:', txt.slice(0,200))
-    }catch{}
 
     console.log('Requesting forgot-password...')
     const r3 = await fetch(base + '/api/forgot-password', {

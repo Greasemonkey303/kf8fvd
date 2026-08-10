@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Oswald } from "next/font/google";
 import { cookies } from 'next/headers'
-import { Navbar, BackButton } from "@/components";
+import { Navbar } from "@/components";
 import { Footer } from "@/containers";
 import UmamiAnalytics from '@/components/analytics/UmamiAnalytics'
 import UmamiPageTracker from '@/components/analytics/UmamiPageTracker'
@@ -19,10 +19,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const oswald = Oswald({
+  variable: "--font-oswald",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://kf8fvd.com'),
-  title: "KF8FVD Info Page",
-  description: "KF8FVD Zach Amateur Radio Operator Page",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kf8fvd.com'),
+  title: {
+    default: 'KF8FVD Amateur Radio',
+    template: '%s | KF8FVD',
+  },
+  description: 'KF8FVD amateur radio station dashboard, projects, credentials, and operating activity.',
+  alternates: { canonical: '/' },
+  icons: { icon: '/logo/mini-logo.svg' },
+  manifest: '/manifest.webmanifest',
 };
 
 export default async function RootLayout({
@@ -41,36 +52,34 @@ export default async function RootLayout({
         <meta name="twitter:card" content="summary_large_image" />
         {/* Early theme initializer (external to avoid CSP inline blocks) */}
         <script src="/theme-init.js" defer />
-        <script id="cf-turnstile-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer />
         <script suppressHydrationWarning type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@graph": [
             {
               "@type": "Person",
-              "@id": "https://kf8fvd.com/#person",
+              "@id": "https://www.kf8fvd.com/#person",
               "name": "Zachary (KF8FVD)",
               "alternateName": "KF8FVD",
-              "url": "https://kf8fvd.com/",
+              "url": "https://www.kf8fvd.com/",
               "jobTitle": "CNC & EDM Specialist",
               "description": "Amateur radio operator and maker based in Kentwood, MI."
             },
             {
               "@type": "WebSite",
-              "@id": "https://kf8fvd.com/#website",
-              "url": "https://kf8fvd.com/",
+              "@id": "https://www.kf8fvd.com/#website",
+              "url": "https://www.kf8fvd.com/",
               "name": "KF8FVD",
-              "publisher": { "@id": "https://kf8fvd.com/#person" }
+              "publisher": { "@id": "https://www.kf8fvd.com/#person" }
             }
           ]
         }) }} />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${oswald.variable}`}>
         <a href="#main" className="skip">Skip to content</a>
         <UmamiAnalytics />
         <UmamiPageTracker />
-        <Navbar />
-        <BackButton />
         <SessionProviderClient>
+          <Navbar />
           {children}
         </SessionProviderClient>
         <Footer />

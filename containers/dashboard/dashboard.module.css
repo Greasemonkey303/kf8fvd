@@ -156,6 +156,22 @@
 .cityName { font-size:0.8rem; font-weight:800; color: var(--white-95); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cityHeader { display:flex; align-items:center; gap:8px; min-width: 0; overflow: hidden }
 .cityItem { border-left: 4px solid var(--city-color, var(--logo-green)); }
+.cityItem[data-timezone='America/New_York'],
+.cityItem[data-timezone='America/Los_Angeles'] { --city-color: var(--city-America_New_York); }
+.cityItem[data-timezone='Europe/London'],
+.cityItem[data-timezone='Asia/Singapore'],
+.cityItem[data-timezone='Africa/Johannesburg'] { --city-color: var(--city-Europe_London); }
+.cityItem[data-timezone='Europe/Paris'],
+.cityItem[data-timezone='Europe/Moscow'] { --city-color: var(--city-Europe_Paris); }
+.cityItem[data-timezone='Europe/Berlin'] { --city-color: var(--city-Europe_Berlin); }
+.cityItem[data-timezone='Asia/Dubai'],
+.cityItem[data-timezone='Asia/Kolkata'] { --city-color: var(--city-Asia_Dubai); }
+.cityItem[data-timezone='Asia/Shanghai'] { --city-color: var(--city-Asia_Shanghai); }
+.cityItem[data-timezone='Asia/Tokyo'],
+.cityItem[data-timezone='Australia/Sydney'] { --city-color: var(--city-Asia_Tokyo); }
+.cityItem[data-timezone='America/Sao_Paulo'] { --city-color: var(--city-America_Sao_Paulo); }
+.cityItem[data-timezone='America/Mexico_City'] { --city-color: var(--city-America_Mexico_City); }
+.cityItem[data-timezone='Africa/Cairo'] { --city-color: var(--city-Africa_Cairo); }
 .cityTime { font-size:1.02rem; font-weight:900; color: var(--color-link); min-width: 8ch; text-align:right; justify-self:end; }
 .cityTz { font-size:0.75rem; color: var(--white-66); margin-left:8px; flex: 0 0 auto; }
 
@@ -182,10 +198,7 @@
 .cityItem:hover .cityName { color: var(--white-100) }
 .badge { padding:6px 10px; border-radius:10px; font-weight:700; }
 .onAirBadge {
-  position: absolute;
-  top: 56px; /* place under the card title/subtitle */
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
   padding: 10px 14px;
   border-radius: 14px;
   font-size: 1rem;

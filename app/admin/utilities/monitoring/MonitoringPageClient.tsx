@@ -245,7 +245,7 @@ type MonitoringPageClientProps = {
 export default function MonitoringPage({ initialData = null, initialError = null }: MonitoringPageClientProps) {
   const router = useRouter()
   const [isRefreshPending, startRefreshTransition] = useTransition()
-  const [data, setData] = useState<MonitoringPayload | null>(initialData)
+  const data: MonitoringPayload | null = initialData
   const [error, setError] = useState<string | null>(initialError)
 
   const refreshPage = () => {
@@ -254,11 +254,6 @@ export default function MonitoringPage({ initialData = null, initialError = null
       router.refresh()
     })
   }
-
-  useEffect(() => {
-    setData(initialData)
-    setError(initialData ? null : initialError)
-  }, [initialData, initialError])
 
   useEffect(() => {
     const timer = window.setInterval(() => {

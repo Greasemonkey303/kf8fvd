@@ -4,6 +4,8 @@ import { requireAdmin } from '@/lib/auth'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
 import { generateWebpVariantForObject } from '@/lib/webpVariants'
 import { logRouteError, logRouteEvent } from '@/lib/observability'
+import { isPublicObjectKey } from '@/lib/objectKeyPolicy'
+import { hasValidImageSignature, validateImageUploadMetadata } from '@/lib/uploadValidation'
 
 export async function POST(req: Request) {
   try {
@@ -25,7 +27,11 @@ export async function POST(req: Request) {
 
     if (!file || !filename || !slug) return NextResponse.json({ error: 'file, slug and filename required' }, { status: 400 })
 
+    const validation = validateImageUploadMetadata({ filename, contentType, size: file.size })
+    if (!validation.ok) return NextResponse.json({ error: validation.error }, { status: validation.status })
+
     const key = await getUploadKey(slug, filename, prefixOverride)
+    if (!isPublicObjectKey(key)) return NextResponse.json({ error: 'Invalid upload destination' }, { status: 400 })
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
     if (!bucket) {
       logRouteEvent('error', { route: 'api/uploads/direct', action: 'direct_upload_failed', actor: admin.email, resourceId: key, reason: 'missing_bucket_env' })
@@ -41,22 +47,18 @@ export async function POST(req: Request) {
     })
 
     if (process.env.NODE_ENV !== 'production') {
-      logRouteEvent('debug', { route: 'api/uploads/direct', action: 'direct_upload_attempt', actor: admin.email, resourceId: key, bucket, filename, contentType })
+      logRouteEvent('debug', { route: 'api/uploads/direct', action: 'direct_upload_attempt', actor: admin.email, resourceId: key, bucket, filename, contentType: validation.contentType })
     }
     const buffer = Buffer.from(await file.arrayBuffer())
-    await new Promise<void>((resolve, reject) => {
-      // pass buffer length and annotate callback with Error|null
-      minioClient.putObject(bucket, key, buffer, buffer.length, (err?: Error | null) => {
-        if (err) {
-          logRouteError('api/uploads/direct', err, { action: 'direct_upload_put_object', actor: admin.email, resourceId: key, reason: 'minio_put_failed' })
-          return reject(err)
-        }
-        if (process.env.NODE_ENV !== 'production') {
-          logRouteEvent('debug', { route: 'api/uploads/direct', action: 'direct_upload_success_debug', actor: admin.email, resourceId: key, bucket })
-        }
-        resolve()
-      })
-    })
+    if (!hasValidImageSignature(buffer, validation.contentType)) {
+      return NextResponse.json({ error: 'File content does not match its image type' }, { status: 415 })
+    }
+    try {
+      await minioClient.putObject(bucket, key, buffer, buffer.length, { 'Content-Type': validation.contentType })
+    } catch (error) {
+      logRouteError('api/uploads/direct', error, { action: 'direct_upload_put_object', actor: admin.email, resourceId: key, reason: 'minio_put_failed' })
+      throw error
+    }
 
     const publicUrl = buildPublicUrl(key)
     const variant = await generateWebpVariantForObject(key).catch(() => null)

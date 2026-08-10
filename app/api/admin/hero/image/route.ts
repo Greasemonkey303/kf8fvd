@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { archiveDeletedContent } from '@/lib/deletionArchive'
+import { archiveDeletedContent, commitDeletionWithCleanup } from '@/lib/deletionArchive'
 import { query, transaction } from '@/lib/db'
-import { deleteObjectStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { deleteObjectsStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 import { generateWebpVariantForObject } from '@/lib/webpVariants'
 import { parseJsonObject, readBoolean, readNumber, readString, validationErrorResponse } from '@/lib/validation'
 
@@ -16,14 +16,17 @@ export async function POST(req: Request) {
     const alt = readString(body, 'alt', { maxLength: 255, allowEmpty: true })
     const is_featured = readBoolean(body, 'is_featured')
     const sort_order = readNumber(body, 'sort_order', { integer: true })
-    // insert and capture insertId if available
-    const insertRes = await query('INSERT INTO hero_image (hero_id, url, alt, is_featured, sort_order) VALUES (?, ?, ?, ?, ?)', [hero_id, url, alt || '', is_featured ? 1 : 0, sort_order || 0])
+    const insertRes = await transaction(async (connection) => {
+      if (is_featured) {
+        await connection.execute('UPDATE hero_image SET is_featured = 0, featured_hero_id = NULL WHERE hero_id = ?', [hero_id])
+      }
+      const [result] = await connection.execute(
+        'INSERT INTO hero_image (hero_id, url, alt, is_featured, featured_hero_id, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+        [hero_id, url, alt || '', is_featured ? 1 : 0, is_featured ? hero_id : null, sort_order || 0],
+      )
+      return result
+    })
     const insertedId = (insertRes as unknown as { insertId?: number })?.insertId ?? undefined
-
-    // if is_featured set, unset others
-    if (is_featured) {
-      await query('UPDATE hero_image SET is_featured = 0 WHERE hero_id = ? AND url <> ?', [hero_id, url])
-    }
 
     // Generate a WebP sibling variant for faster delivery when possible.
     try {
@@ -72,8 +75,9 @@ export async function PATCH(req: Request) {
     const row = r[0]
     if (set_featured) {
       await transaction(async (conn) => {
-        await conn.execute('UPDATE hero_image SET is_featured = 0 WHERE hero_id = ?', [Number((row as Record<string, unknown>).hero_id || 0)])
-        await conn.execute('UPDATE hero_image SET is_featured = 1 WHERE id = ?', [Number(id)])
+        const heroId = Number((row as Record<string, unknown>).hero_id || 0)
+        await conn.execute('UPDATE hero_image SET is_featured = 0, featured_hero_id = NULL WHERE hero_id = ?', [heroId])
+        await conn.execute('UPDATE hero_image SET is_featured = 1, featured_hero_id = ? WHERE id = ?', [heroId, Number(id)])
       })
     }
     if (sort_order !== undefined) {
@@ -115,18 +119,17 @@ export async function DELETE(req: Request) {
       const variantsRaw = row.variants
       let variants: Record<string, unknown> | null = null
       try { variants = variantsRaw ? (typeof variantsRaw === 'string' ? JSON.parse(variantsRaw) : variantsRaw as Record<string, unknown>) : null } catch { variants = null }
-      await archiveDeletedContent({ contentType: 'hero_image', originalId: id, slug: String(hero_id || id), snapshot: row, objectReferences: [objectKey, ...(variants ? Object.values(variants) : [])], deletedBy: admin.email })
-      if (objectKey) await deleteObjectStrict(objectKey)
-      if (variants && typeof variants === 'object') {
-        await Promise.all(Object.values(variants).map((value) => deleteObjectStrict(value)))
-      }
+      const archive = await archiveDeletedContent({ contentType: 'hero_image', originalId: id, slug: String(hero_id || id), snapshot: row, objectReferences: [objectKey, ...(variants ? Object.values(variants) : [])], deletedBy: admin.email })
+      const cleanup = await commitDeletionWithCleanup(
+        archive,
+        () => query('DELETE FROM hero_image WHERE id = ?', [id]),
+        () => deleteObjectsStrict(archive.originalObjectKeys),
+      )
+      const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
+      return NextResponse.json({ images, ...cleanup })
     } catch (e) {
       return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
     }
-
-    await query('DELETE FROM hero_image WHERE id = ?', [id])
-    const images = await query<Record<string, unknown>[]>('SELECT * FROM hero_image WHERE hero_id = ? ORDER BY is_featured DESC, sort_order ASC', [hero_id])
-    return NextResponse.json({ images })
   } catch (err: unknown) {
     console.error('api/admin/hero/image DELETE error', err)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })

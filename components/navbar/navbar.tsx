@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './navbar.module.css';
 import Image from 'next/image';
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation';
 
 const navItems = [
@@ -17,39 +17,15 @@ const navItems = [
 
 const Navbar: React.FC = () => {
   const pathname = usePathname();
+  const { data: session, status } = useSession()
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isLight, setIsLight] = useState<boolean>(() => {
     try { return localStorage.getItem('kf8fvd-theme') === 'light' } catch { return false }
   });
-  const [isAuth, setIsAuth] = useState(false);
-  const [user, setUser] = useState<string | null>(null);
+  const isAuth = status === 'authenticated'
+  const user = session?.user?.name || session?.user?.email || null
   const closeMenu = () => setOpen(false)
-
-  useEffect(() => {
-    const readAuth = async () => {
-      try {
-        const s = await fetch('/api/auth/session', { cache: 'no-store' })
-        const session = await s.json().catch(() => null)
-        const auth = !!session?.user
-        setIsAuth(auth)
-        setUser(session?.user?.name || session?.user?.email || null)
-      } catch {
-        setIsAuth(false)
-        setUser(null)
-      }
-    }
-
-    readAuth();
-    const onStorage = () => readAuth();
-    const onFocus = () => readAuth();
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('focus', onFocus);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 16)

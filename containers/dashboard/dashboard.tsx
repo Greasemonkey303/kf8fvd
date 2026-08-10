@@ -1,14 +1,8 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './dashboard.module.css';
 import { Card } from '@/components';
-
-function getCssVar(name: string, fallback: string) {
-  if (typeof window === 'undefined') return fallback
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name)
-  return v ? v.trim() : fallback
-}
 
 type SpaceWeatherSnapshot = {
   kIndex: number;
@@ -238,13 +232,11 @@ function Clock() {
       <div className={styles.tz}>{localDate}</div>
       <div className={styles.citiesGrid} aria-hidden>
         {displayed.map((c) => {
-          const varName = `--city-${c.tz.replace(/\//g,'_')}`
-          const cityColor = getCssVar(varName, getCssVar('--color-other', '#94a3b8'))
           const cityTime = now
             ? new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: c.tz }).format(now)
             : '—:—:—'
           return (
-            <div key={c.tz} className={styles.cityItem} ref={(el) => { if (el) el.style.setProperty('--city-color', cityColor); }}>
+            <div key={c.tz} className={styles.cityItem} data-timezone={c.tz}>
                 <div className={styles.cityHeader}>
                   <div className={styles.cityName}>{c.flag} {c.name}</div>
                 <div className={styles.cityTz}>{now ? new Intl.DateTimeFormat(undefined, { timeZoneName: 'short', timeZone: c.tz }).format(now).split(' ').pop() : ''}</div>
@@ -291,37 +283,10 @@ function useOnAirState() {
 }
 
 function OnAirBadge({ onAir }: { onAir: boolean | null }) {
-  const badgeRef = useRef<HTMLDivElement | null>(null);
-
-  // Position the badge so its top aligns with the top of the `.time`
-  useEffect(() => {
-    const updatePos = () => {
-      const el = badgeRef.current;
-      if (!el) return;
-      const parent = el.offsetParent as HTMLElement | null;
-      if (!parent) return;
-      const timeEl = parent.querySelector(`.${styles.time}`) as HTMLElement | null;
-      if (!timeEl) return;
-      // place badge top at the same offset as the top of the time element
-      const top = timeEl.offsetTop;
-      el.style.top = `${top}px`;
-      el.style.left = '50%';
-      el.style.transform = 'translateX(-50%)';
-    };
-    updatePos();
-    window.addEventListener('resize', updatePos);
-    const ro = new MutationObserver(updatePos);
-    ro.observe(document.body, { childList: true, subtree: true });
-    return () => {
-      window.removeEventListener('resize', updatePos);
-      ro.disconnect();
-    };
-  }, []);
-
   const stateClass = onAir === null ? '' : (onAir ? styles.onAirActive : styles.off)
   const cls = `${styles.badge} ${stateClass} ${styles.onAirBadge}`.trim()
   return (
-    <div ref={badgeRef} className={cls}>
+    <div className={cls}>
       {onAir === null ? '…' : onAir ? 'On Air' : 'Standby'}
     </div>
   );
@@ -343,7 +308,7 @@ interface QsoEntry {
 export default function Dashboard() {
   const onAir = useOnAirState()
   const [space, setSpace] = useState<SpaceWeatherSnapshot | null>(null);
-  const [qsos, setQsos] = useState<Array<string | QsoEntry> | null>(null);
+  const [qsos, setQsos] = useState<QsoEntry[] | null>(null);
   const [bandGrid, setBandGrid] = useState<Record<BandName, BandActivityCell[]> | null>(null);
   const [bandLastUpdated, setBandLastUpdated] = useState<number | null>(null);
   const [propLastUpdated, setPropLastUpdated] = useState<number | null>(null);
@@ -426,20 +391,13 @@ export default function Dashboard() {
           syncSpaceWeather(normalized, Number.isFinite(cachedTs) ? cachedTs : Date.now());
         }, 0);
       }
-      const cachedLog = readCache('kf8fvd-logbook-v1');
+      const cachedLog = readCache('kf8fvd-logbook-v2');
       if (cachedLog && mounted) {
         const j = cachedLog.data || cachedLog;
         hydrateTimerLog = setTimeout(() => {
           if (!mounted) return;
-          if (j.source === 'qrz' && j.raw) {
-            const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
-            const matches = rawMatches.slice(0,5).map((m) => m[1]);
-            setQsos(matches.length ? matches : []);
-          } else if (j.entries && Array.isArray(j.entries)) {
-            setQsos(j.entries.slice(0,6));
-          } else {
-            setQsos([]);
-          }
+          const entries = Array.isArray(j.entries) ? j.entries.filter((entry: unknown): entry is QsoEntry => Boolean(entry && typeof entry === 'object' && 'call' in entry)) : [];
+          setQsos(entries.slice(0, 6));
         }, 0);
       }
     } catch { /* ignore cache errors */ }
@@ -474,19 +432,11 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((j) => {
         if (!mounted) return;
-        try { writeCache('kf8fvd-logbook-v1', { data: j, ts: Date.now() }); } catch { }
+        try { writeCache('kf8fvd-logbook-v2', { data: j, ts: Date.now() }); } catch { }
         fetchTimerLog = setTimeout(() => {
           if (!mounted) return;
-          if (j.source === 'qrz' && j.raw) {
-            // naive extract of some call signs from XML for display
-            const rawMatches = Array.from((j.raw || '').matchAll(/<call>([^<]+)<\/call>/gi)) as RegExpMatchArray[];
-            const matches = rawMatches.slice(0,5).map((m) => m[1]);
-            setQsos(matches.length ? matches : []);
-          } else if (j.entries && Array.isArray(j.entries)) {
-            setQsos(j.entries.slice(0,6));
-          } else {
-            setQsos([]);
-          }
+          const entries = Array.isArray(j.entries) ? j.entries.filter((entry: unknown): entry is QsoEntry => Boolean(entry && typeof entry === 'object' && 'call' in entry)) : [];
+          setQsos(entries.slice(0, 6));
         }, 0);
       })
       .catch(() => { if (mounted) setQsos([]) });
@@ -584,15 +534,15 @@ export default function Dashboard() {
         <Card className={`${styles.smallCard} ${styles.highlightCard} ${styles.qsoCard}`} title="Recent QSOs" subtitle="Latest contacts">
           <ul className={`${styles.qsoList} accent-scroll`}>
             {qsos === null && <li className={styles.qsoItem}>loading…</li>}
-            {qsos && qsos.length === 0 && <li className={styles.qsoItem}>No recent QSOs found</li>}
+            {qsos && qsos.length === 0 && <li className={styles.qsoItem}>No recent logbook entries are available</li>}
             {qsos && qsos.map((q, i) => (
               <li key={i} className={styles.qsoItem}>
                 {(() => {
-                  const raw = typeof q === 'string' ? q : (q.display || `${q.date} — ${q.call}`);
+                  const raw = q.display || `${q.date} — ${q.call}`;
                   const cleaned = raw.replace(/^\d{6,8}(?:\s*\d{3,4})?\s*—\s*/, '');
                   return <span className={styles.qsoText}>{cleaned}</span>;
                 })()}
-                {typeof q !== 'string' && (q.city || q.state || q.qth) && (
+                {(q.city || q.state || q.qth) && (
                   <span className={styles.qsoLocation}>{q.city || q.qth}{q.state ? `, ${q.state}` : ''}{q.country ? ` • ${q.country}` : ''}</span>
                 )}
               </li>
@@ -703,11 +653,9 @@ export default function Dashboard() {
       </div>
 
       <div className={styles.utilityGrid}>
-        <Card className={styles.utilityCard} title="Nets & Contests" subtitle="Upcoming">
+        <Card className={styles.utilityCard} title="Nets & Contests" subtitle="Schedule">
           <ul className={styles.eventList}>
-            <li><strong>Monday 20:00</strong> — Local VHF Net (W8IRA)</li>
-            <li><strong>Sat 14:00</strong> — Club Contest Practice</li>
-            <li><strong>Mar 3</strong> — Statewide Net (MI)</li>
+            <li>No current net or contest schedule is published.</li>
           </ul>
         </Card>
 

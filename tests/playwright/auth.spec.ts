@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test'
 
-type SubmitCapableForm = HTMLFormElement & {
-  requestSubmit?: () => void
-}
-
 test.describe('Auth flows', () => {
-  test('sign in -> request 2FA -> submit code (debug)', async ({ page }) => {
+  test('sign in requests a 2FA code', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium', 'Auth mutations run once in desktop Chromium')
+    test.skip(process.env.PLAYWRIGHT_AUTH_MUTATIONS !== 'true', 'Set PLAYWRIGHT_AUTH_MUTATIONS=true for staging auth tests')
+    test.skip(!process.env.PLAYWRIGHT_TEST_EMAIL || !process.env.PLAYWRIGHT_TEST_PASSWORD, 'Staging auth credentials are required')
+
     const base = process.env.SITE_URL || 'http://localhost:3000'
     await page.goto(base + '/')
     // navigate to signin
@@ -13,55 +13,15 @@ test.describe('Auth flows', () => {
     await expect(page).toHaveURL(/\/signin/)
 
     // fill credentials
-    const emailVal = process.env.PLAYWRIGHT_TEST_EMAIL || 'zach@kf8fvd.com'
-    const passVal = process.env.PLAYWRIGHT_TEST_PASSWORD || 'Zachjcke052/'
+    const emailVal = process.env.PLAYWRIGHT_TEST_EMAIL as string
+    const passVal = process.env.PLAYWRIGHT_TEST_PASSWORD as string
     await page.fill('input[name="email"]', emailVal)
     await page.fill('input[name="password"]', passVal)
 
-    // submit - in dev you can set CF_TURNSTILE_BYPASS=true to skip captcha
-    // In headless/local tests the client-side CAPTCHA gating may leave the
-    // button disabled. Force-enable and click the submit button in the
-    // page context so the test can proceed.
-    await page.evaluate(() => {
-      // inject a hidden input that mimics Turnstile response so client-side
-      // validation passes in test environments where the widget isn't loaded
-      let inp = document.querySelector('input[name="cf-turnstile-response"]') as HTMLInputElement | null
-      if (!inp) {
-        inp = document.createElement('input')
-        inp.type = 'hidden'
-        inp.name = 'cf-turnstile-response'
-        document.querySelector('form')?.appendChild(inp)
-      }
-      inp.value = 'playwright-bypass'
-      // prefer programmatic form submit to avoid React-controlled disabled button
-      const form = document.querySelector('form') as SubmitCapableForm | null
-      if (form && typeof form.requestSubmit === 'function') {
-        form.requestSubmit()
-      } else if (form) {
-        const ev = new Event('submit', { bubbles: true, cancelable: true })
-        form.dispatchEvent(ev)
-      } else {
-        const btn = document.querySelector('button[type="submit"]') as HTMLButtonElement | null
-        if (btn) {
-          btn.disabled = false
-          btn.click()
-        }
-      }
-    })
-
-    // expect 2FA request UI or redirect; allow the in-page success message as evidence
-    await page.waitForTimeout(1000)
-    const url = page.url()
-    const successCount = await page.locator('text=A verification code was sent to your email.').count()
-    if (!(url.includes('/auth/2fa') || url.includes('/dashboard') || url.includes('/verify') || successCount > 0)) {
-      // fallback: call the 2FA request API directly with bypass (useful for headless CI)
-      const apiRes = await page.evaluate(async (data) => {
-        const e = data.e, p = data.p
-        const resp = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: e, password: p, _bypass: '1' }) })
-        try { return await resp.json() } catch { return { ok: resp.ok } }
-      }, { e: emailVal, p: passVal })
-      expect(apiRes && (apiRes.ok === true || apiRes.ok === undefined)).toBeTruthy()
-    }
+    const submit = page.locator('button[type="submit"]')
+    await expect(submit).toBeEnabled({ timeout: 15000 })
+    await submit.click()
+    await expect(page.getByText('A verification code was sent to your email.')).toBeVisible({ timeout: 15000 })
   })
 
   test('admin unlock flow (requires admin)', async ({ page }) => {

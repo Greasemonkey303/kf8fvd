@@ -4,8 +4,8 @@ import { query } from '../../../../lib/db'
 import { marked } from 'marked'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
-import { archiveDeletedContent } from '@/lib/deletionArchive'
-import { deleteObjectsStrict, deletePrefixStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { archiveDeletedContent, commitDeletionWithCleanup } from '@/lib/deletionArchive'
+import { deleteObjectsStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 import { listObjectKeysByPrefix } from '@/lib/objectStorage'
 import { parseJsonObject, readBoolean, readNumber, readString, validationErrorResponse } from '@/lib/validation'
 
@@ -109,17 +109,12 @@ export async function POST(req: Request) {
   }
 
   try {
-    // If a page with this slug already exists, update it instead of inserting to avoid accidental duplicates
-    const existing = await query<{ id: number }[]>('SELECT id FROM pages WHERE slug = ?', [slug])
-    if (existing && existing.length > 0) {
-      const existingId = existing[0].id
-      await query('UPDATE pages SET title = ?, content = ?, metadata = ?, is_published = ? WHERE id = ?', [title, sanitized || null, safeMetadata ? JSON.stringify(safeMetadata) : JSON.stringify({}), is_published ? 1 : 0, existingId])
-      return NextResponse.json({ id: existingId, ok: true, updated: true })
-    }
-
-    const insertRes = await query('INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?)', [slug, title, sanitized || null, safeMetadata ? JSON.stringify(safeMetadata) : JSON.stringify({}), is_published ? 1 : 0])
-    const insertId = (insertRes as unknown as { insertId?: number })?.insertId ?? null
-    return NextResponse.json({ id: insertId, ok: true })
+    const insertRes = await query<{ insertId?: number; affectedRows?: number }>(
+      'INSERT INTO pages (slug, title, content, metadata, is_published) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), title = VALUES(title), content = VALUES(content), metadata = VALUES(metadata), is_published = VALUES(is_published)',
+      [slug, title, sanitized || null, JSON.stringify(safeMetadata || {}), is_published ? 1 : 0],
+    )
+    const insertId = Number(insertRes?.insertId || 0) || null
+    return NextResponse.json({ id: insertId, ok: true, updated: Number(insertRes?.affectedRows || 0) > 1 })
   } catch (e: unknown) {
     // handle duplicate-slug by merging metadata into existing page
     const errObj = e as unknown
@@ -277,17 +272,14 @@ export async function DELETE(req: Request) {
       }
 
       try {
-        await archiveDeletedContent({ contentType: 'page_card', originalId: Number(id), slug: String(row.slug || id), snapshot: { pageId: Number(id), cardIndex: idx, card }, objectReferences: keysToDelete, deletedBy: admin.email })
-        await deleteObjectsStrict(keysToDelete)
-      } catch (e: unknown) {
-        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
-      }
-
-      // remove the card from metadata and persist
-      meta.cards.splice(idx, 1)
-      try {
-        await query('UPDATE pages SET metadata = ? WHERE id = ?', [JSON.stringify(meta), id])
-        return NextResponse.json({ ok: true })
+        const archive = await archiveDeletedContent({ contentType: 'page_card', originalId: Number(id), slug: String(row.slug || id), snapshot: { pageId: Number(id), cardIndex: idx, card }, objectReferences: keysToDelete, deletedBy: admin.email })
+        meta.cards.splice(idx, 1)
+        const cleanup = await commitDeletionWithCleanup(
+          archive,
+          () => query('UPDATE pages SET metadata = ? WHERE id = ?', [JSON.stringify(meta), id]),
+          () => deleteObjectsStrict(archive.originalObjectKeys),
+        )
+        return NextResponse.json({ ok: true, ...cleanup })
       } catch (e: unknown) {
         return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
       }
@@ -312,16 +304,14 @@ export async function DELETE(req: Request) {
         }
       }
       try {
-        await archiveDeletedContent({ contentType: 'page_card', originalId: Number(id), slug: String(row.slug || id), snapshot: { pageId: Number(id), cardName: keyName, card }, objectReferences: keysToDelete, deletedBy: admin.email })
-        await deleteObjectsStrict(keysToDelete)
-      } catch (e: unknown) {
-        return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
-      }
-      // remove the named card and persist
-      delete meta[keyName]
-      try {
-        await query('UPDATE pages SET metadata = ? WHERE id = ?', [JSON.stringify(meta), id])
-        return NextResponse.json({ ok: true })
+        const archive = await archiveDeletedContent({ contentType: 'page_card', originalId: Number(id), slug: String(row.slug || id), snapshot: { pageId: Number(id), cardName: keyName, card }, objectReferences: keysToDelete, deletedBy: admin.email })
+        delete meta[keyName]
+        const cleanup = await commitDeletionWithCleanup(
+          archive,
+          () => query('UPDATE pages SET metadata = ? WHERE id = ?', [JSON.stringify(meta), id]),
+          () => deleteObjectsStrict(archive.originalObjectKeys),
+        )
+        return NextResponse.json({ ok: true, ...cleanup })
       } catch (e: unknown) {
         return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
       }
@@ -340,12 +330,14 @@ export async function DELETE(req: Request) {
   try {
     const prefix = `${process.env.S3_UPLOAD_PREFIX || 'pages/'}${slug}/`
     const prefixKeys = await listObjectKeysByPrefix(prefix)
-    await archiveDeletedContent({ contentType: 'page', originalId: Number(id), slug, snapshot: row, objectReferences: prefixKeys, deletedBy: admin.email })
-    await deletePrefixStrict(prefix)
+    const archive = await archiveDeletedContent({ contentType: 'page', originalId: Number(id), slug, snapshot: row, objectReferences: prefixKeys, deletedBy: admin.email })
+    const cleanup = await commitDeletionWithCleanup(
+      archive,
+      () => query('DELETE FROM pages WHERE id = ?', [id]),
+      () => deleteObjectsStrict(archive.originalObjectKeys),
+    )
+    return NextResponse.json({ ok: true, ...cleanup })
   } catch (e: unknown) {
     return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
   }
-
-  await query('DELETE FROM pages WHERE id = ?', [id])
-  return NextResponse.json({ ok: true })
 }

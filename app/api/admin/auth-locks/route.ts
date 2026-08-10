@@ -5,14 +5,9 @@ import type { AdminActionDetails } from '../../../../lib/adminActions'
 import { authorizeAdminRequest } from '@/lib/auth'
 import { logRouteError, logRouteEvent } from '@/lib/observability'
 
-// Use shared admin action helper
-async function tryInsertAdminAction(details: AdminActionDetails | unknown) {
-  try {
-    const { insertAdminAction } = await import('../../../../lib/adminActions')
-    await insertAdminAction(details as AdminActionDetails)
-  } catch (e) {
-    try { logRouteError('api/admin/auth-locks', e, { action: 'insert_admin_action', reason: 'audit_write_failed' }) } catch (inner) { void inner }
-  }
+async function insertAdminAction(details: AdminActionDetails) {
+  const adminActions = await import('../../../../lib/adminActions')
+  await adminActions.insertAdminAction(details)
 }
 
 export async function GET(req: Request) {
@@ -64,13 +59,15 @@ export async function POST(req: Request) {
     const body = await req.json()
     const key = String(body?.key || '')
     if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 })
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null
+    try {
+      await insertAdminAction({ actor: auth.actor, actor_type: auth.actor_type, action: 'unlock', target_key: key, reason: body?.reason || null, ip, meta: { source: 'admin_api' } })
+    } catch (error) {
+      logRouteError('api/admin/auth-locks', error, { action: 'unlock', actor: auth.actor, actorType: auth.actor_type, resourceId: key, reason: 'audit_write_failed' })
+      return NextResponse.json({ error: 'Audit logging is unavailable' }, { status: 503 })
+    }
     try {
       await resetKey(key)
-      // audit the unlock action (best-effort)
-      try {
-        const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null
-        await tryInsertAdminAction({ actor: auth.actor, actor_type: auth.actor_type, action: 'unlock', target_key: key, reason: body?.reason || null, ip, meta: { source: 'admin_api' } })
-      } catch (e) { void e }
       try { await incrementAbuseMetric('admin_unlocks_total') } catch (e) { void e }
       logRouteEvent('info', { route: 'api/admin/auth-locks', action: 'unlock', actor: auth.actor, actorType: auth.actor_type, resourceId: key, reason: body?.reason ? String(body.reason) : null })
       return NextResponse.json({ ok: true })

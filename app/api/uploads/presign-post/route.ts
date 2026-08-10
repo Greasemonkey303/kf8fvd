@@ -1,18 +1,28 @@
 import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
+import { requireAdmin } from '@/lib/auth'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
+import { validateImageUploadMetadata } from '@/lib/uploadValidation'
+import { isPublicObjectKey } from '@/lib/objectKeyPolicy'
 
-type ReqBody = { slug?: string; filename?: string; contentType?: string }
+type ReqBody = { slug?: string; filename?: string; contentType?: string; size?: number }
 
 export async function POST(req: Request) {
   try {
+    const admin = await requireAdmin()
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const body: ReqBody = await req.json()
-    if (!body?.slug || !body?.filename || !body?.contentType) return NextResponse.json({ error: 'slug, filename, contentType required' }, { status: 400 })
+    if (!body?.slug || !body?.filename || !body?.contentType || !Number.isFinite(Number(body.size))) return NextResponse.json({ error: 'slug, filename, contentType, size required' }, { status: 400 })
+
+    const validation = validateImageUploadMetadata({ filename: body.filename, contentType: body.contentType, size: Number(body.size) })
+    if (!validation.ok) return NextResponse.json({ error: validation.error }, { status: validation.status })
 
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
     if (!bucket) return NextResponse.json({ error: 'MinIO bucket not configured (NEXT_PUBLIC_S3_BUCKET)' }, { status: 500 })
 
     const key = await getUploadKey(body.slug, body.filename)
+    if (!isPublicObjectKey(key)) return NextResponse.json({ error: 'Invalid upload destination' }, { status: 400 })
     const minioClient = new Minio.Client({
       endPoint: process.env.MINIO_HOST || process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || '127.0.0.1',
       port: Number(process.env.MINIO_PORT || process.env.MINIO_HTTP_PORT || 9000),
@@ -25,24 +35,13 @@ export async function POST(req: Request) {
     const policy = new Minio.PostPolicy()
     policy.setBucket(bucket)
     policy.setKey(key)
-    // allow content types that start with image/
-    try { policy.setContentTypeStartsWith('image/') } catch {}
-    // expiry (seconds)
-    try { policy.setExpires(new Date(Date.now() + 300 * 1000)) } catch {}
+    policy.setContentType(validation.contentType)
+    policy.setContentLengthRange(1, validation.maxBytes)
+    policy.setExpires(new Date(Date.now() + 300 * 1000))
 
     const presigned = await minioClient.presignedPostPolicy(policy)
 
-    // MinIO returns { postURL, formData }
-    // generate a presigned GET URL for clients to access the object
-    let publicUrl: string
-    try {
-      const getExpires = 24 * 60 * 60
-      publicUrl = await minioClient.presignedGetObject(bucket, key, getExpires)
-    } catch {
-      publicUrl = buildPublicUrl(key)
-    }
-
-    return NextResponse.json({ url: presigned.postURL || '', fields: presigned.formData || {}, key, publicUrl })
+    return NextResponse.json({ url: presigned.postURL || '', fields: presigned.formData || {}, key, publicUrl: buildPublicUrl(key) })
   } catch (err: unknown) {
     console.error('presign-post error', err)
     let msg = 'Unknown error'

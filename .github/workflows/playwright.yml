@@ -1,33 +1,61 @@
-name: Playwright E2E (staging)
+name: Playwright Staging
 
 on:
-  push:
-    branches: [ dev ]
-  pull_request:
-    branches: [ dev ]
+  workflow_dispatch:
+    inputs:
+      run_auth_mutations:
+        description: Run staging login and 2FA delivery checks
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: '41 6 * * 3'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-staging
+  cancel-in-progress: true
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    environment: staging
     env:
-      SITE_URL: ${{ secrets.SITE_URL }}
-      CF_TURNSTILE_SITEKEY: ${{ secrets.CF_TURNSTILE_SITEKEY }}
-      CF_TURNSTILE_SECRET: ${{ secrets.CF_TURNSTILE_SECRET }}
-      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      REDIS_URL: ${{ secrets.REDIS_URL }}
+      SITE_URL: ${{ vars.SITE_URL }}
+      PLAYWRIGHT_AUTH_MUTATIONS: ${{ inputs.run_auth_mutations || false }}
+      PLAYWRIGHT_TEST_EMAIL: ${{ secrets.PLAYWRIGHT_TEST_EMAIL }}
+      PLAYWRIGHT_TEST_PASSWORD: ${{ secrets.PLAYWRIGHT_TEST_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check staging configuration
+        run: test -n "$SITE_URL"
+
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
-      - name: Install dependencies
-        run: npm ci
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-      - name: Run E2E tests (against SITE_URL)
-        run: npx playwright test --project=chromium --reporter=list
+          node-version: '20.20.2'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: Run staging browser checks
+        run: npm run e2e:ci
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

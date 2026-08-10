@@ -146,7 +146,20 @@ export function buildAboutAdminSections(rows: AboutPageRow[]) {
     }
   }
 
-  return dedupeSections(sections).map(({ orderIndex: _orderIndex, sourcePriority: _sourcePriority, ...section }) => section)
+  return dedupeSections(sections).map((section) => ({
+    id: section.id,
+    pageId: section.pageId,
+    pageSlug: section.pageSlug,
+    slug: section.slug,
+    title: section.title,
+    subtitle: section.subtitle,
+    image_path: section.image_path,
+    description: section.description,
+    is_published: section.is_published,
+    position: section.position,
+    editLink: section.editLink,
+    cardParam: section.cardParam,
+  }))
 }
 
 export function buildPublicAboutCards(rows: AboutPageRow[]) {

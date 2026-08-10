@@ -1,6 +1,7 @@
 import * as Minio from 'minio'
 import { buildPublicUrl } from '@/lib/s3'
 import { deriveWebpVariantKey } from '@/lib/webpVariants'
+import { normalizeObjectKey } from '@/lib/objectKeyPolicy'
 
 const NOT_FOUND_CODES = new Set(['NotFound', 'NoSuchKey', 'NoSuchObject'])
 
@@ -35,13 +36,13 @@ export function resolveObjectKeyFromReference(value: unknown): string | null {
     if (raw.startsWith('/api/uploads/get?')) {
       const url = new URL(raw, 'http://localhost')
       const key = url.searchParams.get('key')
-      return key ? decodeURIComponent(key) : null
+      return normalizeObjectKey(key)
     }
 
     for (const prefix of ['/api/uploads/get/', '/uploads/get/']) {
       if (raw.startsWith(prefix)) {
         const encoded = raw.slice(prefix.length)
-        return encoded ? decodeURIComponent(encoded) : null
+        return normalizeObjectKey(encoded)
       }
     }
 
@@ -49,26 +50,26 @@ export function resolveObjectKeyFromReference(value: unknown): string | null {
       const url = new URL(raw)
       if (url.pathname.startsWith('/api/uploads/get/')) {
         const encoded = url.pathname.slice('/api/uploads/get/'.length)
-        return encoded ? decodeURIComponent(encoded) : null
+        return normalizeObjectKey(encoded)
       }
       const keyFromQuery = url.searchParams.get('key')
-      if (keyFromQuery) return decodeURIComponent(keyFromQuery)
+      if (keyFromQuery) return normalizeObjectKey(keyFromQuery)
       let path = url.pathname.replace(/^\/+/, '')
       const bucket = getObjectStorageBucket()
       if (bucket && path.startsWith(bucket + '/')) path = path.slice(bucket.length + 1)
-      return path || null
+      return normalizeObjectKey(path)
     }
 
     if (raw.startsWith('/')) {
       const trimmed = raw.replace(/^\/+/, '')
       if (trimmed.startsWith('api/uploads/get/')) {
         const encoded = trimmed.slice('api/uploads/get/'.length)
-        return encoded ? decodeURIComponent(encoded) : null
+        return normalizeObjectKey(encoded)
       }
-      return trimmed || null
+      return normalizeObjectKey(trimmed)
     }
 
-    return raw
+    return normalizeObjectKey(raw)
   } catch {
     return null
   }

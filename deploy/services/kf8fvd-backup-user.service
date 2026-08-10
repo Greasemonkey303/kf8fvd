@@ -1,0 +1,14 @@
+[Unit]
+Description=KF8FVD production data snapshot
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/kf8fvd
+EnvironmentFile=/opt/kf8fvd/.env
+EnvironmentFile=-/home/zfreed15/.config/kf8fvd/backup.env
+ExecStart=/opt/kf8fvd/scripts/create_production_snapshot.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+NoNewPrivileges=true
+PrivateTmp=true

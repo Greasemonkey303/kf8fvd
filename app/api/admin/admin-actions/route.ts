@@ -52,7 +52,10 @@ export async function GET(req: Request) {
           const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null
           const { insertAdminAction } = await import('@/lib/adminActions')
           await insertAdminAction({ actor: auth.actor, actor_type: auth.actor_type, action: 'export', target_key: 'admin_actions_csv', reason: null, ip, meta: { limit, offset, filterAction, filterActor } })
-        } catch (e) { void e }
+        } catch (error) {
+          logRouteError('api/admin/admin-actions', error, { action: 'export', actor: auth.actor, actorType: auth.actor_type, reason: 'audit_write_failed' })
+          return NextResponse.json({ error: 'Audit logging is unavailable' }, { status: 503 })
+        }
         // Build CSV header
         const cols = ['id', 'createdAt', 'actor', 'actor_type', 'action', 'target_key', 'reason', 'ip', 'meta']
         function esc(v: unknown) {

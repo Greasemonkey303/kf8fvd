@@ -548,7 +548,7 @@ export default function AdminAboutEditor() {
 
     // presign
     try{
-      const res = await fetch('/api/uploads', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ slug:String(slug||'about'), filename: file.name, contentType: file.type }) })
+      const res = await fetch('/api/uploads', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ slug:String(slug||'about'), filename: file.name, contentType: file.type, size: file.size }) })
       const data = await res.json()
       if (!data.url) {
         setError('Upload presign failed: ' + (data.error || 'unknown'))

@@ -17,50 +17,48 @@ for (const name of secretFiles) {
   }
 }
 
-// Forward remaining envs like NEXT_PUBLIC_* should already be set by Docker run args if needed
+const requiredEnv = [
+  'NEXTAUTH_SECRET',
+  'ENCRYPTION_KEY',
+  'CF_TURNSTILE_SECRET',
+  'NEXT_PUBLIC_CF_TURNSTILE_SITEKEY',
+  'DB_HOST',
+  'DB_USER',
+  'DB_PASSWORD',
+  'DB_NAME',
+  'REDIS_URL',
+  'MINIO_ACCESS_KEY',
+  'MINIO_SECRET_KEY',
+  'NEXT_PUBLIC_S3_BUCKET',
+];
 
-const cmd = process.env.NPM_COMMAND || 'start';
-console.log('docker-entrypoint: starting npm command=', cmd);
-console.log('docker-entrypoint: env preview', {
-  NODE_ENV: process.env.NODE_ENV,
-  PORT: process.env.PORT,
-  NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
-  DB_HOST: process.env.DB_HOST ? true : false,
-  DB_USER: process.env.DB_USER ? true : false,
-});
+const missing = requiredEnv.filter((name) => !process.env[name]);
+if (missing.length) {
+  console.error(`docker-entrypoint: missing required environment variables: ${missing.join(', ')}`);
+  process.exit(1);
+}
 
-const child = spawn('npm', ['run', cmd], { stdio: 'inherit' });
+const command = process.argv[2] || 'node';
+const args = process.argv.slice(3);
+if (args.length === 0) args.push('server.js');
+console.log('docker-entrypoint: starting application');
 
-// Heartbeat so `docker compose up` shows activity during long-running start
-let heartbeatInterval = setInterval(() => {
-  try {
-    const mem = process.memoryUsage();
-    console.log(`docker-entrypoint: heartbeat ${new Date().toISOString()} PID=${process.pid} rss=${Math.round(mem.rss/1024/1024)}MB`);
-  } catch {
-    console.log(`docker-entrypoint: heartbeat ${new Date().toISOString()}`);
-  }
-}, 5000);
+const child = spawn(command, args, { stdio: 'inherit' });
+let stopping = false;
 
-function stopHeartbeat() {
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval);
-    heartbeatInterval = null;
-  }
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => {
+    if (stopping) return;
+    stopping = true;
+    if (!child.killed) child.kill(signal);
+  });
 }
 
 child.on('error', (err) => {
-  stopHeartbeat();
   console.error('docker-entrypoint: child process error', err && err.stack ? err.stack : err);
 });
 
 child.on('exit', (code, signal) => {
-  stopHeartbeat();
   console.log('docker-entrypoint: child exited', { code, signal });
-  if (signal) process.kill(process.pid, signal);
-  process.exit(code);
-});
-
-child.on('close', (code, signal) => {
-  stopHeartbeat();
-  console.log('docker-entrypoint: child closed', { code, signal });
+  process.exit(code ?? (signal ? 1 : 0));
 });

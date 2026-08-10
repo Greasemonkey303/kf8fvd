@@ -77,7 +77,8 @@ export default async function Hero() {
   }
 
   const rawAlt = featured?.alt ? String(featured.alt) : ''
-  const altText = rawAlt ? rawAlt.replace(/\.[^.\/\\]+$/, '') : 'Hero image'
+  const cleanedAlt = rawAlt.replace(/\.[^.\/\\]+$/, '').replace(/[_-]+/g, ' ').trim()
+  const altText = cleanedAlt && !/^grand rapids$/i.test(cleanedAlt) ? cleanedAlt : 'Grand Rapids skyline at sunset'
   const fallbackSrc = imageSrc
   let avifUrl: string | null = null
   let webpUrl: string | null = null
@@ -101,6 +102,9 @@ export default async function Hero() {
     webpUrl = null
   }
 
+  const configuredTitle = String(hero?.title || '').trim()
+  const heroTitle = !configuredTitle || /^home hero$/i.test(configuredTitle) ? 'KF8FVD Amateur Radio' : configuredTitle
+
   return (
     <section className={styles.hero} aria-labelledby="hero-title" role="region">
       <picture className={styles.bg}>
@@ -109,7 +113,7 @@ export default async function Hero() {
         <img src={fallbackSrc} alt={altText} className={styles.bgImg} />
       </picture>
       <div className={styles.inner}>
-        <h1 id="hero-title">{String(hero?.title || 'KF8FVD - Amateur Radio')}</h1>
+        <h1 id="hero-title">{heroTitle}</h1>
         {hero && hero.content && String(hero.content).trim() ? (
           <div className={styles.content} dangerouslySetInnerHTML={{ __html: sanitizeHtmlServer(String(hero.content)) }} />
         ) : (

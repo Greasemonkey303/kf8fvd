@@ -8,11 +8,6 @@ import { isLocked, incrementFailure, resetKey } from '@/lib/rateLimiter'
 import { verifyTurnstileToken } from '@/lib/turnstile'
 
 const isProd = process.env.NODE_ENV === 'production'
-if (isProd && !process.env.NEXTAUTH_SECRET) {
-  // Fail fast in production when NEXTAUTH_SECRET is missing
-  console.error('NEXTAUTH_SECRET is required in production for NextAuth')
-  throw new Error('NEXTAUTH_SECRET is required in production')
-}
 
 // using centralized verifier in lib/turnstile.ts
 
@@ -72,7 +67,7 @@ export const authOptions: NextAuthOptions = {
         const ip = extractIpFromReq(req)
         const ipKey = `ip:${ip}`
         if (await isLocked(emailKey) || await isLocked(ipKey)) return null
-        const rows = await query<{ id: number; name?: string; email: string; hashed_password?: string; is_active: number }[]>('SELECT id, name, email, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [email])
+        const rows = await query<{ id: number; name?: string; email: string; hashed_password?: string; is_active: number; session_version: number }[]>('SELECT id, name, email, hashed_password, is_active, session_version FROM users WHERE email = ? LIMIT 1', [email])
         const user = Array.isArray(rows) && rows.length ? rows[0] : null
         if (!user) return null
         if (!user.is_active) return null
@@ -82,10 +77,6 @@ export const authOptions: NextAuthOptions = {
           try { await incrementFailure(ipKey, { reason: 'invalid_password' }) } catch (e) { void e }
           return null
         }
-        // reset failures on successful password verify
-        try { resetKey(emailKey) } catch (e) { void e }
-        try { resetKey(ipKey) } catch (e) { void e }
-
         // If an OTP was included, validate it and complete sign-in. Otherwise, require the separate
         // 2FA request flow to send/verify the code.
         const otp = creds.otp
@@ -100,9 +91,11 @@ export const authOptions: NextAuthOptions = {
             return null
           }
           try { await query('UPDATE two_factor_codes SET used_at = NOW() WHERE id = ?', [codeRow.id]) } catch (e) { void e }
+          try { await resetKey(emailKey) } catch (e) { void e }
+          try { await resetKey(ipKey) } catch (e) { void e }
 
           const remember = creds.remember === 'true' || creds.remember === 'on' || creds.remember === '1'
-          return { id: String(user.id), name: user.name || '', email: user.email, remember }
+          return { id: String(user.id), name: user.name || '', email: user.email, remember, sessionVersion: Number(user.session_version || 0) }
         }
 
         // If no OTP provided, do not allow sign-in from this authorize call. The client should first
@@ -156,13 +149,41 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         tk.user = user as unknown as Record<string, unknown>
         if ((user as unknown as Record<string, unknown>).remember) tk.remember = true
+        tk.sessionVersion = Number((user as unknown as Record<string, unknown>).sessionVersion || 0)
+        delete tk.invalidated
+      } else {
+        const tokenUser = tk.user && typeof tk.user === 'object' ? tk.user as Record<string, unknown> : null
+        const email = typeof tk.email === 'string' ? tk.email : (tokenUser && typeof tokenUser.email === 'string' ? tokenUser.email : null)
+        const sessionVersion = Number(tk.sessionVersion)
+        if (!email || !Number.isInteger(sessionVersion) || sessionVersion < 0) {
+          delete tk.user
+          tk.invalidated = true
+          return tk
+        }
+        try {
+          const rows = await query<{ session_version: number; is_active: number }[]>('SELECT session_version, is_active FROM users WHERE email = ? LIMIT 1', [email])
+          const current = rows?.[0]
+          if (!current || !current.is_active || Number(current.session_version) !== sessionVersion) {
+            delete tk.user
+            tk.invalidated = true
+          }
+        } catch {
+          delete tk.user
+          tk.invalidated = true
+        }
       }
       return tk
     },
     async session({ session, token }) {
-      if ((token as Record<string, unknown>).user) (session as unknown as Record<string, unknown>).user = (token as Record<string, unknown>).user
+      const tokenRecord = token as Record<string, unknown>
+      if (tokenRecord.invalidated) {
+        delete (session as unknown as Record<string, unknown>).user
+        ;(session as unknown as Record<string, unknown>).invalidated = true
+        return session
+      }
+      if (tokenRecord.user) (session as unknown as Record<string, unknown>).user = tokenRecord.user
         // expose remember flag to client if present
-        if ((token as Record<string, unknown>).remember) (session as unknown as Record<string, unknown>).remember = true
+        if (tokenRecord.remember) (session as unknown as Record<string, unknown>).remember = true
       return session
     }
   },

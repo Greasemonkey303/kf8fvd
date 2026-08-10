@@ -2,132 +2,103 @@ name: CI
 
 on:
   push:
-    branches: [ '**' ]
+    branches: [main, dev]
   pull_request:
-    branches: [ '**' ]
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  tests:
+  quality:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm ci
-      - name: Run unit tests
-        run: npm run test:unit
-
-  e2e:
-    needs: tests
-    runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: kf8fvd_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     env:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_NAME: kf8fvd_test
-      REDIS_URL: redis://redis:6379
-      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+      NEXT_TELEMETRY_DISABLED: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm ci
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-      - name: Build
-        run: npm run build
-      - name: Start app (background)
-        run: |
-          npm run start &
-          npx wait-on http://127.0.0.1:3000 -t 30000
-      - name: Run Playwright tests (github + html reporters)
-        run: npx playwright test --config=tests/playwright/playwright.config.js --reporter=github,html
-      - name: Upload Playwright artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-artifacts
-          path: |
-            playwright-report
-            tests/playwright/tests/**/playwright-report
-            test-results
-            results
-
-  trivy-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run Trivy FS scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          format: 'table'
-name: CI
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build-test-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Check out source
+        uses: actions/checkout@v4
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '20.20.2'
+          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
 
-      - name: Build (typecheck + compile)
-        run: npm run build --if-present
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
-      - name: Run tests
-        run: npm test --if-present
+      - name: Scan tracked files for secrets
+        run: npm run scan:secrets
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v4
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Run tests with coverage thresholds
+        env:
+          NODE_ENV: test
+          DISABLE_DB_FALLBACK: '1'
+        run: npm run test:coverage
+
+      - name: Build application
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_SITE_URL: https://www.example.invalid
+          NEXTAUTH_URL: https://www.example.invalid
+          NEXTAUTH_SECRET: ci-only-nextauth-secret-not-for-production
+          ENCRYPTION_KEY: Y2ktb25seS1lbmNyeXB0aW9uLWtleS0zMmJ5dGVzIQ==
+          CF_TURNSTILE_SECRET: ci-only-turnstile-secret
+          NEXT_PUBLIC_CF_TURNSTILE_SITEKEY: 1x00000000000000000000AA
+          NEXT_PUBLIC_S3_BUCKET: ci-test
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_USER: ci
+          DB_NAME: ci
+          REDIS_URL: redis://127.0.0.1:6379
+          MINIO_HOST: 127.0.0.1
+          MINIO_PORT: '9000'
+          MINIO_ACCESS_KEY: ci-only-access-key
+          MINIO_SECRET_KEY: ci-only-secret-key
+        run: npm run build
+
+  redis-integration:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
         with:
-          context: .
-          file: Dockerfile
-          push: false
-          tags: kf8fvd:ci
+          node-version: '20.20.2'
+          cache: npm
 
-      - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@v0.13.0
-        with:
-          image-ref: kf8fvd:ci
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run integration tests with Redis
+        env:
+          NODE_ENV: test
+          REDIS_URL: redis://127.0.0.1:6379
+          DISABLE_DB_FALLBACK: '1'
+        run: npm run test:integration

@@ -14,6 +14,7 @@ export default async function AdminPage() {
 
   return (
     <AdminPageClient
+      key={monitoringData?.generatedAt || 'admin-dashboard'}
       initialDashboard={dashboardData}
       initialMonitoring={monitoringData}
       initialMonitoringError={monitoringData ? null : 'Live monitoring is temporarily unavailable.'}

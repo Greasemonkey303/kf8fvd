@@ -30,6 +30,18 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# generated diagnostics and response captures
+/body.json
+/direct_json_result.json
+/eslint_report.json
+/homepage*.html
+/page*.html
+/presign_post_response*.json
+/presign_put_response*.json
+/qrz.xml
+/signin.html
+/tools/nonce-scan.txt
+
 # env files (can opt-in for committing if needed)
 .env*
 

@@ -149,7 +149,6 @@ export default async function Page({ params }: Props) {
     safeDescriptionHtml = String(project.description || '')
   }
 
-  const summaryText = stripHtml(safeDescriptionHtml)
   const detailText = detailsHtml ? stripHtml(detailsHtml) : ''
   const galleryImages = Array.from(new Set([
     ...(mainImageSrc ? [String(mainImageSrc)] : []),

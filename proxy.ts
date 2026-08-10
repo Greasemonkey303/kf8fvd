@@ -44,7 +44,6 @@ export async function proxy(req: NextRequest, event: NextFetchEvent) {
   const extraScriptOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
   const extraConnectOrigins = umamiOrigins.length ? ` ${umamiOrigins.join(' ')}` : ''
   const pathname = req.nextUrl.pathname
-  const allowAdminInlineStyles = pathname.startsWith('/admin')
 
   // Generate a per-request CSP nonce for production. Keep this lightweight
   // to avoid adding heavy crypto dependencies in the proxy runtime.
@@ -66,22 +65,27 @@ export async function proxy(req: NextRequest, event: NextFetchEvent) {
   const scriptSrcBase = `script-src 'self' https://unpkg.com https://challenges.cloudflare.com${extraScriptOrigins}`
   // In production prefer nonces; in local/dev keep 'unsafe-inline' for developer convenience
   const scriptSrc = isLocalhost ? `${scriptSrcBase} 'unsafe-inline' 'unsafe-eval'` : `${scriptSrcBase} 'nonce-${nonce}'`
-  const styleSrcBase = "style-src 'self' https://unpkg.com https://fonts.googleapis.com"
-  const styleSrc = (isLocalhost || allowAdminInlineStyles) ? `${styleSrcBase} 'unsafe-inline'` : `${styleSrcBase} 'nonce-${nonce}'`
+  const styleSrcBase = "style-src 'self' https://unpkg.com"
+  const styleSrc = isLocalhost ? `${styleSrcBase} 'unsafe-inline'` : `${styleSrcBase} 'nonce-${nonce}'`
 
-  const connectSrc = `connect-src 'self' ${siteOrigin} http://127.0.0.1:3000 http://localhost:3000${extraConnectOrigins} https://api.sendgrid.com https://challenges.cloudflare.com https://services.swpc.noaa.gov https://unpkg.com ws: wss:`
+  const connectSrc = isLocalhost
+    ? `connect-src 'self' ${siteOrigin} http://127.0.0.1:3000 http://localhost:3000${extraConnectOrigins} https://challenges.cloudflare.com https://services.swpc.noaa.gov ws: wss:`
+    : `connect-src 'self' ${siteOrigin}${extraConnectOrigins} https://challenges.cloudflare.com https://services.swpc.noaa.gov`
 
   const CSP = [
     "default-src 'self'",
     "base-uri 'self'",
     'block-all-mixed-content',
-    "font-src 'self' https://fonts.gstatic.com data:",
+    "font-src 'self' data:",
     "img-src 'self' data: https: https://*.gravatar.com",
     connectSrc,
     scriptSrc,
+    "object-src 'none'",
+    "form-action 'self'",
     'child-src https://challenges.cloudflare.com',
     'frame-src https://challenges.cloudflare.com',
     styleSrc,
+    "style-src-attr 'unsafe-inline'",
     `report-uri ${siteOrigin}/api/csp/report`,
     "frame-ancestors 'none'",
   ].join('; ')

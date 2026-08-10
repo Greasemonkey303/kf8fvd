@@ -20,8 +20,12 @@ test('public navigation routes render core pages', async ({ page }) => {
   await expect(page.locator('input[name="email"]')).toBeVisible()
 })
 
-test('sign-in page shows accessible validation feedback', async ({ page }) => {
+test('sign-in page exposes an accessible CAPTCHA-gated form', async ({ page }) => {
   await page.goto('/signin')
-  await page.locator('button[type="submit"]').click()
-  await expect(page.locator('[role="alert"]').first()).toBeVisible()
+  await expect(page.locator('input[name="email"]')).toHaveAttribute('required', '')
+  await expect(page.locator('input[name="password"]')).toHaveAttribute('required', '')
+  const submit = page.locator('button[type="submit"]')
+  await expect(submit).toBeDisabled()
+  await expect(submit).toHaveAttribute('aria-disabled', 'true')
+  await expect(page.locator('#cf-turnstile-container')).toBeVisible()
 })

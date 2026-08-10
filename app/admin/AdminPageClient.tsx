@@ -210,19 +210,19 @@ export default function AdminPage({
   const { data: session, status } = useSession()
   const router = useRouter()
   const [isRefreshPending, startRefreshTransition] = useTransition()
-  const [counts, setCounts] = useState({
+  const counts = {
     projects: Number(initialDashboard?.counts?.projects ?? 0),
     messages: Number(initialDashboard?.counts?.messages ?? 0),
     users: Number(initialDashboard?.counts?.users ?? 0),
     aboutPosts: Number(initialDashboard?.counts?.aboutPosts ?? 0),
-  })
-  const [recentMessages, setRecentMessages] = useState<DashboardMessage[]>(Array.isArray(initialDashboard?.recentMessages) ? initialDashboard.recentMessages.slice(0, 5) : [])
+  }
+  const recentMessages: DashboardMessage[] = Array.isArray(initialDashboard?.recentMessages) ? initialDashboard.recentMessages.slice(0, 5) : []
   const [featuredHero, setFeaturedHero] = useState<{ url?: string; title?: string } | null>(null)
   const [onAir, setOnAir] = useState<boolean | null>(initialOnAir ? Boolean(initialOnAir.is_on === 1 || initialOnAir.is_on === true) : null)
   const [onairSaving, setOnairSaving] = useState(false)
   const [onairError, setOnairError] = useState<string | null>(null)
   const [onairUpdatedAt, setOnairUpdatedAt] = useState<string | null>(typeof initialOnAir?.updated_at === 'string' ? initialOnAir.updated_at : null)
-  const [monitoring, setMonitoring] = useState<MonitoringSnapshot | null>(initialMonitoring)
+  const monitoring: MonitoringSnapshot | null = initialMonitoring
   const [monitoringError, setMonitoringError] = useState<string | null>(initialMonitoringError)
 
   const mountedRef = useRef(true)
@@ -252,27 +252,6 @@ export default function AdminPage({
       // ignore
     }
   }
-
-  useEffect(() => {
-    setCounts({
-      projects: Number(initialDashboard?.counts?.projects ?? 0),
-      messages: Number(initialDashboard?.counts?.messages ?? 0),
-      users: Number(initialDashboard?.counts?.users ?? 0),
-      aboutPosts: Number(initialDashboard?.counts?.aboutPosts ?? 0),
-    })
-    setRecentMessages(Array.isArray(initialDashboard?.recentMessages) ? initialDashboard.recentMessages.slice(0, 5) : [])
-  }, [initialDashboard])
-
-  useEffect(() => {
-    setMonitoring(initialMonitoring)
-    setMonitoringError(initialMonitoring ? null : initialMonitoringError)
-  }, [initialMonitoring, initialMonitoringError])
-
-  useEffect(() => {
-    const isOn = initialOnAir ? Boolean(initialOnAir.is_on === 1 || initialOnAir.is_on === true) : null
-    setOnAir(isOn)
-    setOnairUpdatedAt(typeof initialOnAir?.updated_at === 'string' ? initialOnAir.updated_at : null)
-  }, [initialOnAir])
 
   useEffect(()=>{
     mountedRef.current = true

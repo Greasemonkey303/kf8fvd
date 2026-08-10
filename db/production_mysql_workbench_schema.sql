@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email_verified` DATETIME DEFAULT NULL,
   `hashed_password` VARCHAR(255) DEFAULT NULL,
   `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `session_version` INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -237,10 +238,13 @@ CREATE TABLE IF NOT EXISTS `hero_image` (
   `variants` JSON DEFAULT NULL,
   `alt` VARCHAR(255) DEFAULT NULL,
   `is_featured` TINYINT(1) NOT NULL DEFAULT 0,
+  `featured_hero_id` INT DEFAULT NULL,
   `sort_order` INT NOT NULL DEFAULT 0,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_hero_image_hero_id` (`hero_id`),
+  UNIQUE KEY `uq_hero_image_featured_hero` (`featured_hero_id`),
+  CONSTRAINT `chk_hero_image_featured_marker` CHECK (((`is_featured` = 1) AND (`featured_hero_id` = `hero_id`)) OR ((`is_featured` = 0) AND (`featured_hero_id` IS NULL))),
   CONSTRAINT `fk_hero_image_hero` FOREIGN KEY (`hero_id`) REFERENCES `hero` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

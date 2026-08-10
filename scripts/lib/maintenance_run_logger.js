@@ -3,10 +3,11 @@ const path = require('path')
 const mysql = require('mysql2/promise')
 
 function loadEnvFile() {
-  const candidates = ['.env.local', 'env.local']
+  const candidates = ['.env.local', 'env.local', '.env']
   for (const name of candidates) {
     const filePath = path.resolve(process.cwd(), name)
     if (!fs.existsSync(filePath)) continue
+    const env = {}
     const content = fs.readFileSync(filePath, 'utf8')
     for (const line of content.split(/\r?\n/)) {
       const trimmed = line.trim()
@@ -16,11 +17,11 @@ function loadEnvFile() {
       const key = trimmed.slice(0, separator).trim()
       let value = trimmed.slice(separator + 1).trim()
       value = value.replace(/^['"]|['"]$/g, '')
-      if (!process.env[key]) process.env[key] = value
+      env[key] = value
     }
-    return filePath
+    return env
   }
-  return null
+  return {}
 }
 
 async function ensureTable(conn) {
@@ -43,15 +44,16 @@ async function ensureTable(conn) {
 }
 
 async function openConnection() {
-  loadEnvFile()
-  if (!process.env.DB_USER || !process.env.DB_NAME) return null
+  const fileEnv = loadEnvFile()
+  const env = { ...fileEnv, ...process.env }
+  if (!env.DB_USER || !env.DB_NAME) return null
   const conn = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || '3306'),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+    host: env.DB_HOST || 'localhost',
+    port: Number(env.DB_PORT || '3306'),
+    user: env.DB_USER,
+    password: env.DB_PASSWORD,
+    database: env.DB_NAME,
+    ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
   })
   await ensureTable(conn)
   return conn

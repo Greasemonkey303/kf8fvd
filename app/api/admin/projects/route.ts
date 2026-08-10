@@ -3,8 +3,8 @@ import { requireAdmin } from '../../../../lib/auth'
 import { query } from '../../../../lib/db'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
-import { archiveDeletedContent } from '@/lib/deletionArchive'
-import { deleteObjectStrict, deletePrefixStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
+import { archiveDeletedContent, commitDeletionWithCleanup } from '@/lib/deletionArchive'
+import { deleteObjectsStrict, resolveObjectKeyFromReference } from '@/lib/objectStorage'
 import { listObjectKeysByPrefix } from '@/lib/objectStorage'
 import { parseJsonObject, readBoolean, readNumber, readString, readUrlString, validationErrorResponse } from '@/lib/validation'
 
@@ -180,13 +180,14 @@ export async function DELETE(req: Request) {
     const prefix = `${process.env.S3_UPLOAD_PREFIX || 'projects/'}${slug}/`
     const prefixKeys = await listObjectKeysByPrefix(prefix)
     const imageKey = resolveObjectKeyFromReference(row.image_path)
-    await archiveDeletedContent({ contentType: 'project', originalId: id, slug, snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
-    await deletePrefixStrict(prefix)
-    if (imageKey) await deleteObjectStrict(imageKey)
+    const archive = await archiveDeletedContent({ contentType: 'project', originalId: id, slug, snapshot: row, objectReferences: [...prefixKeys, imageKey], deletedBy: admin.email })
+    const cleanup = await commitDeletionWithCleanup(
+      archive,
+      () => query('DELETE FROM projects WHERE id = ?', [id]),
+      () => deleteObjectsStrict(archive.originalObjectKeys),
+    )
+    return NextResponse.json({ ok: true, ...cleanup })
   } catch (e: unknown) {
     return NextResponse.json({ error: getErrMsg(e) }, { status: 500 })
   }
-
-  await query('DELETE FROM projects WHERE id = ?', [id])
-  return NextResponse.json({ ok: true })
 }

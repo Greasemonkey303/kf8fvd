@@ -7,7 +7,6 @@ coverage
 data/
 .env
 .env.*
-!.env.docker
 .git
 .github
 Dockerfile
@@ -23,7 +22,6 @@ dist
 .git
 .gitignore
 .env*
-!.env.docker
 .DS_Store
 npm-debug.log
 yarn-error.log

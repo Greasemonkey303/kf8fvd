@@ -11,7 +11,6 @@ import SegmentedOtp from '../../components/auth/SegmentedOtp'
 
 export default function SignInPage() {
   const router = useRouter();
-  const isDev = (process.env.NODE_ENV || '') !== 'production'
   const [email, setEmail] = useState<string>(() => {
     try { return localStorage.getItem('kf8fvd_remember_email') || '' } catch { return '' }
   })
@@ -155,16 +154,14 @@ export default function SignInPage() {
 
     // Ensure Turnstile token present before sending when requesting code
     const cfTokenVal = cfToken || (typeof window !== 'undefined' ? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value : undefined)
-    let useBypass = false
+    if (!sitekeyNow) {
+      setError('CAPTCHA is temporarily unavailable. Please try again later.')
+      return
+    }
     if (!cfTokenVal) {
-      if (isDev) {
-        tlog('signin handleSubmit: no token present; enabling dev bypass')
-        useBypass = true
-      } else {
-        tlog('signin handleSubmit: missing token', { cfToken, cfTokenVal })
-        setError('Please complete the CAPTCHA to continue.')
-        return
-      }
+      tlog('signin handleSubmit: missing token', { cfToken, cfTokenVal })
+      setError('Please complete the CAPTCHA to continue.')
+      return
     }
 
     // Request a 2FA code to be emailed.
@@ -172,7 +169,6 @@ export default function SignInPage() {
     try {
       const payload: Record<string, unknown> = { email, password }
       if (cfTokenVal) payload.cf_turnstile_response = cfTokenVal
-      if (useBypass) payload._bypass = '1'
       const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await res.json()
       if (!res.ok || j?.error) {
@@ -220,7 +216,7 @@ export default function SignInPage() {
     try {
       const payload: Record<string, unknown> = { email, password }
       if (cfToken) payload.cf_turnstile_response = cfToken
-      else if (isDev) payload._bypass = '1'
+      else return setError('Please complete the CAPTCHA before requesting another code.')
       const res = await fetch('/api/auth/2fa/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await res.json()
       if (!res.ok || j?.error) return setError(j?.error || 'Resend failed')
@@ -305,7 +301,7 @@ export default function SignInPage() {
                 <span className={styles.smallText}>Remember me</span>
               </label>
               <div>
-                <button type="submit" className={styles.primaryButton} disabled={loading || ((!codeRequested && sitekeyNow && !cfToken && !isDev)) || (codeRequested && otp.trim().length < 6)} aria-disabled={loading || ((!codeRequested && sitekeyNow && !cfToken && !isDev)) || (codeRequested && otp.trim().length < 6)}>
+                <button type="submit" className={styles.primaryButton} disabled={loading || ((!codeRequested && (!sitekeyNow || !cfToken))) || (codeRequested && otp.trim().length < 6)} aria-disabled={loading || ((!codeRequested && (!sitekeyNow || !cfToken))) || (codeRequested && otp.trim().length < 6)}>
                   {loading ? (
                     <span style={{display:'inline-flex', alignItems:'center', gap:8}}>
                       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style={{marginRight:6}}>

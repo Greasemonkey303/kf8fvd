@@ -15,7 +15,7 @@ export type AdminRequestAuthorization = {
   ok: true
   admin: AdminUser | null
   actor: string
-  actor_type: 'session' | 'api_key' | 'basic' | 'dev'
+  actor_type: 'session' | 'api_key' | 'basic'
 }
 
 function parseBasicAuth(header: string | null) {
@@ -55,6 +55,11 @@ export async function getSessionServer(): Promise<Record<string, unknown> | null
     const email = typeof token.email === 'string' ? token.email : (tokenUser && typeof tokenUser.email === 'string' ? tokenUser.email : null)
     const name = typeof token.name === 'string' ? token.name : (tokenUser && typeof tokenUser.name === 'string' ? tokenUser.name : undefined)
     if (!email) return null
+    const sessionVersion = Number(token.sessionVersion)
+    if (!Number.isInteger(sessionVersion) || sessionVersion < 0) return null
+    const users = await query<{ session_version: number; is_active: number }[]>('SELECT session_version, is_active FROM users WHERE email = ? LIMIT 1', [email])
+    const current = users?.[0]
+    if (!current || !current.is_active || Number(current.session_version) !== sessionVersion) return null
     return { user: name ? { email, name } : { email } }
   } catch (e) {
     void e
@@ -119,10 +124,6 @@ export async function authorizeAdminRequest(req: Request, options?: { allowUtili
     if (basic.user === process.env.ADMIN_BASIC_USER && basic.pass === process.env.ADMIN_BASIC_PASSWORD) {
       return { ok: true, admin: null, actor: basic.user, actor_type: 'basic' }
     }
-  }
-
-  if (!process.env.ADMIN_API_KEY && !process.env.ADMIN_BASIC_USER && (process.env.NODE_ENV || 'development') !== 'production') {
-    return { ok: true, admin: null, actor: 'dev', actor_type: 'dev' }
   }
 
   return { ok: false }

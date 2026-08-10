@@ -1,0 +1,11 @@
+[Unit]
+Description=Run KF8FVD operational retention weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 04:10:00 UTC
+RandomizedDelaySec=20m
+Persistent=true
+Unit=kf8fvd-cleanup-user.service
+
+[Install]
+WantedBy=timers.target

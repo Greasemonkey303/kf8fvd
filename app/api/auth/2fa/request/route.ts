@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { isLocked, incrementFailure, resetKey } from '@/lib/rateLimiter'
+import { isLocked, incrementFailure } from '@/lib/rateLimiter'
 import { verifyTurnstileToken } from '@/lib/turnstile'
 import { logRouteError, logRouteEvent } from '@/lib/observability'
+import { randomInt } from 'crypto'
 
 // verifyTurnstileToken now provided by '@/lib/turnstile'
 
@@ -23,25 +24,23 @@ export async function POST(req: Request) {
     const email = (body?.email || '').toString().trim().toLowerCase()
     const password = (body?.password || '').toString()
     const cfToken = body?.cf_turnstile_response || null
-    const allowBypass = process.env.NODE_ENV !== 'production' && String(body?._bypass || '') === '1'
     if (!email || !password) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
     // rate-limit: per-IP and per-email
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown').toString().split(',')[0]
     const ipKey = `ip:${ip}`
     const emailKey = `email:${email}`
-    if (await isLocked(ipKey) || await isLocked(emailKey)) {
+    const sendCooldownKey = `2fa-send-cooldown:${email}`
+    const sendHourlyKey = `2fa-send-hourly:${email}`
+    if (await isLocked(ipKey) || await isLocked(emailKey) || await isLocked(sendCooldownKey) || await isLocked(sendHourlyKey)) {
       logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_request_rejected', ip, resourceId: email, reason: 'lock_active', status: 429 })
       return NextResponse.json({ error: 'Too many attempts, try later' }, { status: 429 })
     }
 
-    // Allow bypassing Turnstile for local debug by sending `_bypass: '1'` in the request body.
-    if (process.env.CF_TURNSTILE_SECRET && !allowBypass) {
-      const ok = await verifyTurnstileToken(String(cfToken || ''))
-      if (!ok) {
-        logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_request_rejected', ip, resourceId: email, reason: 'captcha_failed', status: 400 })
-        return NextResponse.json({ error: 'Captcha validation failed' }, { status: 400 })
-      }
+    const captchaValid = await verifyTurnstileToken(String(cfToken || ''), { remoteIp: ip })
+    if (!captchaValid) {
+      logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_request_rejected', ip, resourceId: email, reason: 'captcha_failed', status: 400 })
+      return NextResponse.json({ error: 'Captcha validation failed' }, { status: 400 })
     }
 
     const rows = await query<Record<string, unknown>[]>('SELECT id, email, name, hashed_password, is_active FROM users WHERE email = ? LIMIT 1', [email])
@@ -60,15 +59,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // on success, reset failure counters for this IP/email
-    try { await resetKey(ipKey) } catch (e) { void e }
-    try { await resetKey(emailKey) } catch (e) { void e }
+    const cooldown = await incrementFailure(sendCooldownKey, { windowMs: 45_000, max: 2, lockMs: 45_000, reason: '2fa_resend_cooldown', countLoginAttempt: false })
+    const hourly = await incrementFailure(sendHourlyKey, { windowMs: 60 * 60_000, max: 6, lockMs: 60 * 60_000, reason: '2fa_hourly_limit', countLoginAttempt: false })
+    if (cooldown.locked || hourly.locked) {
+      logRouteEvent('warn', { route: 'api/auth/2fa/request', action: '2fa_request_rejected', ip, resourceId: email, reason: cooldown.locked ? 'resend_cooldown' : 'hourly_limit', status: 429 })
+      return NextResponse.json({ error: 'Please wait before requesting another code' }, { status: 429, headers: { 'Retry-After': cooldown.locked ? '45' : '3600' } })
+    }
 
     // generate 6-digit code
-    const code = String(Math.floor(100000 + Math.random() * 900000))
+    const code = String(randomInt(100000, 1000000))
     const codeHash = await bcrypt.hash(code, 10)
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
+    await query('UPDATE two_factor_codes SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL', [userId])
     await query('INSERT INTO two_factor_codes (user_id, email, code_hash, expires_at) VALUES (?, ?, ?, ?)', [userId, userEmail, codeHash, expiresAt])
     if (process.env.NODE_ENV !== 'production') {
       logRouteEvent('debug', { route: 'api/auth/2fa/request', action: '2fa_code_generated', ip, actor: userEmail, resourceId: userId })
@@ -110,11 +113,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // In development, allow returning the code in the response when DEBUG_2FA=1
-    // or when the client explicitly requests it with `_debug: '1'` in the POST body.
-    if (process.env.NODE_ENV !== 'production' && (((process.env.DEBUG_2FA || '').toString() === '1') || String(body?._debug || '') === '1')) {
-      return NextResponse.json({ ok: true, debugCode: code })
-    }
     logRouteEvent('info', { route: 'api/auth/2fa/request', action: '2fa_requested', ip, actor: userEmail, resourceId: userId })
     return NextResponse.json({ ok: true })
   } catch (e) {

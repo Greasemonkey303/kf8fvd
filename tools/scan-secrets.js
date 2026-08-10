@@ -6,15 +6,13 @@ const { execFileSync } = require('child_process')
 
 const repoRoot = path.resolve(__dirname, '..')
 
-const MAX_FILE_SIZE = 1024 * 1024
+const MAX_FILE_SIZE = 5 * 1024 * 1024
 const TEXT_EXTENSIONS = new Set([
   '.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx', '.json', '.yml', '.yaml',
   '.env', '.example', '.sh', '.ps1', '.sql', '.conf', '.ini', '.toml', '.properties', '.md'
 ])
 
 const IGNORED_PATH_PATTERNS = [
-  /^README\.md$/i,
-  /^docs\//i,
   /^\.github\/workflows\//i,
   /^tests\/playwright\/env\.example$/i,
   /\.example$/i,
@@ -41,11 +39,16 @@ const SECRET_PATTERNS = [
     regex: /^\s*(?:export\s+)?([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|API_KEY|ACCESS_KEY|PRIVATE_KEY))\s*=\s*['"]?([^'"\s#`]+)['"]?/gm,
     getValue: (match) => `${match[1]}=${match[2]}`,
   },
+  {
+    name: 'credential-fallback',
+    regex: /\b([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|API_KEY|ACCESS_KEY|PRIVATE_KEY))\b[^\n]{0,80}?\|\|\s*['"]([^'"\n]{8,})['"]/g,
+    getValue: (match) => `${match[1]}=${match[2]}`,
+  },
 ]
 
 const PLACEHOLDER_MARKERS = [
   'example', 'examples', 'placeholder', 'changeme', 'replace-me', 'replace_with',
-  'dummy', 'sample', 'test', 'fake', 'your_', 'your-', 'todo', 'unset', 'null', 'none'
+  'dummy', 'sample', 'test', 'fake', 'your_', 'your-', 'todo', 'unset', 'null', 'none', 'xxx'
 ]
 
 function getTrackedFiles() {
@@ -111,7 +114,7 @@ function scanFile(relativePath) {
     while ((match = pattern.regex.exec(text)) !== null) {
       const lineText = text.slice(match.index, text.indexOf('\n', match.index) === -1 ? text.length : text.indexOf('\n', match.index)).trim()
       if (/^(?:\/\/|#|\*|\/\*|\*\/|-\s)/.test(lineText)) continue
-      if (pattern.name === 'secret-assignment' && shouldIgnoreValue(match[2])) continue
+      if ((pattern.name === 'secret-assignment' || pattern.name === 'credential-fallback') && shouldIgnoreValue(match[2])) continue
       findings.push({
         file: relativePath,
         line: getLineNumber(text, match.index),

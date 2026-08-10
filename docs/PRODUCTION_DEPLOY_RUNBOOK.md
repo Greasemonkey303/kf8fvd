@@ -11,7 +11,7 @@ This runbook is for deploying the current app without changing how it runs today
 - Keep the existing rate limiter: Redis first, DB-backed fallback tables present.
 - Keep MinIO as the S3-compatible object store. The production bucket already exists as `kf8fvd`.
 - Keep the production MySQL schema name as `kf8fvd`.
-- Use Nginx and SSL certificates in production. Do not use local Caddy in production.
+- Use Nginx and Cloudflare origin certificates in production.
 - Point the Cloudflare tunnel at Nginx, not directly at the app container.
 - Do not change application logic unless a production validation step proves a real deployment blocker.
 
@@ -34,7 +34,8 @@ This runbook is for deploying the current app without changing how it runs today
 - Nginx configured to proxy to the app container on port `3000`.
 - SSL certificates already handled by the production proxy layer.
 - Cloudflare tunnel already routed to the Nginx service.
-- The SQL in [c:\Users\zachs\Documents\code\kf8fvd\deploy\kf8fvd-prduction-duildand-safe.sql](c:\Users\zachs\Documents\code\kf8fvd\deploy\kf8fvd-prduction-duildand-safe.sql) applied to the `kf8fvd` schema.
+- The baseline in [`db/schema.sql`](../db/schema.sql) and every pending file in
+    [`migrations/`](../migrations/) applied to the `kf8fvd` schema.
 
 ## Production Configuration
 
@@ -175,16 +176,18 @@ When you integrate the app into the production Compose stack later:
 - Keep the app container listening on `3000` internally.
 - Do not expose `3000` publicly if Nginx is on the same Docker network.
 - Keep the current Dockerfile and entrypoint behavior unchanged.
-- Remove the local-only Caddy layer from the production stack.
 - Do not mount the development bind volume for `scripts/docker-entrypoint.js` in production.
 
 ## Database Setup
 
-Apply [c:\Users\zachs\Documents\code\kf8fvd\deploy\kf8fvd-prduction-duildand-safe.sql](c:\Users\zachs\Documents\code\kf8fvd\deploy\kf8fvd-prduction-duildand-safe.sql) in MySQL Workbench against the already-created `kf8fvd` schema.
+Apply [`db/schema.sql`](../db/schema.sql) only when creating a new empty schema,
+then apply and record every file under [`migrations/`](../migrations/) with
+`node scripts/apply_migration.js <file>`. Confirm `npm run migrations:check`
+reports zero pending files before serving write traffic.
 
-That SQL file is the export-derived schema-only build for production use. It does not seed demo content and it does not create the first admin user.
-
-After the schema is in place, use [c:\Users\zachs\Documents\code\kf8fvd\deploy\FIRST_ADMIN_USER.txt](c:\Users\zachs\Documents\code\kf8fvd\deploy\FIRST_ADMIN_USER.txt) to create the initial administrator.
+After the schema is current, create the initial administrator with
+`node scripts/create-admin.js` using operator-supplied environment values. Do not
+store an initial password in repository documentation.
 
 ## MinIO Notes
 

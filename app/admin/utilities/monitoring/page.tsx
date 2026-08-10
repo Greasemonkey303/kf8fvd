@@ -9,6 +9,7 @@ export default async function MonitoringPage() {
 
   return (
     <MonitoringPageClient
+      key={initialData?.generatedAt || 'monitoring'}
       initialData={initialData}
       initialError={initialData ? null : 'Failed to load monitoring.'}
     />

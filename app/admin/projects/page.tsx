@@ -215,7 +215,7 @@ export default function AdminProjects() {
     const res = await fetch('/api/uploads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug: form.slug, filename: file.name, contentType: file.type })
+      body: JSON.stringify({ slug: form.slug, filename: file.name, contentType: file.type, size: file.size })
     })
     const data = await res.json()
     if (!data.url) {

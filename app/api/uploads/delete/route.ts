@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { archiveDeletedContent } from '@/lib/deletionArchive'
+import { archiveDeletedContent, completeDeletionCleanup } from '@/lib/deletionArchive'
 import { deleteObjectStrict } from '@/lib/objectStorage'
 
 export async function POST(req: Request) {
@@ -38,9 +38,9 @@ export async function POST(req: Request) {
   if (!objectKey) return NextResponse.json({ error: 'Unable to determine object key' }, { status: 400 })
 
   try {
-    await archiveDeletedContent({ contentType: 'upload_object', originalId: null, slug: objectKey, snapshot: { key: objectKey, url: url || null }, objectReferences: [objectKey], deletedBy: admin.email })
-      const result = await deleteObjectStrict(objectKey)
-      return NextResponse.json({ ok: true, key: result.key, deleted: result.deleted, missing: result.missing })
+    const archive = await archiveDeletedContent({ contentType: 'upload_object', originalId: null, slug: objectKey, snapshot: { key: objectKey, url: url || null }, objectReferences: [objectKey], deletedBy: admin.email })
+    const cleanup = await completeDeletionCleanup(archive, () => deleteObjectStrict(objectKey))
+    return NextResponse.json({ ok: true, key: objectKey, ...cleanup })
   } catch (e: unknown) {
       let msg = 'Unknown error'
       if (e instanceof Error) msg = e.message

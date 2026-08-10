@@ -1,0 +1,21 @@
+[Unit]
+Description=KF8FVD production data snapshot
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=zfreed15
+Group=zfreed15
+WorkingDirectory=/opt/kf8fvd
+EnvironmentFile=/opt/kf8fvd/.env
+EnvironmentFile=-/etc/kf8fvd/backup.env
+ExecStart=/opt/kf8fvd/scripts/create_production_snapshot.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/kf8fvd/data/backups

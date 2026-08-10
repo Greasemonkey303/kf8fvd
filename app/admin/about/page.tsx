@@ -301,7 +301,7 @@ export default function AdminAboutList() {
       }
     } catch (derr) { console.error('direct upload error', getErrMsg(derr)) }
 
-    const res = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, filename: file.name, contentType: file.type }) })
+    const res = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: form.slug, filename: file.name, contentType: file.type, size: file.size }) })
     const data = await res.json()
     if (!data.url) {
       const message = `Upload presign failed: ${data.error || 'unknown'}`

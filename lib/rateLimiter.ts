@@ -194,7 +194,7 @@ export async function isLocked(key: string) {
   return false
 }
 
-export async function incrementFailure(key: string, opts?: { windowMs?: number; max?: number; lockMs?: number; reason?: string }) {
+export async function incrementFailure(key: string, opts?: { windowMs?: number; max?: number; lockMs?: number; reason?: string; countLoginAttempt?: boolean }) {
   if (rateLimitDisabled()) {
     return { locked: false, remaining: Number.MAX_SAFE_INTEGER }
   }
@@ -226,12 +226,14 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       try { logRateEvent('info', 'increment', { key, source: 'redis', cur, max, remaining: Math.max(0, max - cur), redisTtl: lockTtl, reason: opts?.reason }) } catch {}
 
       // increment a cumulative metric for total login attempts (namespaced)
-      try {
-        const mkey = metricKey('login_attempts_total')
-        if (typeof r.incr === 'function') await r.incr(mkey)
-        if (typeof r.expire === 'function') try { await r.expire(mkey, getMetricsTtlSec()) } catch {}
-      } catch (err) {
-        try { console.warn('[rateLimiter] redis metrics incr failed', err) } catch {}
+      if (opts?.countLoginAttempt !== false) {
+        try {
+          const mkey = metricKey('login_attempts_total')
+          if (typeof r.incr === 'function') await r.incr(mkey)
+          if (typeof r.expire === 'function') try { await r.expire(mkey, getMetricsTtlSec()) } catch {}
+        } catch (err) {
+          try { console.warn('[rateLimiter] redis metrics incr failed', err) } catch {}
+        }
       }
 
       // audit
@@ -322,14 +324,16 @@ export async function incrementFailure(key: string, opts?: { windowMs?: number; 
       if (res) {
         try { logRateEvent('info', 'increment', { key, source: 'db', cur: res.cur, remaining: res.remaining, locked: !!res.locked, reason: opts?.reason }) } catch {}
       // attempt to increment cumulative metric in Redis if available
-      try {
-        const rr = await getRedis()
-        if (rr) {
-          const mkey = metricKey('login_attempts_total')
-          if (typeof rr.incr === 'function') await rr.incr(mkey)
-          try { if (typeof rr.expire === 'function') await rr.expire(mkey, getMetricsTtlSec()) } catch {}
-        }
-      } catch {}
+      if (opts?.countLoginAttempt !== false) {
+        try {
+          const rr = await getRedis()
+          if (rr) {
+            const mkey = metricKey('login_attempts_total')
+            if (typeof rr.incr === 'function') await rr.incr(mkey)
+            try { if (typeof rr.expire === 'function') await rr.expire(mkey, getMetricsTtlSec()) } catch {}
+          }
+        } catch {}
+      }
       if (res.locked) {
         try { logRateEvent('warn', 'locked', { key, source: 'db', cur: res.cur, max, lockedUntil: res.lockedUntil, reason: opts?.reason }) } catch {}
         return { locked: true, remaining: 0, lockedUntil: res.lockedUntil }

@@ -39,7 +39,7 @@ export async function archiveDeletedContent(input: ArchiveInput) {
     }
   }
 
-  await query(
+  const result = await query<{ insertId?: number }>(
     'INSERT INTO content_deletion_log (content_type, original_id, slug, snapshot_json, original_object_keys, archived_object_keys, deleted_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [
       input.contentType,
@@ -52,5 +52,53 @@ export async function archiveDeletedContent(input: ArchiveInput) {
     ]
   )
 
-  return { originalObjectKeys, archivedObjectKeys }
+  return { deletionLogId: Number(result?.insertId || 0), originalObjectKeys, archivedObjectKeys }
+}
+
+export type DeletionArchiveResult = Awaited<ReturnType<typeof archiveDeletedContent>>
+
+function cleanupErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.slice(0, 1000)
+}
+
+export async function completeDeletionCleanup(archive: DeletionArchiveResult, cleanup: () => Promise<unknown>) {
+  try {
+    await cleanup()
+    if (archive.deletionLogId > 0) {
+      await query(
+        'UPDATE content_deletion_log SET cleanup_status = ?, cleanup_attempted_at = NOW(), cleanup_completed_at = NOW(), cleanup_error = NULL WHERE id = ?',
+        ['complete', archive.deletionLogId],
+      )
+    }
+    return { cleanupPending: false }
+  } catch (error) {
+    if (archive.deletionLogId > 0) {
+      await query(
+        'UPDATE content_deletion_log SET cleanup_status = ?, cleanup_attempted_at = NOW(), cleanup_error = ? WHERE id = ?',
+        ['pending', cleanupErrorMessage(error), archive.deletionLogId],
+      )
+    }
+    return { cleanupPending: true }
+  }
+}
+
+export async function commitDeletionWithCleanup(
+  archive: DeletionArchiveResult,
+  databaseMutation: () => Promise<unknown>,
+  cleanup: () => Promise<unknown>,
+) {
+  try {
+    await databaseMutation()
+  } catch (error) {
+    if (archive.deletionLogId > 0) {
+      await query(
+        'UPDATE content_deletion_log SET cleanup_status = ?, cleanup_error = ? WHERE id = ?',
+        ['cancelled', cleanupErrorMessage(error), archive.deletionLogId],
+      )
+    }
+    throw error
+  }
+
+  return completeDeletionCleanup(archive, cleanup)
 }

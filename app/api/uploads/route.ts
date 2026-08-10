@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server'
 import * as Minio from 'minio'
+import { requireAdmin } from '@/lib/auth'
 import { getUploadKey, buildPublicUrl } from '@/lib/s3'
 import { logRouteError, logRouteEvent } from '@/lib/observability'
+import { validateImageUploadMetadata } from '@/lib/uploadValidation'
+import { isPublicObjectKey } from '@/lib/objectKeyPolicy'
 
 type ReqBody = { key?: string; contentType?: string; slug?: string; filename?: string; size?: number; prefix?: string; prefixOverride?: string }
 
 export async function POST(req: Request) {
   try {
+    const admin = await requireAdmin()
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const body: ReqBody = await req.json()
 
     // Allow client to omit contentType; infer from key/filename when possible
@@ -29,19 +35,11 @@ export async function POST(req: Request) {
 
     if (!contentTypeRaw) return NextResponse.json({ error: 'contentType required or could not be inferred from filename' }, { status: 400 })
 
-    // basic server-side validation
-    const allowed = [
-      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'image/x-icon'
-    ]
-    if (!allowed.includes(contentTypeRaw.toLowerCase())) {
-      return NextResponse.json({ error: `Unsupported contentType: ${contentTypeRaw}` }, { status: 400 })
-    }
-
-    const maxSize = Number(process.env.MAX_UPLOAD_BYTES || 50 * 1024 * 1024) // default 50MB
-    const providedSize = body.size ? Number(body.size) : undefined
-    if (providedSize !== undefined && providedSize > maxSize) {
-      return NextResponse.json({ error: 'File too large' }, { status: 400 })
-    }
+    const providedSize = Number(body.size)
+    if (!Number.isFinite(providedSize)) return NextResponse.json({ error: 'File size required' }, { status: 400 })
+    const filename = String(body.filename || body.key || '')
+    const validation = validateImageUploadMetadata({ filename, contentType: contentTypeRaw, size: providedSize })
+    if (!validation.ok) return NextResponse.json({ error: validation.error }, { status: validation.status })
 
     // allow server to generate a key from slug+filename, or accept a provided key
     let key = body.key
@@ -51,6 +49,7 @@ export async function POST(req: Request) {
       const prefixOverride = body.prefix || body.prefixOverride || undefined
       key = await getUploadKey(body.slug, body.filename, prefixOverride)
     }
+    if (!isPublicObjectKey(key)) return NextResponse.json({ error: 'Invalid upload destination' }, { status: 400 })
 
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET
     if (!bucket) {
@@ -67,7 +66,7 @@ export async function POST(req: Request) {
     })
 
     if (process.env.NODE_ENV !== 'production') {
-      logRouteEvent('debug', { route: 'api/uploads', action: 'presign_requested', resourceId: key, bucket, contentType: body.contentType || contentTypeRaw })
+      logRouteEvent('debug', { route: 'api/uploads', action: 'presign_requested', actor: admin.email, resourceId: key, bucket, contentType: validation.contentType })
     }
 
     // MinIO presigned PUT
@@ -77,23 +76,8 @@ export async function POST(req: Request) {
     // For long-term public access prefer the proxied app URL (stable key) instead of a signed GET
     const publicUrl = buildPublicUrl(key)
 
-    // parse signed url to surface signing hints in dev
-    let debug: { maskedCred?: string | null; signedHeaders?: string | null } | undefined = undefined
-    try {
-      const u = new URL(url)
-      const cred = u.searchParams.get('X-Amz-Credential')
-      const signedHeaders = u.searchParams.get('X-Amz-SignedHeaders')
-        if (process.env.NODE_ENV !== 'production') {
-        const maskedCred = cred ? (cred.slice(0, 6) + '...' + cred.slice(-6)) : null
-        debug = { maskedCred, signedHeaders }
-        logRouteEvent('debug', { route: 'api/uploads', action: 'presign_debug', resourceId: key, ...debug })
-      }
-    } catch (e: unknown) {
-      void e
-    }
-
-    logRouteEvent('info', { route: 'api/uploads', action: 'presign_created', resourceId: key, bucket })
-    return NextResponse.json(Object.assign({ url, key, publicUrl }, debug ? { _debug: debug } : {}))
+    logRouteEvent('info', { route: 'api/uploads', action: 'presign_created', actor: admin.email, resourceId: key, bucket })
+    return NextResponse.json({ url, key, publicUrl })
   } catch (err: unknown) {
     logRouteError('api/uploads', err, { action: 'presign_failed', reason: 'minio_presign_failed' })
     let msg = 'Unknown error'

@@ -5,9 +5,11 @@ const path = require('path')
 const mysql = require('mysql2/promise')
 
 function loadEnvFile() {
-  const envPath = path.resolve(process.cwd(), '.env.local')
+  const envPath = ['.env.local', 'env.local', '.env']
+    .map((name) => path.resolve(process.cwd(), name))
+    .find((candidate) => fs.existsSync(candidate))
   const env = {}
-  if (!fs.existsSync(envPath)) return env
+  if (!envPath) return env
 
   const content = fs.readFileSync(envPath, 'utf8')
   content.split(/\r?\n/).forEach((line) => {
@@ -87,11 +89,11 @@ async function main() {
   }
 
   const env = loadEnvFile()
-  const host = env.DB_HOST || process.env.DB_HOST || 'localhost'
-  const port = Number(env.DB_PORT || process.env.DB_PORT || '3306')
-  const user = env.DB_USER || process.env.DB_USER
-  const password = env.DB_PASSWORD || process.env.DB_PASSWORD
-  const database = env.DB_NAME || process.env.DB_NAME
+  const host = process.env.DB_HOST || env.DB_HOST || 'localhost'
+  const port = Number(process.env.DB_PORT || env.DB_PORT || '3306')
+  const user = process.env.DB_USER || env.DB_USER
+  const password = process.env.DB_PASSWORD || env.DB_PASSWORD
+  const database = process.env.DB_NAME || env.DB_NAME
 
   if (!user || !database) {
     console.error('DB_USER or DB_NAME not set in .env.local or environment')
